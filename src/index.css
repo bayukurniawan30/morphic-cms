@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 330 8% 95%; /* deep-mocha-50 */
+    --foreground: 0 6% 10%; /* deep-mocha-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 6% 10%;
+    --primary: 353 6% 30%; /* deep-mocha-700 */
+    --primary-foreground: 330 8% 95%; /* deep-mocha-50 */
+    --secondary: 350 6% 80%; /* deep-mocha-200 */
+    --secondary-foreground: 0 6% 10%;
+    --muted: 350 6% 80%; /* deep-mocha-200 */
+    --muted-foreground: 355 6% 60%; /* deep-mocha-400 */
+    --accent: 350 6% 80%;
+    --accent-foreground: 0 6% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 330 8% 95%;
+    --border: 350 6% 80%; /* deep-mocha-200 */
+    --input: 350 6% 80%;
+    --ring: 353 6% 30%; /* deep-mocha-700 */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 6% 10%; /* deep-mocha-900 */
+    --foreground: 330 8% 95%; /* deep-mocha-50 */
+    --card: 0 6% 10%; /* deep-mocha-900 */
+    --card-foreground: 330 8% 95%;
+    --popover: 0 6% 10%;
+    --popover-foreground: 330 8% 95%;
+    --primary: 350 6% 80%; /* deep-mocha-200 */
+    --primary-foreground: 353 6% 30%; /* deep-mocha-700 */
+    --secondary: 353 6% 30%; /* deep-mocha-700 */
+    --secondary-foreground: 330 8% 95%; 
+    --muted: 353 6% 30%; /* deep-mocha-700 */
+    --muted-foreground: 355 6% 60%; /* deep-mocha-400 */
+    --accent: 353 6% 30%;
+    --accent-foreground: 330 8% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 330 8% 95%;
+    --border: 353 6% 30%; /* deep-mocha-700 */
+    --input: 353 6% 30%;
+    --ring: 350 6% 80%; /* deep-mocha-200 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
