@@ -4,13 +4,13 @@ import { sign } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
 import bcrypt from 'bcryptjs';
 
-import { db } from '../db';
-import { collections, entries, users } from '../db/schema';
+import { db } from '../db/index.js';
+import { collections, entries, users } from '../db/schema.js';
 import { eq, isNull, asc, desc } from 'drizzle-orm';
-import { buildZodSchema } from '../lib/dynamic-schema';
-import type { FieldDefinition } from '../lib/dynamic-schema';
+import { buildZodSchema } from '../lib/dynamic-schema.js';
+import type { FieldDefinition } from '../lib/dynamic-schema.js';
 
-import { inertia } from '../lib/inertia';
+import { inertia } from '../lib/inertia.js';
 
 type Variables = {
   user: any;
@@ -172,7 +172,7 @@ api.post('/auth/login', async (c) => {
 // Test route
 api.get('/test', (c) => c.json({ message: 'Hello from Hono API!' }));
 
-import apiUsers from './users';
+import apiUsers from './users.js';
 
 api.route('/users', apiUsers);
 

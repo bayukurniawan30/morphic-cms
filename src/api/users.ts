@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { db } from '../db';
-import { users } from '../db/schema';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
 import { eq, isNull, desc } from 'drizzle-orm';
 import { getCookie } from 'hono/cookie';
 import { verify } from 'hono/jwt';

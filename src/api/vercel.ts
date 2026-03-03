@@ -1,4 +1,4 @@
-import app from './index';
+import app from './index.js';
 import { handle } from 'hono/vercel';
 
 // Export the Vercel handler
