@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { handle } from 'hono/vercel';
 import { sign } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
 import bcrypt from 'bcryptjs';
@@ -32,7 +31,21 @@ import { verify } from 'hono/jwt';
 
 // Middleware to inject the authenticated user into the Inertia shared props globally
 app.use('*', async (c, next) => {
-  const token = getCookie(c, 'morphic_token');
+  // Safe helper to get cookie even if c.req.header fails
+  const getAuthToken = () => {
+    try {
+      return getCookie(c, 'morphic_token');
+    } catch (e) {
+      const cookieHeader = (c.req.raw as any)?.headers?.['cookie'] || (c.req.raw as any)?.headers?.get?.('cookie');
+      if (typeof cookieHeader === 'string') {
+        const match = cookieHeader.match(/morphic_token=([^;]+)/);
+        return match ? match[1] : undefined;
+      }
+      return undefined;
+    }
+  };
+
+  const token = getAuthToken();
   let userData: any = null;
 
   if (token) {

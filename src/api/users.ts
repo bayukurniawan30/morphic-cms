@@ -14,7 +14,20 @@ const apiUsers = new Hono<{ Variables: Variables }>();
 
 // Middleware to check super_admin role
 apiUsers.use('*', async (c, next) => {
-  const token = getCookie(c, 'morphic_token');
+  const getAuthToken = () => {
+    try {
+      return getCookie(c, 'morphic_token');
+    } catch (e) {
+      const cookieHeader = (c.req.raw as any)?.headers?.['cookie'] || (c.req.raw as any)?.headers?.get?.('cookie');
+      if (typeof cookieHeader === 'string') {
+        const match = cookieHeader.match(/morphic_token=([^;]+)/);
+        return match ? match[1] : undefined;
+      }
+      return undefined;
+    }
+  };
+
+  const token = getAuthToken();
   if (!token) {
     return c.json({ error: 'Unauthorized' }, 401);
   }

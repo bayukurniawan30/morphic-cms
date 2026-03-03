@@ -19,15 +19,32 @@ if (!isDev) {
 
 export const inertia = (viewFile: string = 'index.html') => {
   return async (c: Context, next: Next) => {
+    // Determine if this is an Inertia request outside the closure
+    // Also handle possible Hono-Vercel adapter quirks by providing a fallback
+    const getHeader = (name: string) => {
+      try {
+        return c.req.header(name);
+      } catch (e) {
+        // Fallback for Node-style raw requests if the Hono wrapper is in a broken state
+        const rawHeaders = (c.req.raw as any)?.headers;
+        if (rawHeaders) {
+          return typeof rawHeaders.get === 'function' 
+            ? rawHeaders.get(name) 
+            : rawHeaders[name.toLowerCase()];
+        }
+        return undefined;
+      }
+    };
+
+    const isInertiaRequest = getHeader('X-Inertia') === 'true';
+
     c.set('inertia', (component: string, props: any = {}) => {
       const inertiaProps = {
         component,
         props,
-        url: c.req.url,
+        url: c.req.url, // c.req.url is usually safe as it's a getter
         version: null,
       };
-      
-      const isInertiaRequest = c.req.header('X-Inertia') === 'true';
 
       if (isInertiaRequest) {
         return c.json(inertiaProps, 200, {
