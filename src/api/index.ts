@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
+import { serveStatic } from '@hono/node-server/serve-static';
 import bcrypt from 'bcryptjs';
 
 import { db } from '../db/index.js';
@@ -20,6 +21,10 @@ const app = new Hono<{ Variables: Variables }>();
 
 // Inertia middleware injects c.set('inertia', renderFn)
 app.use('*', inertia());
+
+// Serve static assets from the dist folder manually as a fallback for Vercel
+app.get('/assets/*', serveStatic({ root: './dist' }));
+app.get('/favicon.ico', serveStatic({ root: './dist' }));
 
 // Serve the Index page at root for login
 app.get('/', async (c) => {

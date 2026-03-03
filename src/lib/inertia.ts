@@ -15,36 +15,36 @@ if (!isDev) {
     path.join(process.cwd(), 'dist', '.vite', 'manifest.json'),
     path.join(process.cwd(), '.vite', 'manifest.json'),
     path.join(__dirname, '..', '..', 'dist', '.vite', 'manifest.json'),
+    path.join(__dirname, '..', 'dist', '.vite', 'manifest.json'),
     path.join('/var/task', 'dist', '.vite', 'manifest.json'),
     path.join('/var/task', '.vite', 'manifest.json'),
+    './dist/.vite/manifest.json'
   ];
   
   for (const manifestPath of possiblePaths) {
     try {
       if (fs.existsSync(manifestPath)) {
         manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        console.log('✅ Vite manifest loaded from:', manifestPath);
+        console.log('✅ Vite manifest found at:', manifestPath);
         break;
       }
     } catch (e) {
-      // Continue to next path
+      // Continue searching
     }
   }
 
   if (!manifest) {
-    console.error('❌ Failed to load Vite manifest from any location. Production assets may be broken.');
+    console.error('❌ CRITICAL: Vite manifest not found. Production assets will fail to load.');
   }
 }
 
 export const inertia = (viewFile: string = 'index.html') => {
   return async (c: Context, next: Next) => {
     // Determine if this is an Inertia request outside the closure
-    // Also handle possible Hono-Vercel adapter quirks by providing a fallback
     const getHeader = (name: string) => {
       try {
         return c.req.header(name);
       } catch (e) {
-        // Fallback for Node-style raw requests if the Hono wrapper is in a broken state
         const rawHeaders = (c.req.raw as any)?.headers;
         if (rawHeaders) {
           return typeof rawHeaders.get === 'function' 
@@ -61,7 +61,7 @@ export const inertia = (viewFile: string = 'index.html') => {
       const inertiaProps = {
         component,
         props,
-        url: c.req.url, // c.req.url is usually safe as it's a getter
+        url: c.req.url,
         version: null,
       };
 
@@ -104,12 +104,30 @@ export const inertia = (viewFile: string = 'index.html') => {
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <title>Morphic CMS</title>
+            <script>
+              window.addEventListener('error', function(e) {
+                console.error('Global Runtime Error:', e.message, 'at', e.lineno, ':', e.colno);
+                document.body.innerHTML += '<div style="color:red; padding:20px; font-family:sans-serif;"><b>Runtime Error:</b> ' + e.message + '</div>';
+              });
+              console.log('Inertia loading component: ${component}', 'JS Path: ${jsPath}');
+            </script>
             ${cssTags}
             ${vitePreamble}
         </head>
         <body class="bg-background text-foreground">
-            <div id="app" data-page='${JSON.stringify(inertiaProps).replace(/'/g, "&apos;")}'></div>
-            <script type="module" src="${jsPath}"></script>
+            <div id="app" data-page='${JSON.stringify(inertiaProps).replace(/'/g, "&apos;")}'>
+              <div id="inertia-loading" style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; background: #1a1a1a; color: #fff;">
+                <div style="width: 40px; height: 40px; border: 3px solid #333; border-top-color: #7c3aed; border-radius: 50%; animate: spin 1s linear infinite;"></div>
+                <script>
+                  const style = document.createElement('style');
+                  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+                  document.head.appendChild(style);
+                </script>
+                <p style="margin-top: 20px; font-weight: 500;">Morphic CMS</p>
+                <p style="font-size: 12px; color: #666;">Loading application assets...</p>
+              </div>
+            </div>
+            <script type="module" src="${jsPath}" onerror="console.error('Failed to load script: ${jsPath}'); document.getElementById('inertia-loading').innerHTML = '<p style=color:red>Failed to load application assets. Check console.</p>'"></script>
         </body>
         </html>`;
 
