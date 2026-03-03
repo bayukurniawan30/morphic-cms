@@ -1,6 +1,10 @@
 import { Context, Next } from 'hono';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let manifest: any = null;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -12,6 +16,7 @@ if (!isDev) {
     path.join(process.cwd(), '.vite', 'manifest.json'),
     path.join(__dirname, '..', '..', 'dist', '.vite', 'manifest.json'),
     path.join('/var/task', 'dist', '.vite', 'manifest.json'),
+    path.join('/var/task', '.vite', 'manifest.json'),
   ];
   
   for (const manifestPath of possiblePaths) {
