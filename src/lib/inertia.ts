@@ -1,4 +1,21 @@
 import { Context, Next } from 'hono';
+import fs from 'fs';
+import path from 'path';
+
+let manifest: any = null;
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Load manifest once on startup in production
+if (!isDev) {
+  try {
+    const manifestPath = path.join(process.cwd(), 'dist', '.vite', 'manifest.json');
+    if (fs.existsSync(manifestPath)) {
+       manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('Failed to load Vite manifest:', e);
+  }
+}
 
 export const inertia = (viewFile: string = 'index.html') => {
   return async (c: Context, next: Next) => {
@@ -19,8 +36,20 @@ export const inertia = (viewFile: string = 'index.html') => {
         });
       }
 
-      // Determine if we are in development mode to inject Vite Refresh preamble
-      const isDev = process.env.NODE_ENV !== 'production';
+      // Determine asset paths
+      let jsPath = '/src/client.tsx';
+      let cssTags = '';
+
+      if (!isDev && manifest) {
+        const entry = manifest['index.html'];
+        if (entry) {
+          jsPath = `/${entry.file}`;
+          if (entry.css) {
+            cssTags = entry.css.map((css: string) => `<link rel="stylesheet" href="/${css}">`).join('\n');
+          }
+        }
+      }
+
       const vitePreamble = isDev ? `
         <script type="module">
           import RefreshRuntime from "/@react-refresh"
@@ -39,12 +68,12 @@ export const inertia = (viewFile: string = 'index.html') => {
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <title>Morphic CMS</title>
+            ${cssTags}
             ${vitePreamble}
         </head>
-        <body>
-            <!-- Inertia app mounting point -->
+        <body class="bg-background text-foreground">
             <div id="app" data-page='${JSON.stringify(inertiaProps).replace(/'/g, "&apos;")}'></div>
-            <script type="module" src="/src/client.tsx"></script>
+            <script type="module" src="${jsPath}"></script>
         </body>
         </html>`;
 

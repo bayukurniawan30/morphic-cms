@@ -19,6 +19,10 @@ export default defineConfig({
       injectClientScript: false, // If true, it might inject twice with Inertia; typically false for Hono + React Vite
     }),
   ],
+  build: {
+    manifest: true,
+    outDir: "dist",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
