@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+console.log('🔥 Morphic CMS: Hono Initializing on Vercel Node Runtime');
 import { sign } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -22,9 +23,13 @@ const app = new Hono<{ Variables: Variables }>();
 // Inertia middleware injects c.set('inertia', renderFn)
 app.use('*', inertia());
 
-// Serve static assets from the dist folder manually as a fallback for Vercel
-app.get('/assets/*', serveStatic({ root: './dist' }));
-app.get('/favicon.ico', serveStatic({ root: './dist' }));
+// Absolute path to dist for Vercel
+const distPath = './dist'; 
+
+// Serve static assets from the dist folder
+app.use('/assets/*', serveStatic({ root: distPath }));
+app.use('/favicon.ico', serveStatic({ root: distPath }));
+app.use('/vite.svg', serveStatic({ root: distPath }));
 
 // Serve the Index page at root for login
 app.get('/', async (c) => {

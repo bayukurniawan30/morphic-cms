@@ -2,14 +2,9 @@
   "version": 2,
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
-  "framework": "vite",
   "rewrites": [
     {
-      "source": "/(api/.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/((?!assets/|favicon\\.ico|vite\\.svg|dist/).*)",
+      "source": "/(.*)",
       "destination": "/api/index.ts"
     }
   ],
