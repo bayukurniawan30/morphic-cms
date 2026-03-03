@@ -12,5 +12,10 @@
       "source": "/((?!assets/|favicon\\.ico|vite\\.svg|dist/).*)",
       "destination": "/api/index.ts"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "dist/**"
+    }
+  }
 }

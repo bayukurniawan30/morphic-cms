@@ -7,13 +7,27 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 // Load manifest once on startup in production
 if (!isDev) {
-  try {
-    const manifestPath = path.join(process.cwd(), 'dist', '.vite', 'manifest.json');
-    if (fs.existsSync(manifestPath)) {
-       manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const possiblePaths = [
+    path.join(process.cwd(), 'dist', '.vite', 'manifest.json'),
+    path.join(process.cwd(), '.vite', 'manifest.json'),
+    path.join(__dirname, '..', '..', 'dist', '.vite', 'manifest.json'),
+    path.join('/var/task', 'dist', '.vite', 'manifest.json'),
+  ];
+  
+  for (const manifestPath of possiblePaths) {
+    try {
+      if (fs.existsSync(manifestPath)) {
+        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        console.log('✅ Vite manifest loaded from:', manifestPath);
+        break;
+      }
+    } catch (e) {
+      // Continue to next path
     }
-  } catch (e) {
-    console.error('Failed to load Vite manifest:', e);
+  }
+
+  if (!manifest) {
+    console.error('❌ Failed to load Vite manifest from any location. Production assets may be broken.');
   }
 }
 

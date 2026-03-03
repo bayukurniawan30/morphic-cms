@@ -16,10 +16,13 @@ createInertiaApp({
     return page.default || page;
   },
   setup({ el, App, props }) {
-    createRoot(el).render(
+    console.log('🚀 Morphic CMS: Initializing Inertia App...');
+    const root = createRoot(el);
+    root.render(
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <App {...props} />
       </ThemeProvider>
     );
+    console.log('✅ Morphic CMS: App Rendered');
   },
 });
