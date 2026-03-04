@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from 'sonner';
+import { LoadingState } from '@/components/ui/loader';
 
 interface MediaFolder {
   id: number;
@@ -260,9 +261,7 @@ export default function MediaIndex({ user }: { user: any }) {
 
         {/* Grid Area */}
         {loading ? (
-          <div className="h-40 flex items-center justify-center text-muted-foreground">
-            Loading...
-          </div>
+          <LoadingState text="Fetching your assets..." className="h-64" />
         ) : folders.length === 0 && files.length === 0 ? (
           <div className="h-64 flex flex-col items-center justify-center text-muted-foreground bg-card border rounded-md">
             <FolderIcon className="w-12 h-12 mb-4 opacity-50" />

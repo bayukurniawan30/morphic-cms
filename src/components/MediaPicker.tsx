@@ -21,6 +21,7 @@ import {
   XIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LoadingState } from '@/components/ui/loader';
 
 interface MediaFolder {
   id: number;
@@ -181,7 +182,7 @@ export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPicke
 
             <ScrollArea className="flex-1 min-h-0 h-full p-6">
               {loading ? (
-                <div className="flex items-center justify-center h-48 text-muted-foreground italic">Loading media...</div>
+                <LoadingState text="Loading library..." className="h-48 border-none bg-transparent" />
               ) : folders.length === 0 && filteredFiles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground italic">
                   <FolderIcon className="w-12 h-12 mb-2 opacity-20" />
