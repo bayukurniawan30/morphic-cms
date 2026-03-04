@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { SettingsIcon, SunIcon, MoonIcon } from '@/components/icons';
+import { SettingsIcon, SunIcon, MoonIcon, GithubIcon } from '@/components/icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/avatar';
 import { Menu, X } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
+import { getAppVersion } from '@/lib/version';
 
 interface UserProps {
   name?: string;
@@ -66,7 +67,7 @@ export default function Layout({ user, children }: LayoutProps) {
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${!isSidebarOpen && 'lg:w-0 lg:hidden'}`}
+        } ${!isSidebarOpen && 'lg:w-0 lg:hidden'} flex flex-col`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex flex-col">
@@ -77,12 +78,15 @@ export default function Layout({ user, children }: LayoutProps) {
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 flex-1">
           <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
             Dashboard
           </Link>
           <Link href="/collections" className={getLinkClasses('/collections')}>
             Collections
+          </Link>
+          <Link href="/entries" className={getLinkClasses('/entries')}>
+            Entries
           </Link>
           <Link href="/media" className={getLinkClasses('/media')}>
             Media
@@ -94,6 +98,21 @@ export default function Layout({ user, children }: LayoutProps) {
             Settings
           </Link>
         </nav>
+
+        <div className="p-2 border-t space-y-2 bg-muted/20">
+          <a 
+            href="https://github.com/bayukurniawan30/morphic-cms" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm"
+          >
+            <GithubIcon className="h-5 w-5" />
+            <span>Support Us on GitHub</span>
+          </a>
+          <div className="px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between">
+            <span>Version <span className='uppercase'>{getAppVersion()}</span></span>
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}

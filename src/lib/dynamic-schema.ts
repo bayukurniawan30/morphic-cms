@@ -1,9 +1,38 @@
 import { z } from 'zod';
 
+export type FieldType = 
+  | 'text' 
+  | 'number' 
+  | 'date' 
+  | 'datetime' 
+  | 'time' 
+  | 'select' 
+  | 'checkbox' 
+  | 'radio' 
+  | 'media' 
+  | 'rich-text';
+
+export type FieldOption = {
+  label: string;
+  value: string;
+};
+
 export type FieldDefinition = {
+  id: string; // for drag and drop / reordering identification
   name: string;
-  type: 'text' | 'number' | 'boolean' | 'date';
+  label: string;
+  type: FieldType;
   required: boolean;
+  multiple?: boolean; // for media, select
+  options?: FieldOption[]; // for select, radio, checkbox
+  validation?: {
+    min?: number;
+    max?: number;
+    minLength?: number;
+    maxLength?: number;
+    step?: number;
+    pattern?: string;
+  };
 };
 
 /**
@@ -17,17 +46,34 @@ export function buildZodSchema(fields: FieldDefinition[]) {
 
     switch (field.type) {
       case 'text':
+      case 'rich-text': {
+        let strValidator = z.string();
+        if (field.validation?.minLength !== undefined) strValidator = strValidator.min(field.validation.minLength);
+        if (field.validation?.maxLength !== undefined) strValidator = strValidator.max(field.validation.maxLength);
+        validator = strValidator;
+        break;
+      }
+      case 'number': {
+        let numValidator = z.number();
+        if (field.validation?.min !== undefined) numValidator = numValidator.min(field.validation.min);
+        if (field.validation?.max !== undefined) numValidator = numValidator.max(field.validation.max);
+        validator = numValidator;
+        break;
+      }
+      case 'date':
+      case 'datetime':
+      case 'time':
+        validator = z.string(); // refined later if needed
+        break;
+      case 'select':
+      case 'radio':
         validator = z.string();
         break;
-      case 'number':
-        validator = z.number();
+      case 'checkbox':
+        validator = z.array(z.string());
         break;
-      case 'boolean':
-        validator = z.boolean();
-        break;
-      case 'date':
-        // we can accept a string date or a date object, simplifying to string timestamp for now
-        validator = z.string().datetime({ message: "Invalid datetime string! Must be UTC." });
+      case 'media':
+        validator = z.any(); // could be a media ID or URL
         break;
       default:
         validator = z.any();

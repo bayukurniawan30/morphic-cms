@@ -13,7 +13,7 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 
 ### Frontend
 - **Framework**: [React](https://reactjs.org/) with [Inertia.js](https://inertiajs.com/) - Build single-page apps without the complexity of modern SPAs.
-- **Build Tool**: [Vite](https://vitejs.dev/) - Fast and lean development server.
+- **Build Tool**: [Vite](https://vite.dev/) - Fast and lean development server.
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with a custom "Deep Mocha" premium theme.
 - **UI Components**: [Shadcn UI](https://ui.shadcn.com/) - Beautifully designed components built with Radix UI.
 - **Icons**: [Phosphor](https://phosphoricons.com/) and custom SVG icons.
@@ -88,13 +88,35 @@ Explore and edit your data visually:
 pnpm db:studio
 ```
 
-## 🏗️ Build and Deployment
+## 🚀 Deployment (Vercel)
 
-To create a production build:
-```bash
-pnpm build
-```
-This project is optimized for deployment on platforms like Vercel via the Hono Vercel adapter.
+This project is optimized for deployment on **Vercel** using the **Hono Framework Preset**.
 
-## 📄 License
+### 1. Vercel Configuration
+- **Framework Preset**: Select `Hono` in the Vercel Dashboard.
+- **Node Runtime**: Pin to `20.x` or `22.x` in `package.json`.
+- **Environment Variables**:
+  - `DATABASE_URL`: Your Neon/Postgres connection string.
+  - `JWT_SECRET`: A secure random string for signing tokens.
+  - `NODE_ENV`: Set to `production`.
+
+### 2. Architecture Notes
+- **ESM Native**: All internal imports must use the `.js` extension to comply with ESM in Node environments.
+- **Root Entry Point**: The project uses a root `index.ts` to export the Hono `app` directly for Vercel's automatic detection.
+- **Asset Handling**: In production, the Hono server reads `dist/.vite/manifest.json` at runtime to resolve hashed JS/CSS filenames.
+- **Inertia Protocol**: The backend includes a custom Inertia middleware that handles initial page loads by injecting a `data-page` attribute and subsequently serving JSON for XHR requests.
+
+---
+
+## 🛠️ Tech Stack
+- **Backend**: [Hono](https://hono.dev/) (Web Standards Framework)
+- **Frontend**: [React](https://react.dev/) + [Inertia.js](https://inertiajs.com/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
+- **Database**: [Drizzle ORM](https://orm.drizzle.team/) + [Neon](https://neon.tech/)
+- **Icons**: [Phosphor Icons](https://phosphoricons.com/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+
+---
+
+## 📝 License
 MIT

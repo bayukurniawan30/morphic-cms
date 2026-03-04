@@ -4,6 +4,9 @@ export default {
     content: ["./src/**/*.{ts,tsx}"],
   theme: {
   	extend: {
+  		animation: {
+  			'spin-slow': 'spin 3s linear infinite',
+  		},
   		colors: {
 			'deep-mocha': {
 				"50": "#f3f1f2",
@@ -66,5 +69,5 @@ export default {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 }

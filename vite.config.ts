@@ -3,9 +3,18 @@ import react from "@vitejs/plugin-react";
 import devServer from "@hono/vite-dev-server";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const getGitHash = () => {
+  try {
+    return execSync("git rev-parse --short=5 HEAD").toString().trim();
+  } catch (_e) {
+    return "unknown";
+  }
+};
 
 export default defineConfig({
   plugins: [
@@ -20,9 +29,12 @@ export default defineConfig({
         /^\/@.+$/,
         /^\/favicon\.ico$/
       ],
-      injectClientScript: false, // If true, it might inject twice with Inertia; typically false for Hono + React Vite
+      injectClientScript: false,
     }),
   ],
+  define: {
+    "import.meta.env.VITE_GIT_HASH": JSON.stringify(getGitHash()),
+  },
   build: {
     manifest: true,
     outDir: "dist",

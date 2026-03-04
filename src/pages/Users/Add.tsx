@@ -77,7 +77,7 @@ export default function Add({ user }: { user: any }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="username">Username *</Label>
+            <Label htmlFor="username">Username <span className="text-destructive ml-1">*</span></Label>
             <Input 
               id="username" 
               value={data.username} 
@@ -88,7 +88,7 @@ export default function Add({ user }: { user: any }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Email <span className="text-destructive ml-1">*</span></Label>
             <Input 
               id="email" 
               type="email" 
@@ -101,7 +101,7 @@ export default function Add({ user }: { user: any }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Initial Password *</Label>
+            <Label htmlFor="password">Initial Password <span className="text-destructive ml-1">*</span></Label>
             <Input 
               id="password" 
               type="password" 
