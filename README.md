@@ -16,7 +16,7 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 - **Build Tool**: [Vite](https://vite.dev/) - Fast and lean development server.
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with a custom "Deep Mocha" premium theme.
 - **UI Components**: [Shadcn UI](https://ui.shadcn.com/) - Beautifully designed components built with Radix UI.
-- **Icons**: [Phosphor](https://phosphoricons.com/) and custom SVG icons.
+- **Icons**: [Phosphor](https://phosphoricons.com/) and [Lucide React](https://lucide.dev/) for a crisp and consistent visual language.
 - **Toasts**: [Sonner](https://sonner.stevenly.cc/) for elegant, non-blocking notifications.
 - **Theming**: `next-themes` for seamless light/dark mode support.
 
@@ -113,7 +113,7 @@ This project is optimized for deployment on **Vercel** using the **Hono Framewor
 - **Frontend**: [React](https://react.dev/) + [Inertia.js](https://inertiajs.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
 - **Database**: [Drizzle ORM](https://orm.drizzle.team/) + [Neon](https://neon.tech/)
-- **Icons**: [Phosphor Icons](https://phosphoricons.com/)
+- **Icons**: [Phosphor Icons](https://phosphoricons.com/) + [Lucide React](https://lucide.dev/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
 
 ---
