@@ -518,6 +518,7 @@ api.use('*', async (c, next) => {
     c.set('user', { 
       ...userData, 
       role: fullUser.role, 
+      abilityName: fullUser.abilityName,
       permissions: fullUser.role === 'super_admin' ? '*' : (fullUser.permissions || {})
     } as any);
   }
