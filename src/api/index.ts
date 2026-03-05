@@ -401,8 +401,19 @@ app.get('/entries', async (c) => {
   const userData = c.get('user');
   if (!userData) return c.redirect('/');
   
-  const allCollections = await db.select().from(collections).orderBy(asc(collections.name));
-  return c.get('inertia')('Entries/Index', { collections: allCollections, user: userData });
+  const typeFilter = c.req.query('type') || 'all';
+  
+  const query = db.select().from(collections);
+  if (typeFilter !== 'all') {
+    query.where(eq(collections.type, typeFilter as any));
+  }
+  
+  const allCollections = await query.orderBy(asc(collections.name));
+  return c.get('inertia')('Entries/Index', { 
+    collections: allCollections, 
+    user: userData,
+    filters: { type: typeFilter }
+  });
 });
 
 app.get('/entries/:collectionId', async (c) => {
@@ -879,6 +890,22 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       return c.json({ error: 'Forbidden: No read access to this collection' }, 403);
     }
 
+    const col = await db.select({ type: collections.type }).from(collections).where(eq(collections.id, id)).limit(1);
+    const isGlobal = col[0]?.type === 'global';
+
+    if (isGlobal) {
+      const result = await db.select()
+        .from(entries)
+        .where(eq(entries.collectionId, id))
+        .orderBy(desc(entries.createdAt))
+        .limit(1);
+      
+      return c.json({ 
+        type: 'global',
+        entry: result[0] || null 
+      });
+    }
+
     const page = parseInt(c.req.query('page') || '1', 10);
     const limit = parseInt(c.req.query('limit') || '10', 10);
     const offset = (page - 1) * limit;
@@ -895,6 +922,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .offset(offset);
 
     return c.json({ 
+      type: 'collection',
       entries: result,
       pagination: { currentPage: page, totalPages, totalCount, limit }
     });

@@ -1,8 +1,15 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { DatabaseIcon, LayersIcon, ArrowRightIcon } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Collection {
   id: number;
@@ -17,17 +24,40 @@ interface Collection {
 interface IndexProps {
   collections: Collection[];
   user?: any;
+  filters?: {
+    type?: string;
+  };
 }
 
-export default function EntriesIndex({ collections, user }: IndexProps) {
+export default function EntriesIndex({ collections, user, filters }: IndexProps) {
+  const currentType = filters?.type || 'all';
+
+  const handleTypeChange = (type: string) => {
+    router.get('/entries', { type }, { preserveState: true });
+  };
+
   return (
     <Layout user={user}>
       <Head title="Content Manager | Morphic" />
       
       <div className="flex flex-col space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Content Manager</h1>
-          <p className="text-muted-foreground mt-1">Select a collection to manage its entries.</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Content Manager</h1>
+            <p className="text-muted-foreground mt-1">Select a collection to manage its entries.</p>
+          </div>
+          <div className="w-48">
+            <Select value={currentType} onValueChange={handleTypeChange}>
+              <SelectTrigger className="h-10 bg-card border-muted-foreground/20">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="collection">Collections</SelectItem>
+                <SelectItem value="global">Global Singletons</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -44,7 +74,7 @@ export default function EntriesIndex({ collections, user }: IndexProps) {
             collections.map((collection) => (
               <Link 
                 key={collection.id} 
-                href={collection.type === 'global' ? `/globals/${collection.slug}` : `/entries/${collection.id}`}
+                href={`/entries/${collection.id}`}
                 className="group block"
               >
                 <div className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 h-full relative overflow-hidden">

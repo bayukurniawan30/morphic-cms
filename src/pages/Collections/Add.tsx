@@ -164,6 +164,7 @@ export default function AddCollection({ user }: AddProps) {
     { value: 'media', label: 'Media' },
     { value: 'documents', label: 'Documents' },
     { value: 'rich-text', label: 'Rich Text' },
+    { value: 'textarea', label: 'Textarea' },
     { value: 'relation', label: 'Collection (Relation)' },
     { value: 'slug', label: 'Slug' },
   ];
@@ -318,7 +319,7 @@ export default function AddCollection({ user }: AddProps) {
                          <span className="text-[10px] font-mono opacity-50 uppercase">{field.type} Field</span>
                       </div>
 
-                      {field.type === 'text' && (
+                       {(field.type === 'text' || field.type === 'textarea') && (
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label className="text-xs">Min Length</Label>

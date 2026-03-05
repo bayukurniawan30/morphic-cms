@@ -240,12 +240,12 @@ export default function CollectionsList({ collections, user, filters, pagination
                       <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                         <Button variant="outline" size="sm" asChild>
                           <Link href={collection.type === 'global' ? `/globals/${collection.slug}` : `/entries/${collection.id}`}>
-                            {collection.type === 'global' ? 'Edit' : 'Entries'}
+                            {collection.type === 'global' ? 'Content' : 'Entries'}
                           </Link>
                         </Button>
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild title="Edit Schema">
                           <Link href={`/collections/edit/${collection.id}`}>
-                            Edit
+                            Edit Schema
                           </Link>
                         </Button>
                         <Button 

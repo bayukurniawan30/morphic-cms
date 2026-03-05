@@ -12,6 +12,7 @@ export type FieldType =
   | 'media' 
   | 'documents'
   | 'rich-text'
+  | 'textarea'
   | 'relation'
   | 'slug'
   | 'boolean';
@@ -53,6 +54,7 @@ export function buildZodSchema(fields: FieldDefinition[]) {
 
     switch (field.type) {
       case 'text':
+      case 'textarea':
       case 'rich-text': {
         let strValidator = z.string();
         if (field.validation?.minLength !== undefined) strValidator = strValidator.min(field.validation.minLength);

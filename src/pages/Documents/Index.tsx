@@ -43,10 +43,10 @@ export default function DocumentsIndex({ user }: { user: any }) {
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchDocuments = async (page = 1) => {
+  const fetchDocuments = async (page = 1, search = '') => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/documents?page=${page}&limit=10`);
+      const res = await fetch(`/api/documents?page=${page}&limit=10&search=${encodeURIComponent(search)}`);
       if (!res.ok) throw new Error('Failed to fetch documents');
       const data = await res.json();
       setFiles(data.files || []);
@@ -60,8 +60,12 @@ export default function DocumentsIndex({ user }: { user: any }) {
   };
 
   useEffect(() => {
-    fetchDocuments(currentPage);
-  }, [currentPage]);
+    const timer = setTimeout(() => {
+      fetchDocuments(currentPage, searchQuery);
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timer);
+  }, [currentPage, searchQuery]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -126,9 +130,8 @@ export default function DocumentsIndex({ user }: { user: any }) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   };
 
-  const filteredFiles = files.filter(file => 
-    file.filename.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // No longer using local filtering
+  const filteredFiles = files;
 
   return (
     <Layout user={user}>

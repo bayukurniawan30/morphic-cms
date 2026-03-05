@@ -59,6 +59,9 @@ interface ListProps {
     totalCount: number;
     limit: number;
   };
+  filters?: {
+    type?: string;
+  };
 }
 
 export default function EntriesList({ collection, entries, user, pagination }: ListProps) {
@@ -104,7 +107,10 @@ export default function EntriesList({ collection, entries, user, pagination }: L
     const fetchPreview = async () => {
       setIsPreviewLoading(true);
       try {
-        const res = await fetch(`/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`);
+        const url = (collection as any).type === 'global' 
+          ? `/api/collections/${collection.slug}/entries`
+          : `/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`;
+        const res = await fetch(url);
         const data = await res.json();
         setPreviewData(data);
       } catch (err) {
@@ -116,7 +122,7 @@ export default function EntriesList({ collection, entries, user, pagination }: L
 
     const timer = setTimeout(fetchPreview, 300); // Debounce
     return () => clearTimeout(timer);
-  }, [previewPage, previewLimit, collection.slug, isDialogOpen]);
+  }, [previewPage, previewLimit, collection.slug, isDialogOpen, (collection as any).type]);
 
   React.useEffect(() => {
     const fetchRelations = async () => {
@@ -243,44 +249,51 @@ export default function EntriesList({ collection, entries, user, pagination }: L
                 </DialogHeader>
                 
                 <div className="flex-1 space-y-4 overflow-hidden flex flex-col mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Page Number</label>
-                       <Input 
-                        type="number" 
-                        min={1} 
-                        value={previewPage} 
-                        onChange={e => setPreviewPage(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="h-8 text-xs"
-                       />
+                  {(collection as any).type !== 'global' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Page Number</label>
+                         <Input 
+                          type="number" 
+                          min={1} 
+                          value={previewPage} 
+                          onChange={e => setPreviewPage(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="h-8 text-xs"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Limit per Page</label>
+                         <Input 
+                          type="number" 
+                          min={1} 
+                          max={100} 
+                          value={previewLimit} 
+                          onChange={e => setPreviewLimit(Math.max(1, Math.min(100, parseInt(e.target.value) || 10)))}
+                          className="h-8 text-xs"
+                         />
+                         <p className="text-[10px] text-muted-foreground italic">Max 100 entries per request.</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Limit per Page</label>
-                       <Input 
-                        type="number" 
-                        min={1} 
-                        max={100} 
-                        value={previewLimit} 
-                        onChange={e => setPreviewLimit(Math.max(1, Math.min(100, parseInt(e.target.value) || 10)))}
-                        className="h-8 text-xs"
-                       />
-                       <p className="text-[10px] text-muted-foreground italic">Max 100 entries per request.</p>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Endpoint URL</label>
                     <div className="flex space-x-2">
                       <Input 
                         readOnly 
-                        value={`${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`} 
+                        value={(collection as any).type === 'global' 
+                          ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                          : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`} 
                         className="font-mono text-xs bg-muted/50"
                       />
                       <Button 
                         variant="secondary" 
                         size="icon" 
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`);
+                          const url = (collection as any).type === 'global'
+                            ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                            : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`;
+                          navigator.clipboard.writeText(url);
                           toast.success('URL copied to clipboard');
                         }}
                       >

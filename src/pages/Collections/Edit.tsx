@@ -18,8 +18,20 @@ import {
   ChevronUpIcon, 
   ChevronDownIcon,
   Settings2Icon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  CodeIcon,
+  TerminalIcon,
+  CopyIcon
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from 'sonner';
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema';
 
@@ -173,6 +185,7 @@ export default function EditCollection({ collection, user }: EditProps) {
     { value: 'media', label: 'Media' },
     { value: 'documents', label: 'Documents' },
     { value: 'rich-text', label: 'Rich Text' },
+    { value: 'textarea', label: 'Textarea' },
     { value: 'relation', label: 'Collection (Relation)' },
     { value: 'slug', label: 'Slug' },
   ];
@@ -185,6 +198,29 @@ export default function EditCollection({ collection, user }: EditProps) {
       .then(data => setAvailableCollections(data.collections || []))
       .catch(err => console.error('Failed to fetch collections', err));
   }, []);
+
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isDialogOpen || collection.type !== 'global') return;
+
+    const fetchPreview = async () => {
+      setIsPreviewLoading(true);
+      try {
+        const res = await fetch(`/api/collections/${collection.slug}/entries`);
+        const data = await res.json();
+        setPreviewData(data);
+      } catch (err) {
+        console.error('Failed to fetch API preview:', err);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    };
+
+    fetchPreview();
+  }, [isDialogOpen, collection.slug, collection.type]);
 
   return (
     <Layout user={user}>
@@ -202,6 +238,82 @@ export default function EditCollection({ collection, user }: EditProps) {
             <p className="text-muted-foreground mt-1">
               Updating: <span className="font-semibold text-foreground">{collection.name}</span>
             </p>
+          </div>
+
+          <div className="ml-auto">
+            {collection.type === 'global' && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <CodeIcon className="w-4 h-4 mr-2" />
+                    API Preview
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center">
+                      <TerminalIcon className="w-5 h-5 mr-2 text-primary" />
+                      Global Type API Preview
+                    </DialogTitle>
+                    <DialogDescription>
+                      Interactive preview of the JSON response for this global singleton.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="flex-1 space-y-4 overflow-hidden flex flex-col mt-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Endpoint URL</label>
+                      <div className="flex space-x-2">
+                        <Input 
+                          readOnly 
+                          value={`${window.location.origin}/api/collections/${collection.slug}/entries`} 
+                          className="font-mono text-xs bg-muted/50"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="icon" 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/api/collections/${collection.slug}/entries`);
+                            toast.success('URL copied to clipboard');
+                          }}
+                        >
+                          <CopyIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col min-h-0 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">JSON Response</label>
+                          {isPreviewLoading && <span className="text-[10px] animate-pulse text-primary font-bold">LOADING...</span>}
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 text-[10px]"
+                          onClick={() => {
+                            const json = JSON.stringify(previewData, null, 2);
+                            navigator.clipboard.writeText(json);
+                            toast.success('JSON copied to clipboard');
+                          }}
+                        >
+                          <CopyIcon className="w-3 h-3 mr-1.5" />
+                          Copy JSON
+                        </Button>
+                      </div>
+                      <ScrollArea className={`${collection.type === 'global' ? 'h-[450px]' : 'h-[350px]'} rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300`}>
+                        <div className="min-w-max">
+                          <pre className="whitespace-pre">
+                            {previewData ? JSON.stringify(previewData, null, 2) : "// Loading preview data..."}
+                          </pre>
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
@@ -336,7 +448,7 @@ export default function EditCollection({ collection, user }: EditProps) {
                          <span className="text-[10px] font-mono opacity-50 uppercase">{field.type} Field</span>
                       </div>
 
-                      {field.type === 'text' && (
+                      {(field.type === 'text' || field.type === 'textarea') && (
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label className="text-xs">Min Length</Label>

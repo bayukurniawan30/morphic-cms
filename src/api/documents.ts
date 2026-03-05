@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import { documents } from '../db/schema.js';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, ilike } from 'drizzle-orm';
 import { getCookie } from 'hono/cookie';
 import { verify } from 'hono/jwt';
 import { uploadBufferToCloudinary } from '../lib/cloudinary.js';
@@ -47,17 +47,32 @@ apiDocuments.get('/', async (c) => {
   try {
     const page = parseInt(c.req.query('page') || '1', 10);
     const limit = parseInt(c.req.query('limit') || '10', 10);
+    const search = c.req.query('search') || '';
     const offset = (page - 1) * limit;
 
-    const countResult = await db.select({ count: sql`count(*)` }).from(documents);
+    let whereClause = undefined;
+    if (search) {
+      whereClause = ilike(documents.filename, `%${search}%`);
+    }
+
+    const countResult = await db.select({ count: sql`count(*)` })
+      .from(documents)
+      .where(whereClause);
+    
     const totalCount = Number(countResult[0].count);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const files = await db.select()
+    const filesQuery = db.select()
       .from(documents)
       .orderBy(desc(documents.createdAt))
       .limit(limit)
       .offset(offset);
+    
+    if (whereClause) {
+      filesQuery.where(whereClause);
+    }
+
+    const files = await filesQuery;
 
     return c.json({ 
       files,
