@@ -41,10 +41,13 @@ export default function EntriesIndex({ collections, user, filters }: IndexProps)
       <Head title="Content Manager | Morphic" />
       
       <div className="flex flex-col space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Content Manager</h1>
-            <p className="text-muted-foreground mt-1">Select a collection to manage its entries.</p>
+            <div className="flex items-center space-x-2 mb-1">
+               <DatabaseIcon className="w-5 h-5 text-primary" />
+               <h1 className="text-3xl font-bold tracking-tight">Content Manager</h1>
+            </div>
+            <p className="text-muted-foreground text-sm">Select a collection to manage its entries.</p>
           </div>
           <div className="w-48">
             <Select value={currentType} onValueChange={handleTypeChange}>

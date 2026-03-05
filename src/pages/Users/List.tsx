@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/components/theme-provider';
 import Layout from '@/components/Layout';
-import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, UsersIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -103,10 +103,13 @@ export default function List({ users, user, filters, pagination, flash }: ListPr
     <Layout user={user}>
       <Head title="Users Management" />
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Users</h1>
-            <p className="text-muted-foreground mt-1">Manage platform administrators and editors ({pagination?.totalCount || 0} total).</p>
+            <div className="flex items-center space-x-2 mb-1">
+               <UsersIcon className="w-5 h-5 text-primary" />
+               <h1 className="text-3xl font-bold tracking-tight text-foreground">Users</h1>
+            </div>
+            <p className="text-muted-foreground text-sm">Manage platform administrators and editors ({pagination?.totalCount || 0} total).</p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
              <div className="w-40">

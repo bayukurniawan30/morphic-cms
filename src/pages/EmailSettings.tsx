@@ -55,7 +55,6 @@ export default function EmailTest({ user }: { user?: any }) {
             </div>
             <p className="text-muted-foreground text-sm">Configure and test transactional emails via Resend.</p>
           </div>
-          
         </div>
 
         <div className="bg-card rounded-xl border p-6 space-y-6 shadow-sm">

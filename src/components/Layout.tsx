@@ -15,7 +15,7 @@ import {
   Avatar,
   AvatarFallback,
 } from '@/components/ui/avatar';
-import { Menu, X, Mail, Key, FileImageIcon, FileText, LayoutGrid, Database, Users, Globe } from 'lucide-react';
+import { Menu, X, Mail, Key, FileImageIcon, FileText, LayoutGrid, Database, Users, Globe, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { getAppVersion } from '@/lib/version';
 
@@ -31,8 +31,8 @@ interface LayoutProps {
 }
 
 export default function Layout({ user, children }: LayoutProps) {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const { theme, setTheme } = useTheme();
+  const [isSidebarOpen, setSidebarOpen] = useState(false); // Hidden by default on mobile
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const { url } = usePage();
   const [globals, setGlobals] = React.useState<any[]>([]);
 
@@ -52,7 +52,7 @@ export default function Layout({ user, children }: LayoutProps) {
   };
 
   const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+  const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
 
   const getInitials = (name: string) => {
     return name
@@ -78,8 +78,8 @@ export default function Layout({ user, children }: LayoutProps) {
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${!isSidebarOpen && 'lg:w-0 lg:hidden'} flex flex-col`}
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } ${!isSidebarOpen && 'lg:w-64'} flex flex-col`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex flex-col">
@@ -92,7 +92,10 @@ export default function Layout({ user, children }: LayoutProps) {
         </div>
         <nav className="p-4 space-y-2 flex-1">
           <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
-            Dashboard
+            <div className="flex items-center gap-3">
+              <LayoutDashboard className="h-4 w-4" />
+              <span>Dashboard</span>
+            </div>
           </Link>
 
           <div className="pt-4 pb-2">
@@ -132,7 +135,7 @@ export default function Layout({ user, children }: LayoutProps) {
           </div>
 
           {globals.length > 0 && (
-            <div className="pt-2 pb-2">
+            <div className="pt-2 pb-2 hidden lg:block">
               <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Globals</h3>
               <div className="space-y-1">
                 {globals.map((global) => (
@@ -162,7 +165,7 @@ export default function Layout({ user, children }: LayoutProps) {
               </Link>
               <Link href="/api-key-abilities" className={getLinkClasses('/api-key-abilities')}>
                 <div className="flex items-center gap-3">
-                  <Key className="h-4 w-4" />
+                  <ShieldCheck className="h-4 w-4" />
                   <span>API Key Abilities</span>
                 </div>
               </Link>
@@ -212,7 +215,7 @@ export default function Layout({ user, children }: LayoutProps) {
 
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="icon" onClick={toggleTheme}>
-              {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+              {resolvedTheme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
               <span className="sr-only">Toggle theme</span>
             </Button>
             

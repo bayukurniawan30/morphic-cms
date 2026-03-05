@@ -61,7 +61,7 @@ export default function ApiKeyAbilities({ user, abilities = [] }: { user?: any; 
           </Button>
         </div>
 
-        <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+        <div className="bg-card rounded-xl border shadow-sm overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground font-medium border-b">
               <tr>

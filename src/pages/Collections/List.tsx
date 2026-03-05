@@ -130,10 +130,13 @@ export default function CollectionsList({ collections, user, filters, pagination
       <Head title="Collections | Morphic" />
       
       <div className="flex flex-col space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex flex-col sm:flex-row justify-between items-end space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Collections</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage your content types and schemas ({pagination?.totalCount || 0} total).</p>
+            <div className="flex items-center space-x-2 mb-1">
+               <LayersIcon className="w-5 h-5 text-primary" />
+               <h1 className="text-3xl font-bold tracking-tight">Collections</h1>
+            </div>
+            <p className="text-muted-foreground text-sm">Manage your content types and schemas ({pagination?.totalCount || 0} total).</p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
             <div className="w-48">

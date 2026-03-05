@@ -213,7 +213,7 @@ export default function EntriesList({ collection, entries, user, pagination }: L
       <Head title={`${collection.name} Entries | Morphic`} />
       
       <div className="flex flex-col space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex flex-col sm:flex-row justify-between items-end space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" asChild className="rounded-full">
               <Link href="/entries">
@@ -221,11 +221,11 @@ export default function EntriesList({ collection, entries, user, pagination }: L
               </Link>
             </Button>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 mb-1">
                  <h1 className="text-3xl font-bold tracking-tight">{collection.name}</h1>
                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Entries</span>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">Manage data for this collection ({pagination?.totalCount || 0} total).</p>
+              <p className="text-muted-foreground text-sm">Manage data for this collection ({pagination?.totalCount || 0} total).</p>
             </div>
           </div>
 
