@@ -40,6 +40,317 @@ interface FormProps {
   mode: 'create' | 'edit';
 }
 
+const FieldInput = ({ 
+  field, 
+  value, 
+  onChange, 
+  error, 
+  relationData, 
+  availableDocuments, 
+  onMediaPickerOpen 
+}: { 
+  field: FieldDefinition, 
+  value: any, 
+  onChange: (val: any) => void, 
+  error?: string,
+  relationData: Record<number, any[]>,
+  availableDocuments: any[],
+  onMediaPickerOpen: (name: string) => void
+}) => {
+  const handleValueChange = (val: any) => {
+    onChange(val);
+  };
+
+  switch (field.type) {
+    case 'text':
+      return (
+        <Input 
+          value={value || ''}
+          onChange={e => handleValueChange(e.target.value)}
+          placeholder={`Enter ${field.label || field.name}`}
+          className={error ? 'border-destructive' : ''}
+        />
+      );
+    
+    case 'textarea':
+      return (
+        <Textarea 
+          value={value || ''}
+          onChange={e => handleValueChange(e.target.value)}
+          placeholder={`Enter ${field.label || field.name}`}
+          className={error ? 'border-destructive' : ''}
+          rows={5}
+        />
+      );
+    
+    case 'rich-text':
+      return (
+        <RichTextEditor 
+          value={value || ''}
+          onChange={val => handleValueChange(val)}
+        />
+      );
+    
+    case 'number':
+      return (
+        <Input 
+          type="number"
+          value={value ?? ''}
+          onChange={e => handleValueChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          min={field.validation?.min}
+          max={field.validation?.max}
+          step={field.validation?.step || 'any'}
+          className={error ? 'border-destructive' : ''}
+        />
+      );
+
+    case 'date':
+    case 'datetime':
+    case 'time':
+      return (
+        <Input 
+          type={field.type === 'datetime' ? 'datetime-local' : field.type}
+          value={value || ''}
+          onChange={e => handleValueChange(e.target.value)}
+          className={error ? 'border-destructive' : ''}
+        />
+      );
+
+    case 'select':
+      return (
+        <Select 
+          value={value || ''} 
+          onValueChange={val => handleValueChange(val)}
+        >
+          <SelectTrigger className={error ? 'border-destructive' : ''}>
+            <SelectValue placeholder={`Select ${field.label || field.name}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options?.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+
+    case 'radio':
+      return (
+        <RadioGroup 
+          value={value || ''} 
+          onValueChange={val => handleValueChange(val)}
+          className="flex flex-col space-y-2 pt-1"
+        >
+          {field.options?.map(opt => (
+            <div key={opt.value} className="flex items-center space-x-2">
+              <RadioGroupItem value={opt.value} id={`${field.id}-${opt.value}`} />
+              <Label htmlFor={`${field.id}-${opt.value}`} className="font-normal cursor-pointer text-xs">
+                {opt.label}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      );
+
+    case 'checkbox':
+      { const currentVals = Array.isArray(value) ? value : [];
+      return (
+        <div className="flex flex-col space-y-3 pt-1">
+          {field.options?.map(opt => (
+            <div key={opt.value} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`${field.id}-${opt.value}`}
+                checked={currentVals.includes(opt.value)}
+                onCheckedChange={(checked) => {
+                  const next = checked 
+                    ? [...currentVals, opt.value]
+                    : currentVals.filter(v => v !== opt.value);
+                  handleValueChange(next);
+                }}
+              />
+              <Label htmlFor={`${field.id}-${opt.value}`} className="font-normal cursor-pointer text-xs">
+                {opt.label}
+              </Label>
+            </div>
+          ))}
+        </div>
+      ); }
+
+    case 'media':
+      {
+        const mediaArray = Array.isArray(value) ? value : (value ? [value] : []);
+        const handleMediaUpdate = (next: any) => {
+          handleValueChange(field.multiple ? next : (next[0] || null));
+        };
+        
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {mediaArray.map((m: any, idx: number) => (
+                <div key={idx} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted transition-all hover:ring-2 hover:ring-primary/50">
+                  <img src={m.secureUrl} alt={m.filename} className="w-full h-full object-cover" />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const next = mediaArray.filter((_, i) => i !== idx);
+                      handleMediaUpdate(next);
+                    }}
+                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {(field.multiple || mediaArray.length === 0) && (
+                <button 
+                  type="button"
+                  onClick={() => onMediaPickerOpen(field.name)}
+                  className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg hover:border-primary hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
+                >
+                  <ImagePlus className="w-4 h-4 mb-1" />
+                  <span className="text-[10px] font-medium">Add Media</span>
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+    case 'relation':
+      {
+        const options = field.relationCollectionId ? (relationData[field.relationCollectionId] || []) : [];
+        return (
+          <Select 
+            value={value?.toString() || ''} 
+            onValueChange={val => handleValueChange(parseInt(val))}
+          >
+            <SelectTrigger className={error ? 'border-destructive' : ''}>
+              <SelectValue placeholder={`Select ${field.label || field.name}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map(entry => (
+                <SelectItem key={entry.id} value={entry.id.toString()}>
+                  {field.relationLabelField ? entry.content[field.relationLabelField] : `Entry #${entry.id}`}
+                </SelectItem>
+              ))}
+              {options.length === 0 && (
+                <div className="p-2 text-xs text-muted-foreground text-center italic">No entries found</div>
+              )}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+    case 'documents':
+      return (
+        <Select 
+          value={value?.id?.toString() || (typeof value === 'number' ? value.toString() : '')} 
+          onValueChange={val => {
+            const doc = availableDocuments.find(d => d.id === parseInt(val));
+            handleValueChange(doc || parseInt(val));
+          }}
+        >
+          <SelectTrigger className={error ? 'border-destructive' : ''}>
+            <SelectValue placeholder={`Select ${field.label || field.name}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {availableDocuments.map(doc => (
+              <SelectItem key={doc.id} value={doc.id.toString()}>
+                <div className="flex items-center">
+                  <FileText className="w-3 h-3 mr-2 opacity-50" />
+                  {doc.filename}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+
+    case 'slug':
+      return (
+        <Input 
+          value={value || ''}
+          onChange={e => handleValueChange(e.target.value)}
+          placeholder={`Enter ${field.label || field.name}`}
+          className={error ? 'border-destructive' : ''}
+        />
+      );
+
+    case 'array':
+      {
+        const items = Array.isArray(value) ? value : [];
+        return (
+          <div className="space-y-4">
+            {items.map((item: any, itemIndex: number) => (
+              <div key={itemIndex} className="relative p-6 border rounded-xl bg-muted/5 shadow-inner space-y-6 group animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-50">
+                    {field.label || field.name} #{itemIndex + 1}
+                  </span>
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      const next = items.filter((_, i) => i !== itemIndex);
+                      handleValueChange(next);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-6">
+                  {field.fields?.map((childField) => (
+                    <div key={childField.id} className="space-y-2 text-left">
+                      <Label className="text-sm font-medium">
+                        {childField.label || childField.name} {childField.required && <span className="text-destructive">*</span>}
+                      </Label>
+                      <FieldInput
+                        field={childField} 
+                        value={item[childField.name]} 
+                        onChange={(val) => {
+                          const nextItems = [...items];
+                          nextItems[itemIndex] = { ...nextItems[itemIndex], [childField.name]: val };
+                          handleValueChange(nextItems);
+                        }}
+                        error={undefined} // could pass errors if we have deep mapping
+                        relationData={relationData}
+                        availableDocuments={availableDocuments}
+                        onMediaPickerOpen={onMediaPickerOpen}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              className="w-full py-6 border-dashed border-2 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all group"
+              onClick={() => {
+                const newItem = (field.fields || []).reduce((acc: any, f) => {
+                  acc[f.name] = f.type === 'boolean' ? false : (f.type === 'number' ? 0 : (f.type === 'checkbox' ? [] : ''));
+                  return acc;
+                }, {});
+                handleValueChange([...items, newItem]);
+              }}
+            >
+              <ImagePlus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+              Add Item to {field.label || 'List'}
+            </Button>
+          </div>
+        );
+      }
+
+    default:
+      return <p className="text-xs text-destructive">Unsupported field type: {field.type}</p>;
+  }
+};
+
 export default function EntriesForm({ collection, entry, user, mode }: FormProps) {
   const [formData, setFormData] = useState<Record<string, any>>(entry?.content || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,236 +502,7 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
     }
   };
 
-  const renderFieldInput = (field: FieldDefinition) => {
-    const value = formData[field.name];
-    const error = errors[field.name];
 
-    switch (field.type) {
-      case 'text':
-        return (
-          <Input 
-            value={value || ''}
-            onChange={e => handleFieldChange(field.name, e.target.value)}
-            placeholder={`Enter ${field.label}`}
-            className={error ? 'border-destructive' : ''}
-          />
-        );
-      
-      case 'textarea':
-        return (
-          <Textarea 
-            value={value || ''}
-            onChange={e => handleFieldChange(field.name, e.target.value)}
-            placeholder={`Enter ${field.label}`}
-            className={error ? 'border-destructive' : ''}
-            rows={5}
-          />
-        );
-      
-      case 'rich-text':
-        return (
-          <RichTextEditor 
-            value={value || ''}
-            onChange={val => handleFieldChange(field.name, val)}
-          />
-        );
-      
-      case 'number':
-        return (
-          <Input 
-            type="number"
-            value={value ?? ''}
-            onChange={e => handleFieldChange(field.name, e.target.value === '' ? undefined : Number(e.target.value))}
-            min={field.validation?.min}
-            max={field.validation?.max}
-            step={field.validation?.step || 'any'}
-            className={error ? 'border-destructive' : ''}
-          />
-        );
-
-      case 'date':
-      case 'datetime':
-      case 'time':
-        return (
-          <Input 
-            type={field.type === 'datetime' ? 'datetime-local' : field.type}
-            value={value || ''}
-            onChange={e => handleFieldChange(field.name, e.target.value)}
-            className={error ? 'border-destructive' : ''}
-          />
-        );
-
-      case 'select':
-        return (
-          <Select 
-            value={value || ''} 
-            onValueChange={val => handleFieldChange(field.name, val)}
-          >
-            <SelectTrigger className={error ? 'border-destructive' : ''}>
-              <SelectValue placeholder={`Select ${field.label}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {field.options?.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'radio':
-        return (
-          <RadioGroup 
-            value={value || ''} 
-            onValueChange={val => handleFieldChange(field.name, val)}
-            className="flex flex-col space-y-2 pt-1"
-          >
-            {field.options?.map(opt => (
-              <div key={opt.value} className="flex items-center space-x-2">
-                <RadioGroupItem value={opt.value} id={`${field.id}-${opt.value}`} />
-                <Label htmlFor={`${field.id}-${opt.value}`} className="font-normal cursor-pointer">
-                  {opt.label}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        );
-
-      case 'checkbox':
-        { const currentVals = Array.isArray(value) ? value : [];
-        return (
-          <div className="flex flex-col space-y-3 pt-1">
-            {field.options?.map(opt => (
-              <div key={opt.value} className="flex items-center space-x-2">
-                <Checkbox 
-                  id={`${field.id}-${opt.value}`}
-                  checked={currentVals.includes(opt.value)}
-                  onCheckedChange={(checked) => {
-                    const next = checked 
-                      ? [...currentVals, opt.value]
-                      : currentVals.filter(v => v !== opt.value);
-                    handleFieldChange(field.name, next);
-                  }}
-                />
-                <Label htmlFor={`${field.id}-${opt.value}`} className="font-normal cursor-pointer">
-                  {opt.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-        ); }
-
-      case 'media':
-        {
-          const value = formData[field.name];
-          const mediaArray = Array.isArray(value) ? value : (value ? [value] : []);
-          
-          return (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {mediaArray.map((m: any, idx: number) => (
-                  <div key={idx} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted transition-all hover:ring-2 hover:ring-primary/50">
-                    <img src={m.secureUrl} alt={m.filename} className="w-full h-full object-cover" />
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        const next = mediaArray.filter((_, i) => i !== idx);
-                        handleFieldChange(field.name, field.multiple ? next : (next[0] || null));
-                      }}
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-1 text-[8px] truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                      {m.filename}
-                    </div>
-                  </div>
-                ))}
-                {(field.multiple || mediaArray.length === 0) && (
-                  <button 
-                    type="button"
-                    onClick={() => setActiveMediaPickerField(field.name)}
-                    className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg hover:border-primary hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors mb-2">
-                      <ImagePlus className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] font-medium">Add Media</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        }
-
-      case 'relation':
-        {
-          const options = field.relationCollectionId ? (relationData[field.relationCollectionId] || []) : [];
-          return (
-            <Select 
-              value={value?.toString() || ''} 
-              onValueChange={val => handleFieldChange(field.name, parseInt(val))}
-            >
-              <SelectTrigger className={error ? 'border-destructive' : ''}>
-                <SelectValue placeholder={`Select ${field.label}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map(entry => (
-                  <SelectItem key={entry.id} value={entry.id.toString()}>
-                    {field.relationLabelField ? entry.content[field.relationLabelField] : `Entry #${entry.id}`}
-                  </SelectItem>
-                ))}
-                {options.length === 0 && (
-                  <div className="p-2 text-xs text-muted-foreground text-center italic">No entries found in target collection</div>
-                )}
-              </SelectContent>
-            </Select>
-          );
-        }
-
-      case 'documents':
-        return (
-          <Select 
-            value={value?.id?.toString() || (typeof value === 'number' ? value.toString() : '')} 
-            onValueChange={val => {
-              const doc = availableDocuments.find(d => d.id === parseInt(val));
-              handleFieldChange(field.name, doc || parseInt(val));
-            }}
-          >
-            <SelectTrigger className={error ? 'border-destructive' : ''}>
-              <SelectValue placeholder={`Select ${field.label}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableDocuments.map(doc => (
-                <SelectItem key={doc.id} value={doc.id.toString()}>
-                  <div className="flex items-center">
-                    <FileText className="w-3 h-3 mr-2 opacity-50" />
-                    {doc.filename}
-                  </div>
-                </SelectItem>
-              ))}
-              {availableDocuments.length === 0 && (
-                <div className="p-2 text-xs text-muted-foreground text-center italic">No documents found</div>
-              )}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'slug':
-        return (
-          <Input 
-            value={value || ''}
-            onChange={e => handleFieldChange(field.name, e.target.value)}
-            placeholder={`Enter ${field.label}`}
-            className={error ? 'border-destructive' : ''}
-          />
-        );
-
-      default:
-        return <p className="text-xs text-destructive">Unsupported field type: {field.type}</p>;
-    }
-  };
 
   return (
     <Layout user={user}>
@@ -447,24 +529,26 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
           <div className="bg-card p-8 rounded-xl border shadow-sm space-y-8">
             {collection.fields.map((field) => (
               <div key={field.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">
-                    {field.label}
-                    {field.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-                  <span className="text-[10px] uppercase tracking-wider opacity-40 font-mono">
-                    {field.type}
-                  </span>
+                <div className="flex items-center justify-between border-b pb-1">
+                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
+                      {field.label || field.name} {field.required && <span className="text-destructive">*</span>}
+                   </Label>
+                   <span className="text-[10px] font-mono opacity-20">{field.type}</span>
                 </div>
-                
-                {renderFieldInput(field)}
-                
-                {errors[field.name] && (
-                  <p className="text-xs font-medium text-destructive mt-1">{errors[field.name]}</p>
-                )}
-                
+                <FieldInput
+                  field={field} 
+                  value={formData[field.name]} 
+                  onChange={(val) => handleFieldChange(field.name, val)}
+                  error={errors[field.name]}
+                  relationData={relationData}
+                  availableDocuments={availableDocuments}
+                  onMediaPickerOpen={setActiveMediaPickerField}
+                />
                 {field.type === 'media' && field.multiple && (
                   <p className="text-[10px] text-muted-foreground italic">You can select multiple files for this field.</p>
+                )}
+                {errors[field.name] && (
+                  <p className="text-xs font-medium text-destructive mt-1">{errors[field.name]}</p>
                 )}
               </div>
             ))}

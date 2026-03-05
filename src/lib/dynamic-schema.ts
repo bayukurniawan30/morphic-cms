@@ -15,7 +15,8 @@ export type FieldType =
   | 'textarea'
   | 'relation'
   | 'slug'
-  | 'boolean';
+  | 'boolean'
+  | 'array';
 
 export type FieldOption = {
   label: string;
@@ -40,7 +41,9 @@ export type FieldDefinition = {
   };
   relationCollectionId?: number;
   relationLabelField?: string;
+  fieldId?: string; // used for internal UI state
   slugSourceField?: string;
+  fields?: FieldDefinition[]; // for array type
 };
 
 /**
@@ -90,6 +93,13 @@ export function buildZodSchema(fields: FieldDefinition[]) {
         break;
       case 'boolean':
         validator = z.boolean();
+        break;
+      case 'array':
+        if (field.fields && field.fields.length > 0) {
+          validator = z.array(buildZodSchema(field.fields));
+        } else {
+          validator = z.array(z.any());
+        }
         break;
       default:
         validator = z.any();

@@ -152,6 +152,36 @@ export default function AddCollection({ user }: AddProps) {
     setData('fields', fields);
   };
 
+  const addChildField = (parentIndex: number) => {
+    const fields = [...data.fields];
+    const childFields = fields[parentIndex].fields || [];
+    const newField: FieldDefinition = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: '',
+      label: '',
+      type: 'text',
+      required: false,
+    };
+    fields[parentIndex] = { ...fields[parentIndex], fields: [...childFields, newField] };
+    setData('fields', fields);
+  };
+
+  const removeChildField = (parentIndex: number, childIndex: number) => {
+    const fields = [...data.fields];
+    const childFields = [...(fields[parentIndex].fields || [])];
+    childFields.splice(childIndex, 1);
+    fields[parentIndex] = { ...fields[parentIndex], fields: childFields };
+    setData('fields', fields);
+  };
+
+  const updateChildField = (parentIndex: number, childIndex: number, updates: Partial<FieldDefinition>) => {
+    const fields = [...data.fields];
+    const childFields = [...(fields[parentIndex].fields || [])];
+    childFields[childIndex] = { ...childFields[childIndex], ...updates };
+    fields[parentIndex] = { ...fields[parentIndex], fields: childFields };
+    setData('fields', fields);
+  };
+
   const fieldTypes: { value: FieldType; label: string }[] = [
     { value: 'text', label: 'Text' },
     { value: 'number', label: 'Number' },
@@ -167,6 +197,7 @@ export default function AddCollection({ user }: AddProps) {
     { value: 'textarea', label: 'Textarea' },
     { value: 'relation', label: 'Collection (Relation)' },
     { value: 'slug', label: 'Slug' },
+    { value: 'array', label: 'Array (Repeater)' },
   ];
 
   const [availableCollections, setAvailableCollections] = useState<any[]>([]);
@@ -322,24 +353,103 @@ export default function AddCollection({ user }: AddProps) {
                        {(field.type === 'text' || field.type === 'textarea') && (
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-xs">Min Length</Label>
-                            <Input 
-                              type="number" 
-                              placeholder="0"
-                              className="bg-background"
-                              value={field.validation?.minLength || ''}
-                              onChange={e => updateValidation(index, { minLength: parseInt(e.target.value) || undefined })}
-                            />
+                             <Label className="text-xs">Min Length</Label>
+                             <Input 
+                               type="number" 
+                               placeholder="0"
+                               className="bg-background"
+                               value={field.validation?.minLength || ''}
+                               onChange={e => updateValidation(index, { minLength: parseInt(e.target.value) || undefined })}
+                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-xs">Max Length</Label>
-                            <Input 
-                              type="number" 
-                              placeholder="255"
-                              className="bg-background"
-                              value={field.validation?.maxLength || ''}
-                              onChange={e => updateValidation(index, { maxLength: parseInt(e.target.value) || undefined })}
-                            />
+                             <Label className="text-xs">Max Length</Label>
+                             <Input 
+                               type="number" 
+                               placeholder="255"
+                               className="bg-background"
+                               value={field.validation?.maxLength || ''}
+                               onChange={e => updateValidation(index, { maxLength: parseInt(e.target.value) || undefined })}
+                             />
+                          </div>
+                        </div>
+                      )}
+
+                      {field.type === 'array' && (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-xs font-semibold">Nested Fields (Repeater)</Label>
+                            <Button type="button" variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => addChildField(index)}>
+                              Add Sub-field
+                            </Button>
+                          </div>
+                          <div className="space-y-3 p-3 bg-background rounded-md border border-dashed border-muted-foreground/20">
+                            {field.fields?.map((child, childIndex) => (
+                              <div key={child.id} className="grid grid-cols-12 gap-3 items-end border-b border-muted last:border-0 pb-3 last:pb-0 text-left">
+                                <div className="col-span-3 space-y-1">
+                                  <Label className="text-[10px]">Label</Label>
+                                  <Input 
+                                    value={child.label} 
+                                    className="h-8 text-xs bg-background"
+                                    placeholder="Human Friendly Label"
+                                    onChange={e => updateChildField(index, childIndex, { 
+                                      label: e.target.value,
+                                      name: child.name || e.target.value.toLowerCase().replace(/\s+/g, '_')
+                                    })}
+                                  />
+                                </div>
+                                <div className="col-span-3 space-y-1">
+                                  <Label className="text-[10px]">Name (Slug)</Label>
+                                  <Input 
+                                    value={child.name} 
+                                    className="h-8 text-xs bg-background"
+                                    placeholder="field_name"
+                                    onChange={e => updateChildField(index, childIndex, { 
+                                      name: e.target.value.toLowerCase().replace(/\s+/g, '_'),
+                                      label: child.label || e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1).replace(/_/g, ' ')
+                                    })}
+                                  />
+                                </div>
+                                <div className="col-span-3 space-y-1">
+                                  <Label className="text-[10px]">Type</Label>
+                                  <Select 
+                                    value={child.type} 
+                                    onValueChange={(val: FieldType) => updateChildField(index, childIndex, { type: val })}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs bg-background">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {fieldTypes.filter(t => t.value !== 'array').map(t => (
+                                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="col-span-2 flex items-center space-x-2 pt-1 h-8">
+                                  <Switch 
+                                    id={`req-${child.id}`}
+                                    checked={child.required}
+                                    onCheckedChange={val => updateChildField(index, childIndex, { required: val })}
+                                  />
+                                  <Label htmlFor={`req-${child.id}`} className="text-[10px] cursor-pointer">Required</Label>
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 text-destructive"
+                                    onClick={() => removeChildField(index, childIndex)}
+                                  >
+                                    <TrashIcon className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                            {(!field.fields || field.fields.length === 0) && (
+                              <p className="text-[10px] italic text-muted-foreground text-center py-2">No nested fields added yet.</p>
+                            )}
                           </div>
                         </div>
                       )}
