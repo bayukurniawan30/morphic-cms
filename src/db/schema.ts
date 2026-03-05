@@ -4,6 +4,7 @@ export const collections = pgTable("collections", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
+  type: varchar("type", { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
   fields: jsonb("fields").$type<any[]>().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

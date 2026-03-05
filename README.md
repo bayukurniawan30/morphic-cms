@@ -30,7 +30,7 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/bayukurniawan30/morphic-cms
    cd morphic-cms
    ```
 
@@ -42,9 +42,13 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 3. **Set up environment variables**:
    Create a `.env` file in the root directory and add the following:
    ```env
-   DATABASE_URL=your_postgres_url
-   JWT_SECRET=your_jwt_secret
-   JWT_EXPIRES_IN_DAYS=7
+   DATABASE_URL=
+   JWT_SECRET=
+   JWT_EXPIRES_IN_DAYS=
+   CLOUDINARY_CLOUD_NAME=
+   # Email Service (Resend)
+   RESEND_API_KEY=re_...
+   EMAIL_FROM=Morphic CMS <onboarding@resend.dev>
    ```
 
 4. **Run the development server**:
@@ -98,6 +102,10 @@ This project is optimized for deployment on **Vercel** using the **Hono Framewor
 - **Environment Variables**:
   - `DATABASE_URL`: Your Neon/Postgres connection string.
   - `JWT_SECRET`: A secure random string for signing tokens.
+  - `JWT_EXPIRES_IN_DAYS`: Token expiration duration in days.
+  - `CLOUDINARY_CLOUD_NAME`: Your Cloudinary cloud name for media storage.
+  - `RESEND_API_KEY`: Your Resend API key for email services.
+  - `EMAIL_FROM`: The sender email address.
   - `NODE_ENV`: Set to `production`.
 
 ### 2. Architecture Notes

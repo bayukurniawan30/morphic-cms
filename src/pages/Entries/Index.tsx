@@ -8,6 +8,7 @@ interface Collection {
   id: number;
   name: string;
   slug: string;
+  type: 'collection' | 'global';
   _count?: {
     entries: number;
   };
@@ -43,7 +44,7 @@ export default function EntriesIndex({ collections, user }: IndexProps) {
             collections.map((collection) => (
               <Link 
                 key={collection.id} 
-                href={`/entries/${collection.id}`}
+                href={collection.type === 'global' ? `/globals/${collection.slug}` : `/entries/${collection.id}`}
                 className="group block"
               >
                 <div className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 h-full relative overflow-hidden">
@@ -62,8 +63,8 @@ export default function EntriesIndex({ collections, user }: IndexProps) {
                       <p className="text-sm text-muted-foreground font-mono mt-1">
                         /{collection.slug}
                       </p>
-                      <div className="mt-4 flex items-center text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-full w-fit">
-                        Manage Content
+                      <div className="mt-4 flex items-center text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full w-fit">
+                        {collection.type === 'global' ? 'Global Singleton' : 'Collection'}
                       </div>
                     </div>
                   </div>

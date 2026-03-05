@@ -5,7 +5,7 @@
  * This can be used in the PDF footer, Dashboard, or any other part of the UI.
  */
 
-export const APP_VERSION = '0.1.0'
+export const APP_VERSION = '1.0.0'
 export const APP_NAME = 'Morphic CMS'
 
 /**
@@ -14,7 +14,6 @@ export const APP_NAME = 'Morphic CMS'
  * @returns Formatted version string (e.g., 'v1.0.0-fd2a0')
  */
 export const getAppVersion = (prefix = 'v') => {
-  // @ts-expect-error - Injected by Vite define
   const hash = import.meta.env.VITE_GIT_HASH
   const hashSuffix = hash && hash !== 'unknown' ? `-${hash}` : ''
   return `${prefix}${APP_VERSION}${hashSuffix}`

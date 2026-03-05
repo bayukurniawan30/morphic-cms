@@ -22,6 +22,8 @@ import { FieldDefinition } from '@/lib/dynamic-schema';
 interface Collection {
   id: number;
   name: string;
+  slug: string;
+  type: 'collection' | 'global';
   fields: FieldDefinition[];
 }
 
@@ -119,7 +121,12 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
       }
 
       toast.success(mode === 'create' ? 'Entry created successfully' : 'Entry updated successfully');
-      window.location.href = `/entries/${collection.id}`;
+      
+      if (collection.type === 'global') {
+        window.location.href = '/dashboard';
+      } else {
+        window.location.href = `/entries/${collection.id}`;
+      }
     } catch (err) {
       toast.error('Network error');
       setIsSubmitting(false);
@@ -414,7 +421,7 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
       <div className="space-y-6 pb-12">
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="icon" asChild className="rounded-full">
-            <Link href={`/entries/${collection.id}`}>
+            <Link href={collection.type === 'global' ? '/dashboard' : `/entries/${collection.id}`}>
               <ArrowLeftIcon className="w-5 h-5" />
             </Link>
           </Button>
@@ -457,7 +464,7 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
 
           <div className="flex justify-end space-x-4">
              <Button type="button" variant="outline" asChild>
-               <Link href={`/entries/${collection.id}`}>Cancel</Link>
+               <Link href={collection.type === 'global' ? '/dashboard' : `/entries/${collection.id}`}>Cancel</Link>
              </Button>
              <Button type="submit" disabled={isSubmitting}>
                {isSubmitting ? (

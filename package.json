@@ -1,6 +1,10 @@
 {
   "name": "morphic-cms",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bayukurniawan30/morphic-cms"
+  },
   "type": "module",
   "engines": {
     "node": "22.x"

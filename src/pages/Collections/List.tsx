@@ -28,6 +28,7 @@ interface Collection {
   name: string;
   slug: string;
   fields: any[];
+  type: 'collection' | 'global';
   createdAt: string;
   updatedAt: string;
 }
@@ -142,7 +143,8 @@ export default function CollectionsList({ collections, user, filters, pagination
                       {renderSortIcon('name')}
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-medium uppercase tracking-wider">Slug</th>
+                    <th className="px-6 py-4 font-medium uppercase tracking-wider">Slug</th>
+                  <th className="px-6 py-4 font-medium uppercase tracking-wider">Type</th>
                   <th className="px-6 py-4 font-medium uppercase tracking-wider">Fields</th>
                   <th 
                     className="px-6 py-4 font-medium uppercase tracking-wider cursor-pointer hover:bg-muted/60 transition-colors"
@@ -184,6 +186,9 @@ export default function CollectionsList({ collections, user, filters, pagination
                       <td className="px-6 py-4">
                           {collection.slug}
                       </td>
+                      <td className="px-6 py-4 capitalize text-xs">
+                          {collection.type}
+                      </td>
                       <td className="px-6 py-4">
                         <TooltipProvider>
                           <Tooltip>
@@ -206,8 +211,8 @@ export default function CollectionsList({ collections, user, filters, pagination
                       </td>
                       <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/entries/${collection.id}`}>
-                            Entries
+                          <Link href={collection.type === 'global' ? `/globals/${collection.slug}` : `/entries/${collection.id}`}>
+                            {collection.type === 'global' ? 'Edit' : 'Entries'}
                           </Link>
                         </Button>
                         <Button variant="outline" size="sm" asChild>

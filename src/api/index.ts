@@ -127,8 +127,11 @@ app.get('/dashboard', async (c) => {
   if (!userData) return c.redirect('/');
 
   // 1. Fetch Overview Stats
-  const collectionCountRes = await db.select({ count: sql`count(*)` }).from(collections);
+  const collectionCountRes = await db.select({ count: sql`count(*)` }).from(collections).where(eq(collections.type, 'collection'));
   const totalCollections = Number(collectionCountRes[0].count);
+
+  const globalCountRes = await db.select({ count: sql`count(*)` }).from(collections).where(eq(collections.type, 'global'));
+  const totalGlobals = Number(globalCountRes[0].count);
 
   const entriesCountRes = await db.select({ count: sql`count(*)` }).from(entries);
   const totalEntries = Number(entriesCountRes[0].count);
@@ -166,6 +169,7 @@ app.get('/dashboard', async (c) => {
   })
   .from(collections)
   .leftJoin(entries, eq(collections.id, entries.collectionId))
+  .where(eq(collections.type, 'collection'))
   .groupBy(collections.id)
   .orderBy(desc(sql`count(${entries.id})`));
 
@@ -173,6 +177,7 @@ app.get('/dashboard', async (c) => {
     user: userData,
     stats: {
       totalCollections,
+      totalGlobals,
       totalEntries,
       totalMedia,
       totalDocuments,
@@ -442,6 +447,26 @@ app.get('/entries/:collectionId/add', async (c) => {
     user: userData,
     mode: 'create'
   });
+});
+
+app.get('/globals/:slug', async (c) => {
+  const userData = c.get('user');
+  if (!userData) return c.redirect('/');
+  
+  const slug = c.req.param('slug');
+  const collectionResult = await db.select().from(collections).where(eq(collections.slug, slug)).limit(1);
+  const collection = collectionResult[0];
+  
+  if (!collection || collection.type !== 'global') return c.redirect('/dashboard');
+
+  const entryResult = await db.select().from(entries).where(eq(entries.collectionId, collection.id)).limit(1);
+  const entry = entryResult[0];
+
+  if (entry) {
+    return c.redirect(`/entries/${collection.id}/edit/${entry.id}`);
+  } else {
+    return c.redirect(`/entries/${collection.id}/add`);
+  }
 });
 
 app.get('/entries/:collectionId/edit/:entryId', async (c) => {
@@ -745,6 +770,7 @@ api.post('/collections', async (c) => {
     const newCollection = await db.insert(collections).values({
       name,
       slug,
+      type: body.type || 'collection',
       fields: fields || []
     }).returning();
 
@@ -777,7 +803,12 @@ api.put('/collections/:id', async (c) => {
     if (!name) return c.json({ error: 'Name is required' }, 400);
 
     const updated = await db.update(collections)
-      .set({ name, fields: fields || [], updatedAt: new Date() })
+      .set({ 
+        name, 
+        type: body.type || 'collection',
+        fields: fields || [], 
+        updatedAt: new Date() 
+      })
       .where(eq(collections.id, id))
       .returning();
 

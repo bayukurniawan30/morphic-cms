@@ -30,6 +30,7 @@ interface AddProps {
 export default function AddCollection({ user }: AddProps) {
   const { data, setData, post, processing, errors } = useForm({
     name: '',
+    type: 'collection' as 'collection' | 'global',
     fields: [] as FieldDefinition[],
   });
 
@@ -198,6 +199,27 @@ export default function AddCollection({ user }: AddProps) {
                 className="max-w-md"
               />
               <p className="text-xs text-muted-foreground italic">Slug will be automatically generated from the name.</p>
+            </div>
+
+            <div className="space-y-2 max-w-md">
+              <Label>Collection Type</Label>
+              <Select 
+                value={data.type} 
+                onValueChange={(val: any) => setData('type', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="collection">Collection (Multiple Entries)</SelectItem>
+                  <SelectItem value="global">Global (Single Page/Singleton)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {data.type === 'global' 
+                  ? 'Globals are for unique data like site settings, hero sections, or contact info.' 
+                  : 'Collections are for content that repeats, like blog posts or products.'}
+              </p>
             </div>
           </div>
 

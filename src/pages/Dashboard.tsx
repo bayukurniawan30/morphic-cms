@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 
 interface Stats {
   totalCollections: number;
+  totalGlobals: number;
   totalEntries: number;
   totalMedia: number;
   totalDocuments: number;
@@ -51,7 +52,7 @@ interface DashboardProps {
 export default function Dashboard({ user, stats, recentActivity, collectionBreakdown }: DashboardProps) {
   const overviewItems = [
     { label: 'Collections', value: stats.totalCollections, icon: LayoutGrid, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Total Entries', value: stats.totalEntries, icon: Database, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { label: 'Globals', value: stats.totalGlobals, icon: Database, color: 'text-purple-500', bg: 'bg-purple-50' },
     { label: 'Media Assets', value: stats.totalMedia, icon: Image, color: 'text-orange-500', bg: 'bg-orange-50' },
     { label: 'Documents', value: stats.totalDocuments, icon: FileText, color: 'text-green-500', bg: 'bg-green-50' },
   ];

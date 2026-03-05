@@ -15,7 +15,7 @@ import {
   Avatar,
   AvatarFallback,
 } from '@/components/ui/avatar';
-import { Menu, X, Mail, Key, FileImageIcon, FileText, LayoutGrid, Database, Users } from 'lucide-react';
+import { Menu, X, Mail, Key, FileImageIcon, FileText, LayoutGrid, Database, Users, Globe } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { getAppVersion } from '@/lib/version';
 
@@ -34,6 +34,17 @@ export default function Layout({ user, children }: LayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const { theme, setTheme } = useTheme();
   const { url } = usePage();
+  const [globals, setGlobals] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch('/api/collections')
+      .then(res => res.json())
+      .then(data => {
+        const globalCollections = (data.collections || []).filter((c: any) => c.type === 'global');
+        setGlobals(globalCollections);
+      })
+      .catch(err => console.error('Failed to fetch globals', err));
+  }, []);
 
   const handleLogout = () => {
     document.cookie = 'morphic_token=; Max-Age=0; path=/;';
@@ -119,6 +130,26 @@ export default function Layout({ user, children }: LayoutProps) {
               </Link>
             </div>
           </div>
+
+          {globals.length > 0 && (
+            <div className="pt-2 pb-2">
+              <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Globals</h3>
+              <div className="space-y-1">
+                {globals.map((global) => (
+                  <Link 
+                    key={global.id} 
+                    href={`/globals/${global.slug}`} 
+                    className={getLinkClasses(`/globals/${global.slug}`)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Globe className="h-4 w-4" />
+                      <span className="truncate">{global.name}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="pt-2 pb-2">
             <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Settings</h3>

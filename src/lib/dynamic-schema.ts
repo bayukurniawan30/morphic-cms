@@ -13,7 +13,8 @@ export type FieldType =
   | 'documents'
   | 'rich-text'
   | 'relation'
-  | 'slug';
+  | 'slug'
+  | 'boolean';
 
 export type FieldOption = {
   label: string;
@@ -84,6 +85,9 @@ export function buildZodSchema(fields: FieldDefinition[]) {
         break;
       case 'relation':
         validator = z.number(); // entry ID
+        break;
+      case 'boolean':
+        validator = z.boolean();
         break;
       default:
         validator = z.any();
