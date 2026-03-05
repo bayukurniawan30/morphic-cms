@@ -341,9 +341,16 @@ app.get('/collections', async (c) => {
 
   const sort = c.req.query('sort') || 'createdAt';
   const dir = c.req.query('dir') || 'desc';
+  const typeFilter = c.req.query('type') || 'all';
   const page = parseInt(c.req.query('page') || '1', 10);
   const limit = parseInt(c.req.query('limit') || '10', 10);
   const offset = (page - 1) * limit;
+
+  // Build where clause
+  let whereClause = undefined;
+  if (typeFilter !== 'all') {
+    whereClause = eq(collections.type, typeFilter as any);
+  }
 
   // Dynamic order by
   let orderClause = desc(collections.createdAt);
@@ -360,20 +367,27 @@ app.get('/collections', async (c) => {
   }
 
   // Get total count for pagination
-  const countResult = await db.select({ count: sql`count(*)` }).from(collections);
+  const countQuery = db.select({ count: sql`count(*)` }).from(collections);
+  if (whereClause) countQuery.where(whereClause);
+  const countResult = await countQuery;
+  
   const totalCount = Number(countResult[0].count);
   const totalPages = Math.ceil(totalCount / limit);
 
-  const allCollections = await db.select()
+  const collectionsQuery = db.select()
     .from(collections)
     .orderBy(orderClause)
     .limit(limit)
     .offset(offset);
+  
+  if (whereClause) collectionsQuery.where(whereClause);
+  
+  const allCollections = await collectionsQuery;
 
   return c.get('inertia')('Collections/List', { 
     collections: allCollections, 
     user: userData,
-    filters: { sort, dir, page, limit },
+    filters: { sort, dir, type: typeFilter, page, limit },
     pagination: {
       currentPage: page,
       totalPages,

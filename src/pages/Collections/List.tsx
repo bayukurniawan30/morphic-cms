@@ -2,6 +2,13 @@ import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   PlusIcon, 
   LayersIcon, 
@@ -39,6 +46,7 @@ interface ListProps {
   filters?: {
     sort: string;
     dir: string;
+    type?: 'all' | 'collection' | 'global';
     page?: number;
     limit?: number;
   };
@@ -72,12 +80,14 @@ export default function CollectionsList({ collections, user, filters, pagination
 
   const currentSort = filters?.sort || 'createdAt';
   const currentDir = filters?.dir || 'desc';
+  const currentType = filters?.type || 'all';
   const currentPage = pagination?.currentPage || 1;
 
   const updateFilters = (newFilters: any) => {
     router.get('/collections', { 
       sort: currentSort, 
       dir: currentDir, 
+      type: currentType,
       page: currentPage,
       ...newFilters 
     }, { preserveState: true });
@@ -86,6 +96,10 @@ export default function CollectionsList({ collections, user, filters, pagination
   const toggleSort = (field: string) => {
     const newDir = currentSort === field && currentDir === 'asc' ? 'desc' : 'asc';
     updateFilters({ sort: field, dir: newDir, page: 1 });
+  };
+
+  const handleTypeChange = (type: string) => {
+    updateFilters({ type, page: 1 });
   };
 
   const handlePageChange = (page: number) => {
@@ -121,12 +135,26 @@ export default function CollectionsList({ collections, user, filters, pagination
             <h1 className="text-3xl font-bold tracking-tight">Collections</h1>
             <p className="text-sm text-muted-foreground mt-1">Manage your content types and schemas ({pagination?.totalCount || 0} total).</p>
           </div>
-          <Button asChild>
-            <Link href="/collections/add">
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Add Collection
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="w-48">
+              <Select value={currentType} onValueChange={handleTypeChange}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="collection">Collection (Multiple Entries)</SelectItem>
+                  <SelectItem value="global">Global (Singleton)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button asChild>
+              <Link href="/collections/add">
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Collection
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
@@ -186,7 +214,7 @@ export default function CollectionsList({ collections, user, filters, pagination
                       <td className="px-6 py-4">
                           {collection.slug}
                       </td>
-                      <td className="px-6 py-4 capitalize text-xs">
+                      <td className="px-6 py-4 capitalize">
                           {collection.type}
                       </td>
                       <td className="px-6 py-4">
