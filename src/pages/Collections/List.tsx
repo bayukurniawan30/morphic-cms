@@ -138,7 +138,7 @@ export default function CollectionsList({ collections, user, filters, pagination
           <div className="flex flex-wrap gap-2 items-center">
             <div className="w-48">
               <Select value={currentType} onValueChange={handleTypeChange}>
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-10 bg-card border-muted-foreground/20">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
