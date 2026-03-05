@@ -20,6 +20,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { getAppVersion } from '@/lib/version';
 
 interface UserProps {
+  id?: number;
   name?: string;
   email?: string;
 }
@@ -184,11 +185,6 @@ export default function Layout({ user, children }: LayoutProps) {
               <span className="sr-only">Toggle theme</span>
             </Button>
             
-            <Button variant="ghost" size="icon">
-              <SettingsIcon className="h-5 w-5" />
-              <span className="sr-only">Settings</span>
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full ml-2">
@@ -207,13 +203,11 @@ export default function Layout({ user, children }: LayoutProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  Profile
+                <DropdownMenuItem asChild>
+                  <Link href={user?.id ? `/users/edit/${user.id}` : '#'}>
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive font-medium cursor-pointer focus:bg-destructive focus:text-destructive-foreground">
                   Sign Out
                 </DropdownMenuItem>
