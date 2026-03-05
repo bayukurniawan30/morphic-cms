@@ -161,8 +161,20 @@ export default function AddCollection({ user }: AddProps) {
     { value: 'checkbox', label: 'Checkbox' },
     { value: 'radio', label: 'Radio' },
     { value: 'media', label: 'Media' },
+    { value: 'documents', label: 'Documents' },
     { value: 'rich-text', label: 'Rich Text' },
+    { value: 'relation', label: 'Collection (Relation)' },
+    { value: 'slug', label: 'Slug' },
   ];
+
+  const [availableCollections, setAvailableCollections] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch('/api/collections')
+      .then(res => res.json())
+      .then(data => setAvailableCollections(data.collections || []))
+      .catch(err => console.error('Failed to fetch collections', err));
+  }, []);
 
   return (
     <Layout user={user}>
@@ -395,6 +407,73 @@ export default function AddCollection({ user }: AddProps) {
                             checked={field.multiple || false}
                             onCheckedChange={val => updateField(index, { multiple: val })}
                           />
+                        </div>
+                      )}
+
+                      {field.type === 'relation' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Target Collection</Label>
+                            <Select 
+                              value={field.relationCollectionId?.toString() || ''} 
+                              onValueChange={val => updateField(index, { relationCollectionId: parseInt(val), relationLabelField: undefined })}
+                            >
+                              <SelectTrigger className="h-8 text-xs bg-background">
+                                <SelectValue placeholder="Select collection" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableCollections.map(c => (
+                                  <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {field.relationCollectionId && (
+                            <div className="space-y-2">
+                              <Label className="text-xs">Display Field</Label>
+                              <Select 
+                                value={field.relationLabelField || ''} 
+                                onValueChange={val => updateField(index, { relationLabelField: val })}
+                              >
+                                <SelectTrigger className="h-8 text-xs bg-background">
+                                  <SelectValue placeholder="Select display field" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableCollections.find(c => c.id === field.relationCollectionId)?.fields.map((f: any) => (
+                                    <SelectItem key={f.name} value={f.name}>{f.label} ({f.name})</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-[10px] text-muted-foreground italic">This field will be shown in the dropdown when creating entries.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {field.type === 'slug' && (
+                        <div className="space-y-2 text-left">
+                          <Label className="text-xs">Base Field (for auto-generation)</Label>
+                          <Select 
+                            value={field.slugSourceField || ''} 
+                            onValueChange={val => updateField(index, { slugSourceField: val })}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-background">
+                              <SelectValue placeholder="Select base field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {data.fields
+                                .filter(f => f.type === 'text' && f.id !== field.id)
+                                .map(f => (
+                                  <SelectItem key={f.id} value={f.name}>{f.label} ({f.name})</SelectItem>
+                                ))
+                              }
+                              {data.fields.filter(f => f.type === 'text' && f.id !== field.id).length === 0 && (
+                                <p className="text-[10px] p-2 text-muted-foreground italic text-center">No text fields available</p>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[10px] text-muted-foreground italic">The slug will be automatically created from this field's value.</p>
                         </div>
                       )}
 

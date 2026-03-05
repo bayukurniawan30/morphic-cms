@@ -13,13 +13,14 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 
-export default function Add({ user }: { user: any }) {
+export default function Add({ user, abilities = [] }: { user: any, abilities: any[] }) {
   const { data, setData, post, processing, errors, setError } = useForm({
     name: '',
     email: '',
     username: '',
     password: '',
     role: 'editor',
+    abilityId: 'none',
   });
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -30,10 +31,13 @@ export default function Add({ user }: { user: any }) {
     setError('email', ''); // reset
 
     try {
+      const payload: any = { ...data };
+      if (payload.abilityId === 'none') payload.abilityId = null;
+
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       const result = await res.json();
@@ -112,7 +116,7 @@ export default function Add({ user }: { user: any }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">CMS Role</Label>
             <Select 
               value={data.role} 
               onValueChange={(value) => setData('role', value)}
@@ -123,6 +127,26 @@ export default function Add({ user }: { user: any }) {
               <SelectContent>
                 <SelectItem value="editor">Editor</SelectItem>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ability">API Ability</Label>
+            <Select 
+              value={data.abilityId} 
+              onValueChange={(value) => setData('abilityId', value)}
+            >
+              <SelectTrigger id="ability" className="w-full">
+                <SelectValue placeholder="Inherit from Role (None)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None / Default</SelectItem>
+                {abilities.map((ability) => (
+                  <SelectItem key={ability.id} value={String(ability.id)}>
+                    {ability.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -10,7 +10,10 @@ export type FieldType =
   | 'checkbox' 
   | 'radio' 
   | 'media' 
-  | 'rich-text';
+  | 'documents'
+  | 'rich-text'
+  | 'relation'
+  | 'slug';
 
 export type FieldOption = {
   label: string;
@@ -33,6 +36,9 @@ export type FieldDefinition = {
     step?: number;
     pattern?: string;
   };
+  relationCollectionId?: number;
+  relationLabelField?: string;
+  slugSourceField?: string;
 };
 
 /**
@@ -67,6 +73,7 @@ export function buildZodSchema(fields: FieldDefinition[]) {
         break;
       case 'select':
       case 'radio':
+      case 'slug':
         validator = z.string();
         break;
       case 'checkbox':
@@ -74,6 +81,9 @@ export function buildZodSchema(fields: FieldDefinition[]) {
         break;
       case 'media':
         validator = z.any(); // could be a media ID or URL
+        break;
+      case 'relation':
+        validator = z.number(); // entry ID
         break;
       default:
         validator = z.any();

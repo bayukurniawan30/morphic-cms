@@ -19,6 +19,7 @@ interface User {
   email: string;
   username: string;
   role: string;
+  abilityName?: string | null;
   lastLogin: string | null;
   createdAt: string;
 }
@@ -144,7 +145,8 @@ export default function List({ users, user, filters, pagination, flash }: ListPr
                     </div>
                   </th>
                   <th className="px-6 py-4 font-medium">Email / Username</th>
-                  <th className="px-6 py-4 font-medium">Role</th>
+                  <th className="px-6 py-4 font-medium">CMS Role</th>
+                  <th className="px-6 py-4 font-medium">API Key Ability</th>
                   <th className="px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors" onClick={() => toggleSort('createdAt')}>
                     <div className="flex items-center">
                       Created At
@@ -178,6 +180,11 @@ export default function List({ users, user, filters, pagination, flash }: ListPr
                           ${u.role === 'super_admin' ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}
                         `}>
                           {u.role.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs text-muted-foreground">
+                          {u.abilityName || 'Role Default'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">

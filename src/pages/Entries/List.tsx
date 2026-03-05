@@ -11,10 +11,23 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarIcon,
-  MoreVerticalIcon
+  MoreVerticalIcon,
+  CodeIcon,
+  CopyIcon,
+  TerminalIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 
 interface Field {
   name: string;
@@ -25,6 +38,7 @@ interface Field {
 interface Collection {
   id: number;
   name: string;
+  slug: string;
   fields: Field[];
 }
 
@@ -74,6 +88,78 @@ export default function EntriesList({ collection, entries, user, pagination }: L
   // Get visible columns (first 3 fields)
   const visibleFields = collection.fields.slice(0, 3);
 
+  const [relationData, setRelationData] = React.useState<Record<number, any[]>>({});
+  const [availableDocuments, setAvailableDocuments] = React.useState<any[]>([]);
+
+  // API Preview states
+  const [previewPage, setPreviewPage] = React.useState(1);
+  const [previewLimit, setPreviewLimit] = React.useState(10);
+  const [previewData, setPreviewData] = React.useState<any>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isDialogOpen) return;
+
+    const fetchPreview = async () => {
+      setIsPreviewLoading(true);
+      try {
+        const res = await fetch(`/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`);
+        const data = await res.json();
+        setPreviewData(data);
+      } catch (err) {
+        console.error('Failed to fetch API preview:', err);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    };
+
+    const timer = setTimeout(fetchPreview, 300); // Debounce
+    return () => clearTimeout(timer);
+  }, [previewPage, previewLimit, collection.slug, isDialogOpen]);
+
+  React.useEffect(() => {
+    const fetchRelations = async () => {
+      const relationFields = collection.fields.filter((f: any) => f.type === 'relation' && f.relationCollectionId);
+      
+      for (const field of relationFields) {
+        const id = (field as any).relationCollectionId!;
+        if (relationData[id]) continue;
+
+        try {
+          const res = await fetch(`/api/collections/${id}/entries`);
+          if (res.ok) {
+            const data = await res.json();
+            setRelationData(prev => ({ ...prev, [id]: data.entries || [] }));
+          }
+        } catch (err) {
+          console.error(`Failed to fetch relation data for collection ${id}`, err);
+        }
+      }
+    };
+
+    fetchRelations();
+  }, [collection.fields, relationData]);
+
+  React.useEffect(() => {
+    const fetchDocuments = async () => {
+      const hasDocumentField = collection.fields.some((f: any) => f.type === 'documents');
+      if (!hasDocumentField) return;
+
+      try {
+        const res = await fetch('/api/documents?limit=100');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableDocuments(data.files || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch documents', err);
+      }
+    };
+
+    fetchDocuments();
+  }, [collection.fields]);
+
   const renderCellValue = (field: Field, value: any) => {
     if (value === null || value === undefined) return <span className="text-muted-foreground italic">empty</span>;
 
@@ -90,6 +176,27 @@ export default function EntriesList({ collection, entries, user, pagination }: L
         return format(new Date(value), field.type === 'date' ? 'PPP' : 'PPP p');
       case 'checkbox':
         return Array.isArray(value) ? value.join(', ') : String(value);
+      case 'relation':
+        {
+          const targetCollectionId = (field as any).relationCollectionId;
+          const labelField = (field as any).relationLabelField;
+          const targetEntries = targetCollectionId ? (relationData[targetCollectionId] || []) : [];
+          const relatedEntry = targetEntries.find(e => e.id === value);
+          
+          if (relatedEntry) {
+            return labelField ? relatedEntry.content[labelField] : `Entry #${value}`;
+          }
+          return <span className="text-muted-foreground font-mono text-[10px]">#{value}</span>;
+        }
+      case 'documents':
+        {
+          if (value && typeof value === 'object' && value.filename) {
+            return value.filename;
+          }
+          const docId = typeof value === 'object' ? value.id : value;
+          const doc = availableDocuments.find(d => d.id === docId);
+          return doc ? doc.filename : <span className="text-muted-foreground font-mono text-[10px]">Doc #{docId}</span>;
+        }
       default:
         return String(value);
     }
@@ -115,12 +222,112 @@ export default function EntriesList({ collection, entries, user, pagination }: L
               <p className="text-sm text-muted-foreground mt-1">Manage data for this collection ({pagination?.totalCount || 0} total).</p>
             </div>
           </div>
-          <Button asChild>
-            <Link href={`/entries/${collection.id}/add`}>
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Add Entry
-            </Link>
-          </Button>
+
+          <div className="flex items-center space-x-2">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <CodeIcon className="w-4 h-4 mr-2" />
+                  API Preview
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center">
+                    <TerminalIcon className="w-5 h-5 mr-2 text-primary" />
+                    REST API Preview
+                  </DialogTitle>
+                  <DialogDescription>
+                    Interactive preview of the JSON response for this collection.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="flex-1 space-y-4 overflow-hidden flex flex-col mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Page Number</label>
+                       <Input 
+                        type="number" 
+                        min={1} 
+                        value={previewPage} 
+                        onChange={e => setPreviewPage(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="h-8 text-xs"
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Limit per Page</label>
+                       <Input 
+                        type="number" 
+                        min={1} 
+                        max={100} 
+                        value={previewLimit} 
+                        onChange={e => setPreviewLimit(Math.max(1, Math.min(100, parseInt(e.target.value) || 10)))}
+                        className="h-8 text-xs"
+                       />
+                       <p className="text-[10px] text-muted-foreground italic">Max 100 entries per request.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Endpoint URL</label>
+                    <div className="flex space-x-2">
+                      <Input 
+                        readOnly 
+                        value={`${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`} 
+                        className="font-mono text-xs bg-muted/50"
+                      />
+                      <Button 
+                        variant="secondary" 
+                        size="icon" 
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`);
+                          toast.success('URL copied to clipboard');
+                        }}
+                      >
+                        <CopyIcon className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex flex-col min-h-0 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50">JSON Response</label>
+                        {isPreviewLoading && <span className="text-[10px] animate-pulse text-primary font-bold">LOADING...</span>}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 text-[10px]"
+                        onClick={() => {
+                          const json = JSON.stringify(previewData || { entries, pagination }, null, 2);
+                          navigator.clipboard.writeText(json);
+                          toast.success('JSON copied to clipboard');
+                        }}
+                      >
+                        <CopyIcon className="w-3 h-3 mr-1.5" />
+                        Copy JSON
+                      </Button>
+                    </div>
+                    <ScrollArea className="h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300">
+                      <div className="min-w-max">
+                        <pre className="whitespace-pre">
+                          {previewData ? JSON.stringify(previewData, null, 2) : "// Loading preview data..."}
+                        </pre>
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button asChild>
+              <Link href={`/entries/${collection.id}/add`}>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Entry
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="bg-card rounded-xl shadow-sm border overflow-hidden">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Layout from '@/components/Layout';
 import RichTextEditor from '@/components/RichTextEditor';
-import { ArrowLeftIcon, SaveIcon, Loader2Icon } from 'lucide-react';
+import { ArrowLeftIcon, SaveIcon, Loader2Icon, FileText, X, ImagePlus } from 'lucide-react';
+import MediaPicker from '@/components/MediaPicker';
 import { toast } from 'sonner';
 import { FieldDefinition } from '@/lib/dynamic-schema';
 
@@ -40,9 +41,37 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
   const [formData, setFormData] = useState<Record<string, any>>(entry?.content || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, any>>({});
+  const [availableDocuments, setAvailableDocuments] = useState<any[]>([]);
+  const [activeMediaPickerField, setActiveMediaPickerField] = useState<string | null>(null);
+
+  const slugify = (text: string) => {
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')     // Replace spaces with -
+      .replace(/[^\w-]+/g, '')  // Remove all non-word chars
+      .replace(/--+/g, '-');    // Replace multiple - with single -
+  };
 
   const handleFieldChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      
+      // Auto-fill slug fields
+      collection.fields.forEach(field => {
+        if (field.type === 'slug' && field.slugSourceField === name) {
+          // Only auto-fill if the slug is empty or was previously auto-generated from the old value
+          // For simplicity, let's auto-fill if the source field is being changed
+          // but allow manual override later. 
+          // If we want to be smart: only auto-fill if the slug field is currently empty or matches the slugified old value.
+          // But usually, users expect reactive slugs.
+          next[field.name] = slugify(value || '');
+        }
+      });
+      
+      return next;
+    });
     // Clear error for this field
     if (errors[name]) {
       const newErrors = { ...errors };
@@ -94,6 +123,67 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
     } catch (err) {
       toast.error('Network error');
       setIsSubmitting(false);
+    }
+  };
+
+  const [relationData, setRelationData] = useState<Record<number, any[]>>({});
+
+  useEffect(() => {
+    const fetchRelations = async () => {
+      const relationFields = collection.fields.filter(f => f.type === 'relation' && f.relationCollectionId);
+      
+      for (const field of relationFields) {
+        const id = field.relationCollectionId!;
+        if (relationData[id]) continue;
+
+        try {
+          const res = await fetch(`/api/collections/${id}/entries`);
+          if (res.ok) {
+            const data = await res.json();
+            setRelationData(prev => ({ ...prev, [id]: data.entries || [] }));
+          }
+        } catch (err) {
+          console.error(`Failed to fetch relation data for collection ${id}`, err);
+        }
+      }
+    };
+
+    fetchRelations();
+  }, [collection.fields, relationData]);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      const hasDocumentField = collection.fields.some(f => f.type === 'documents');
+      if (!hasDocumentField) return;
+
+      try {
+        const res = await fetch('/api/documents?limit=100'); // Fetch more for selection
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableDocuments(data.files || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch documents', err);
+      }
+    };
+
+    fetchDocuments();
+  }, [collection.fields]);
+
+  const handleMediaSelect = (mediaItems: any[]) => {
+    if (!activeMediaPickerField) return;
+    
+    const field = collection.fields.find(f => f.name === activeMediaPickerField);
+    if (!field) return;
+
+    if (field.multiple) {
+      const current = formData[activeMediaPickerField] || [];
+      const next = [...(Array.isArray(current) ? current : []), ...mediaItems];
+      // Optional: deduplicate by id
+      const unique = next.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+      handleFieldChange(activeMediaPickerField, unique);
+    } else {
+      handleFieldChange(activeMediaPickerField, mediaItems[0]);
     }
   };
 
@@ -207,11 +297,109 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
         ); }
 
       case 'media':
+        {
+          const value = formData[field.name];
+          const mediaArray = Array.isArray(value) ? value : (value ? [value] : []);
+          
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {mediaArray.map((m: any, idx: number) => (
+                  <div key={idx} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted transition-all hover:ring-2 hover:ring-primary/50">
+                    <img src={m.secureUrl} alt={m.filename} className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const next = mediaArray.filter((_, i) => i !== idx);
+                        handleFieldChange(field.name, field.multiple ? next : (next[0] || null));
+                      }}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-1 text-[8px] truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                      {m.filename}
+                    </div>
+                  </div>
+                ))}
+                {(field.multiple || mediaArray.length === 0) && (
+                  <button 
+                    type="button"
+                    onClick={() => setActiveMediaPickerField(field.name)}
+                    className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg hover:border-primary hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors mb-2">
+                      <ImagePlus className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-medium">Add Media</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+      case 'relation':
+        {
+          const options = field.relationCollectionId ? (relationData[field.relationCollectionId] || []) : [];
+          return (
+            <Select 
+              value={value?.toString() || ''} 
+              onValueChange={val => handleFieldChange(field.name, parseInt(val))}
+            >
+              <SelectTrigger className={error ? 'border-destructive' : ''}>
+                <SelectValue placeholder={`Select ${field.label}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map(entry => (
+                  <SelectItem key={entry.id} value={entry.id.toString()}>
+                    {field.relationLabelField ? entry.content[field.relationLabelField] : `Entry #${entry.id}`}
+                  </SelectItem>
+                ))}
+                {options.length === 0 && (
+                  <div className="p-2 text-xs text-muted-foreground text-center italic">No entries found in target collection</div>
+                )}
+              </SelectContent>
+            </Select>
+          );
+        }
+
+      case 'documents':
         return (
-          <div className="flex flex-col space-y-2 p-4 border rounded-md bg-muted/20 border-dashed">
-            <p className="text-sm text-muted-foreground text-center">Media selector integration coming soon...</p>
-            <p className="text-[10px] text-center opacity-50 uppercase tracking-widest">{field.multiple ? 'Multiple' : 'Single'} Selection</p>
-          </div>
+          <Select 
+            value={value?.id?.toString() || (typeof value === 'number' ? value.toString() : '')} 
+            onValueChange={val => {
+              const doc = availableDocuments.find(d => d.id === parseInt(val));
+              handleFieldChange(field.name, doc || parseInt(val));
+            }}
+          >
+            <SelectTrigger className={error ? 'border-destructive' : ''}>
+              <SelectValue placeholder={`Select ${field.label}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableDocuments.map(doc => (
+                <SelectItem key={doc.id} value={doc.id.toString()}>
+                  <div className="flex items-center">
+                    <FileText className="w-3 h-3 mr-2 opacity-50" />
+                    {doc.filename}
+                  </div>
+                </SelectItem>
+              ))}
+              {availableDocuments.length === 0 && (
+                <div className="p-2 text-xs text-muted-foreground text-center italic">No documents found</div>
+              )}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'slug':
+        return (
+          <Input 
+            value={value || ''}
+            onChange={e => handleFieldChange(field.name, e.target.value)}
+            placeholder={`Enter ${field.label}`}
+            className={error ? 'border-destructive' : ''}
+          />
         );
 
       default:
@@ -286,6 +474,13 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
           </div>
         </form>
       </div>
+
+      <MediaPicker 
+        open={!!activeMediaPickerField}
+        onOpenChange={(open) => !open && setActiveMediaPickerField(null)}
+        onSelectMedia={handleMediaSelect}
+        multiple={collection.fields.find(f => f.name === activeMediaPickerField)?.multiple}
+      />
     </Layout>
   );
 }

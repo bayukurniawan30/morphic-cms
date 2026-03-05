@@ -42,17 +42,19 @@ interface MediaFile {
 interface MediaPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (url: string) => void;
+  onSelect?: (url: string) => void;
+  onSelectMedia?: (media: MediaFile[]) => void;
+  multiple?: boolean;
 }
 
-export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPickerProps) {
+export default function MediaPicker({ open, onOpenChange, onSelect, onSelectMedia, multiple = false }: MediaPickerProps) {
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
   const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [path, setPath] = useState<{ id: number | null, name: string }[]>([{ id: null, name: 'Library' }]);
-  const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<MediaFile[]>([]);
   const [activeTab, setActiveTab] = useState('library');
   const [isUploading, setIsUploading] = useState(false);
 
@@ -76,7 +78,7 @@ export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPicke
     if (open) {
       fetchMedia(currentFolderId);
     } else {
-      setSelectedFileUrl(null);
+      setSelectedFiles([]);
       setActiveTab('library');
     }
   }, [open, currentFolderId]);
@@ -113,7 +115,11 @@ export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPicke
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       setFiles([data.media, ...files]);
-      setSelectedFileUrl(data.media.secureUrl);
+      if (multiple) {
+        setSelectedFiles(prev => [...prev, data.media]);
+      } else {
+        setSelectedFiles([data.media]);
+      }
       toast.success('Uploaded successfully.');
       setActiveTab('library');
     } catch (err) {
@@ -127,9 +133,14 @@ export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPicke
   const filteredFiles = files.filter(f => f.filename.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const handleConfirm = () => {
-    if (selectedFileUrl) {
-      onSelect(selectedFileUrl);
-      setSelectedFileUrl(null);
+    if (selectedFiles.length > 0) {
+      if (onSelectMedia) {
+        onSelectMedia(selectedFiles);
+      }
+      if (onSelect) {
+        onSelect(selectedFiles[0].secureUrl);
+      }
+      setSelectedFiles([]);
       onOpenChange(false);
     }
   };
@@ -200,29 +211,40 @@ export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPicke
                       <span className="text-xs font-medium truncate w-full">{folder.name}</span>
                     </div>
                   ))}
-                  {filteredFiles.map(file => (
-                    <div 
-                      key={file.id}
-                      onClick={() => setSelectedFileUrl(prev => prev === file.secureUrl ? null : file.secureUrl)}
-                      className={`group relative flex flex-col items-center justify-center border rounded-lg cursor-pointer transition-all aspect-square overflow-hidden ${selectedFileUrl === file.secureUrl ? 'ring-2 ring-primary border-primary' : 'hover:border-primary'}`}
-                    >
-                      {file.secureUrl ? (
-                         <img src={file.secureUrl} alt={file.filename} className="w-full h-full object-cover" />
-                      ) : (
-                        <FileImageIcon className="w-8 h-8 text-muted-foreground" />
-                      )}
-                      {selectedFileUrl === file.secureUrl && (
-                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                          <div className="bg-primary text-primary-foreground rounded-full p-1 shadow-lg">
-                            <CheckIcon className="w-4 h-4" />
+                   {filteredFiles.map(file => {
+                     const isSelected = selectedFiles.some(f => f.id === file.id);
+                     return (
+                      <div 
+                        key={file.id}
+                        onClick={() => {
+                          if (multiple) {
+                            setSelectedFiles(prev => 
+                              isSelected ? prev.filter(f => f.id !== file.id) : [...prev, file]
+                            );
+                          } else {
+                            setSelectedFiles(isSelected ? [] : [file]);
+                          }
+                        }}
+                        className={`group relative flex flex-col items-center justify-center border rounded-lg cursor-pointer transition-all aspect-square overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : 'hover:border-primary'}`}
+                      >
+                        {file.secureUrl ? (
+                           <img src={file.secureUrl} alt={file.filename} className="w-full h-full object-cover" />
+                        ) : (
+                          <FileImageIcon className="w-8 h-8 text-muted-foreground" />
+                        )}
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                            <div className="bg-primary text-primary-foreground rounded-full p-1 shadow-lg">
+                              <CheckIcon className="w-4 h-4" />
+                            </div>
                           </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-background/90 p-1 text-[10px] truncate translate-y-full group-hover:translate-y-0 transition-transform">
+                          {file.filename}
                         </div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 bg-background/90 p-1 text-[10px] truncate translate-y-full group-hover:translate-y-0 transition-transform">
-                        {file.filename}
                       </div>
-                    </div>
-                  ))}
+                     );
+                   })}
                 </div>
               )}
             </ScrollArea>
@@ -258,9 +280,18 @@ export default function MediaPicker({ open, onOpenChange, onSelect }: MediaPicke
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="p-4 border-t bg-muted/20">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="button" disabled={!selectedFileUrl} onClick={handleConfirm}>Insert Image</Button>
+        <DialogFooter className="p-4 border-t bg-muted/20 items-center justify-between">
+          <div className="text-xs text-muted-foreground px-2">
+            {selectedFiles.length > 0 && (
+              <span>{selectedFiles.length} item{selectedFiles.length > 1 ? 's' : ''} selected</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" disabled={selectedFiles.length === 0} onClick={handleConfirm}>
+              {multiple ? 'Insert Media' : 'Insert Image'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

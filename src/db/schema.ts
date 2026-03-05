@@ -19,6 +19,15 @@ export const entries = pgTable("entries", {
 
 export const roleEnum = pgEnum('role', ['super_admin', 'editor']);
 
+export const abilities = pgTable("abilities", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  permissions: jsonb("permissions").notNull().default({}), // Format: { [collectionSlug]: { create: bool, read: bool, update: bool, delete: bool } }
+  isSystem: varchar("is_system", { length: 1 }).default('0').notNull(), // '1' = protected (Read Access)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
@@ -27,6 +36,7 @@ export const users = pgTable("users", {
   password: varchar("password", { length: 255 }).notNull(),
   role: roleEnum('role').default('editor').notNull(),
   apiKey: varchar("api_key", { length: 255 }).unique(),
+  abilityId: integer("ability_id").references(() => abilities.id),
   lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -52,6 +62,18 @@ export const media = pgTable("media", {
   width: integer("width"),
   height: integer("height"),
   folderId: integer("folder_id").references(() => mediaFolders.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  publicId: varchar("public_id", { length: 255 }).notNull(),
+  secureUrl: varchar("secure_url", { length: 1024 }).notNull(),
+  format: varchar("format", { length: 50 }),
+  mimeType: varchar("mime_type", { length: 50 }),
+  size: integer("size"), // size in bytes
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

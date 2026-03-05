@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { users } from '../db/schema.js';
-import { eq, isNull, desc } from 'drizzle-orm';
+import { users, abilities } from '../db/schema.js';
+import { eq, isNull, desc, asc } from 'drizzle-orm';
 import { getCookie } from 'hono/cookie';
 import { verify } from 'hono/jwt';
 import bcrypt from 'bcryptjs';
@@ -57,10 +57,13 @@ apiUsers.get('/', async (c) => {
       email: users.email,
       username: users.username,
       role: users.role,
+      abilityId: users.abilityId,
+      abilityName: abilities.name,
       lastLogin: users.lastLogin,
       createdAt: users.createdAt,
     })
     .from(users)
+    .leftJoin(abilities, eq(users.abilityId, abilities.id))
     .where(isNull(users.deletedAt))
     .orderBy(desc(users.createdAt));
 
@@ -88,7 +91,8 @@ apiUsers.post('/', async (c) => {
       email,
       username,
       password: hashedPassword,
-      role: role || 'editor'
+      role: role || 'editor',
+      abilityId: body.abilityId || null
     }).returning({
       id: users.id,
       email: users.email,
@@ -119,6 +123,7 @@ apiUsers.put('/:id', async (c) => {
     if (email !== undefined) updateData.email = email;
     if (username !== undefined) updateData.username = username;
     if (role !== undefined) updateData.role = role;
+    if (body.abilityId !== undefined) updateData.abilityId = body.abilityId;
     
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
@@ -132,7 +137,8 @@ apiUsers.put('/:id', async (c) => {
         name: users.name,
         email: users.email,
         username: users.username,
-        role: users.role
+        role: users.role,
+        abilityId: users.abilityId
       });
 
     if (updatedUser.length === 0) {
@@ -185,14 +191,25 @@ apiUsers.post('/:id/api-key', async (c) => {
     // Generate a simple secure-looking key
     const newKey = 'mc_' + crypto.randomUUID().replace(/-/g, '');
 
+    // Get the user to check current ability
+    const userRes = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const dbUser = userRes[0];
+    if (!dbUser) return c.json({ error: 'User not found' }, 404);
+
+    const updateData: any = { apiKey: newKey };
+
+    // Assign "Read Access" if no ability exists
+    if (!dbUser.abilityId) {
+      const readAccess = await db.select().from(abilities).where(eq(abilities.name, 'Read Access')).limit(1);
+      if (readAccess.length > 0) {
+        updateData.abilityId = readAccess[0].id;
+      }
+    }
+
     const updated = await db.update(users)
-      .set({ apiKey: newKey })
+      .set(updateData)
       .where(eq(users.id, userId))
       .returning({ apiKey: users.apiKey });
-
-    if (updated.length === 0) {
-      return c.json({ error: 'User not found' }, 404);
-    }
 
     return c.json({ success: true, apiKey: updated[0].apiKey });
   } catch (error) {

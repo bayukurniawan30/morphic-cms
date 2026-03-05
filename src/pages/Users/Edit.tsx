@@ -15,13 +15,14 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-export default function Edit({ userToEdit, user }: { userToEdit: any, user: any }) {
+export default function Edit({ userToEdit, user, abilities = [] }: { userToEdit: any, user: any, abilities: any[] }) {
   const { data, setData, setError, errors } = useForm({
     name: userToEdit?.name || '',
     email: userToEdit?.email || '',
     username: userToEdit?.username || '',
     password: '', // blank by default, only sent if changed
     role: userToEdit?.role || 'editor',
+    abilityId: userToEdit?.abilityId ? String(userToEdit.abilityId) : 'none',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +37,7 @@ export default function Edit({ userToEdit, user }: { userToEdit: any, user: any 
     try {
       const payload: any = { ...data };
       if (!payload.password) delete payload.password; // Don't send empty password
+      if (payload.abilityId === 'none') payload.abilityId = null;
 
       const res = await fetch(`/api/users/${userToEdit.id}`, {
         method: 'PUT',
@@ -160,7 +162,7 @@ export default function Edit({ userToEdit, user }: { userToEdit: any, user: any 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role">CMS Role</Label>
               <Select 
                 value={data.role} 
                 onValueChange={(value) => setData('role', value)}
@@ -173,6 +175,29 @@ export default function Edit({ userToEdit, user }: { userToEdit: any, user: any 
                   <SelectItem value="super_admin">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ability">API Ability</Label>
+              <Select 
+                value={data.abilityId} 
+                onValueChange={(value) => setData('abilityId', value)}
+              >
+                <SelectTrigger id="ability" className="w-full">
+                  <SelectValue placeholder="Inherit from Role (None)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None / Default</SelectItem>
+                  {abilities.map((ability) => (
+                    <SelectItem key={ability.id} value={String(ability.id)}>
+                      {ability.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground italic">
+                Controls what this user's API key can do.
+              </p>
             </div>
 
             <div className="pt-4 flex justify-end">

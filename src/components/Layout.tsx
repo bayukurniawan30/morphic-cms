@@ -15,7 +15,7 @@ import {
   Avatar,
   AvatarFallback,
 } from '@/components/ui/avatar';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Mail, Key, FileImageIcon, FileText, LayoutGrid, Database, Users } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { getAppVersion } from '@/lib/version';
 
@@ -82,20 +82,72 @@ export default function Layout({ user, children }: LayoutProps) {
           <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
             Dashboard
           </Link>
-          <Link href="/collections" className={getLinkClasses('/collections')}>
-            Collections
-          </Link>
-          <Link href="/entries" className={getLinkClasses('/entries')}>
-            Entries
-          </Link>
-          <Link href="/media" className={getLinkClasses('/media')}>
-            Media
-          </Link>
+
+          <div className="pt-4 pb-2">
+            <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Content</h3>
+            <div className="space-y-1">
+              <Link href="/collections" className={getLinkClasses('/collections')}>
+                <div className="flex items-center gap-3">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span>Collections</span>
+                </div>
+              </Link>
+              <Link href="/entries" className={getLinkClasses('/entries')}>
+                <div className="flex items-center gap-3">
+                  <Database className="h-4 w-4" />
+                  <span>Entries</span>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-2 pb-2">
+            <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Assets</h3>
+            <div className="space-y-1">
+              <Link href="/media" className={getLinkClasses('/media')}>
+                <div className="flex items-center gap-3">
+                  <FileImageIcon className="h-4 w-4" />
+                  <span>Media</span>
+                </div>
+              </Link>
+              <Link href="/documents" className={getLinkClasses('/documents')}>
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4" />
+                  <span>Documents</span>
+                </div>
+              </Link>
+            </div>
+          </div>
+          
+          <div className="pt-2 pb-2">
+            <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Settings</h3>
+            <div className="space-y-1">
+              <Link href="/email-settings" className={getLinkClasses('/email-settings')}>
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4" />
+                  <span>Email</span>
+                </div>
+              </Link>
+              <Link href="/api-key-abilities" className={getLinkClasses('/api-key-abilities')}>
+                <div className="flex items-center gap-3">
+                  <Key className="h-4 w-4" />
+                  <span>API Key Abilities</span>
+                </div>
+              </Link>
+              {/* <Link href="/settings" className={getLinkClasses('/settings')}>
+                <div className="flex items-center gap-3">
+                  <SettingsIcon className="h-4 w-4" />
+                  <span>General</span>
+                </div>
+              </Link> */}
+            </div>
+          </div>
+
           <Link href="/users" className={getLinkClasses('/users')}>
-            Users
-          </Link>
-          <Link href="/settings" className={getLinkClasses('/settings')}>
-            Settings
+            <div className="flex items-center gap-3">
+              <Users className="h-4 w-4" />
+              <span>Users</span>
+            </div>
           </Link>
         </nav>
 
