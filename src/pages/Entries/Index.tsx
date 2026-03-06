@@ -41,7 +41,7 @@ export default function EntriesIndex({ collections, user, filters }: IndexProps)
       <Head title="Content Manager | Morphic" />
       
       <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-end">
+        <div className="flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0">
           <div>
             <div className="flex items-center space-x-2 mb-1">
                <DatabaseIcon className="w-5 h-5 text-primary" />

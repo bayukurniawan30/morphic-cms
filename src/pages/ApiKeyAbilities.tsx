@@ -45,11 +45,11 @@ export default function ApiKeyAbilities({ user, abilities = [] }: { user?: any; 
       <Head title="API Key Abilities | Morphic" />
       
       <div className="max-w-6xl mx-auto space-y-6 flex flex-col">
-        <div className="flex justify-between items-end">
+        <div className="flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0">
           <div>
             <div className="flex items-center space-x-2 mb-1">
                <ShieldCheckIcon className="w-5 h-5 text-primary" />
-               <h1 className="text-3xl font-bold tracking-tight">Abilities</h1>
+               <h1 className="text-3xl font-bold tracking-tight">API Key Abilities</h1>
             </div>
             <p className="text-muted-foreground text-sm">Manage granular permissions for API access keys.</p>
           </div>

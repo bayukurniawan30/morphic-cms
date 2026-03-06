@@ -130,7 +130,7 @@ export default function CollectionsList({ collections, user, filters, pagination
       <Head title="Collections | Morphic" />
       
       <div className="flex flex-col space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-end space-y-4 sm:space-y-0">
+        <div className="flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0">
           <div>
             <div className="flex items-center space-x-2 mb-1">
                <LayersIcon className="w-5 h-5 text-primary" />
@@ -224,7 +224,7 @@ export default function CollectionsList({ collections, user, filters, pagination
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground cursor-help">
+                              <span className="inline-flex min-w-20 justify-center items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-secondary text-secondary-foreground cursor-help">
                                 {collection.fields?.length || 0} Fields
                               </span>
                             </TooltipTrigger>
