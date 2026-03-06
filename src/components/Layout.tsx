@@ -17,8 +17,10 @@ import {
 } from '@/components/ui/avatar';
 import { Menu, X, Mail, Key, FileImageIcon, FileText, LayoutGrid, Database, Users, Globe, LayoutDashboard, ShieldCheck, FileCheckIcon } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getAppVersion } from '@/lib/version';
+import { cn } from '@/lib/utils';
+
 
 interface UserProps {
   id?: number;
@@ -31,8 +33,50 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+interface NavItemProps {
+  href: string;
+  icon: any;
+  label: string;
+  isSidebarOpen: boolean;
+  currentUrl: string;
+}
+
+const NavItem = ({ href, icon: Icon, label, isSidebarOpen, currentUrl }: NavItemProps) => {
+  const isActive = currentUrl.includes(href);
+  const content = (
+    <Link 
+      href={href} 
+      className={cn(
+        "flex items-center gap-3 px-4 py-2 rounded-md font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary/20",
+        isActive 
+          ? 'bg-secondary text-secondary-foreground shadow-sm' 
+          : 'hover:bg-muted text-muted-foreground hover:text-foreground hover:shadow-sm',
+        !isSidebarOpen && "lg:justify-center lg:px-2"
+      )}
+    >
+      <Icon className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
+      <span className={cn("truncate transition-all duration-300", !isSidebarOpen && "lg:hidden lg:w-0")}>
+        {label}
+      </span>
+    </Link>
+  );
+
+  return (
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>
+        {content}
+      </TooltipTrigger>
+      <TooltipContent side="right" className={cn("hidden", !isSidebarOpen && "lg:block")}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 export default function Layout({ user, children }: LayoutProps) {
-  const [isSidebarOpen, setSidebarOpen] = useState(false); // Hidden by default on mobile
+
+  const [isSidebarOpen, setSidebarOpen] = useState(true); // Expanded by default on desktop
+
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { url } = usePage();
   const [globals, setGlobals] = React.useState<any[]>([]);
@@ -64,14 +108,6 @@ export default function Layout({ user, children }: LayoutProps) {
       .substring(0, 2);
   };
 
-  const getLinkClasses = (path: string) => {
-    const isActive = url.includes(path);
-    return `block px-4 py-2 rounded-md font-medium transition-colors ${
-      isActive 
-        ? 'bg-secondary text-secondary-foreground' 
-        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-    }`;
-  };
 
   return (
     <TooltipProvider>
@@ -80,133 +116,111 @@ export default function Layout({ user, children }: LayoutProps) {
         {/* ... existing aside and main ... */}
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          } ${!isSidebarOpen && 'lg:w-64'} flex flex-col`}
+          className={cn(
+            "fixed inset-y-0 left-0 z-40 bg-card border-r transition-all duration-300 ease-in-out flex flex-col lg:relative lg:translate-x-0",
+            isSidebarOpen 
+              ? "w-64 translate-x-0" 
+              : "w-64 -translate-x-full lg:w-20 lg:translate-x-0"
+          )}
         >
-          {/* ... side content ... */}
-          <div className="flex items-center justify-between h-16 px-6 border-b">
-            <div className="flex items-center gap-3">
-              <Logo className="h-10 w-10 text-[#514849] dark:text-white" />
-              <div className="flex flex-col">
+          <div className={cn("flex items-center justify-between h-16 border-b shrink-0 transition-all", isSidebarOpen ? "px-6" : "px-0 lg:justify-center")}>
+            <div className="flex items-center gap-3 overflow-hidden">
+              <Logo className="h-10 w-10 shrink-0 text-[#514849] dark:text-white" />
+              <div className={cn("flex flex-col transition-all duration-300", !isSidebarOpen && "lg:hidden lg:w-0 lg:opacity-0")}>
                 <span className="text-xl font-bold tracking-tight leading-none uppercase text-[#514849] dark:text-white">Morphic</span>
                 <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Headless CMS</span>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
-              <X className="h-5 w-5" />
-            </Button>
+            {isSidebarOpen && (
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
+                <X className="h-5 w-5" />
+              </Button>
+            )}
           </div>
-          <nav className="p-4 space-y-2 flex-1">
-            <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
-              <div className="flex items-center gap-3">
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </div>
-            </Link>
+          <nav className="p-4 space-y-2 flex-1 overflow-y-auto custom-scrollbar">
+            <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" isSidebarOpen={isSidebarOpen} currentUrl={url} />
 
             <div className="pt-4 pb-2">
-              <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Content</h3>
+              <h3 className={cn("px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 transition-all", !isSidebarOpen && "lg:hidden")}>
+                Content
+              </h3>
               <div className="space-y-1">
-                <Link href="/collections" className={getLinkClasses('/collections')}>
-                  <div className="flex items-center gap-3">
-                    <LayoutGrid className="h-4 w-4" />
-                    <span>Collections</span>
-                  </div>
-                </Link>
-                <Link href="/entries" className={getLinkClasses('/entries')}>
-                  <div className="flex items-center gap-3">
-                    <Database className="h-4 w-4" />
-                    <span>Entries</span>
-                  </div>
-                </Link>
-                <Link href="/forms" className={getLinkClasses('/forms')}>
-                  <div className="flex items-center gap-3">
-                    <FileCheckIcon className="h-4 w-4" />
-                    <span>Form Builder</span>
-                  </div>
-                </Link>
+                <NavItem href="/collections" icon={LayoutGrid} label="Collections" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+                <NavItem href="/entries" icon={Database} label="Entries" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+                <NavItem href="/forms" icon={FileCheckIcon} label="Form Builder" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+
               </div>
             </div>
 
             <div className="pt-2 pb-2">
-              <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Assets</h3>
+              <h3 className={cn("px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 transition-all", !isSidebarOpen && "lg:hidden")}>
+                Assets
+              </h3>
               <div className="space-y-1">
-                <Link href="/media" className={getLinkClasses('/media')}>
-                  <div className="flex items-center gap-3">
-                    <FileImageIcon className="h-4 w-4" />
-                    <span>Media</span>
-                  </div>
-                </Link>
-                <Link href="/documents" className={getLinkClasses('/documents')}>
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4" />
-                    <span>Documents</span>
-                  </div>
-                </Link>
+                <NavItem href="/media" icon={FileImageIcon} label="Media" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+                <NavItem href="/documents" icon={FileText} label="Documents" isSidebarOpen={isSidebarOpen} currentUrl={url} />
               </div>
             </div>
 
+
             {globals.length > 0 && (
-              <div className="pt-2 pb-2 hidden lg:block">
-                <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Globals</h3>
+              <div className="pt-2 pb-2">
+                <h3 className={cn("px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 transition-all", !isSidebarOpen && "lg:hidden")}>
+                  Globals
+                </h3>
                 <div className="space-y-1">
                   {globals.map((global) => (
-                    <Link 
+                    <NavItem 
                       key={global.id} 
                       href={`/globals/${global.slug}`} 
-                      className={getLinkClasses(`/globals/${global.slug}`)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-4 w-4" />
-                        <span className="truncate">{global.name}</span>
-                      </div>
-                    </Link>
+                      icon={Globe} 
+                      label={global.name} 
+                      isSidebarOpen={isSidebarOpen}
+                      currentUrl={url}
+                    />
                   ))}
                 </div>
               </div>
             )}
             
             <div className="pt-2 pb-2">
-              <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Settings</h3>
+              <h3 className={cn("px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 transition-all", !isSidebarOpen && "lg:hidden")}>
+                Settings
+              </h3>
               <div className="space-y-1">
-                <Link href="/email-settings" className={getLinkClasses('/email-settings')}>
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4" />
-                    <span>Email</span>
-                  </div>
-                </Link>
-                <Link href="/api-key-abilities" className={getLinkClasses('/api-key-abilities')}>
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>API Key Abilities</span>
-                  </div>
-                </Link>
+                <NavItem href="/email-settings" icon={Mail} label="Email" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+                <NavItem href="/api-key-abilities" icon={ShieldCheck} label="API Key Abilities" isSidebarOpen={isSidebarOpen} currentUrl={url} />
               </div>
             </div>
 
-            <Link href="/users" className={getLinkClasses('/users')}>
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4" />
-                <span>Users</span>
-              </div>
-            </Link>
+            <NavItem href="/users" icon={Users} label="Users" isSidebarOpen={isSidebarOpen} currentUrl={url} />
           </nav>
 
-          <div className="p-2 border-t space-y-2 bg-muted/20">
-            <a 
-              href="https://github.com/bayukurniawan30/morphic-cms" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm"
-            >
-              <GithubIcon className="h-5 w-5" />
-              <span>Support Us on GitHub</span>
-            </a>
-            <div className="px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between">
+          <div className={cn("p-2 border-t space-y-2 bg-muted/20 transition-all", !isSidebarOpen && "lg:p-1")}>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <a 
+                  href="https://github.com/bayukurniawan30/morphic-cms" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm",
+                    !isSidebarOpen && "lg:justify-center lg:px-0"
+                  )}
+                >
+                  <GithubIcon className="h-5 w-5 shrink-0" />
+                  <span className={cn("truncate transition-all duration-300", !isSidebarOpen && "lg:hidden lg:w-0")}>Support Us</span>
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="right" className={cn("hidden", !isSidebarOpen && "lg:block")}>
+                Support Us on GitHub
+              </TooltipContent>
+            </Tooltip>
+            <div className={cn("px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between transition-all", !isSidebarOpen && "lg:hidden")}>
               <span>Version <span className='uppercase'>{getAppVersion()}</span></span>
             </div>
           </div>
+
         </aside>
 
         {/* Main Content */}
