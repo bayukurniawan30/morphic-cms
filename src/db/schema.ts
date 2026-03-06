@@ -39,6 +39,8 @@ export const users = pgTable("users", {
   apiKey: varchar("api_key", { length: 255 }).unique(),
   abilityId: integer("ability_id").references(() => abilities.id),
   lastLogin: timestamp("last_login"),
+  resetPasswordToken: varchar("reset_password_token", { length: 255 }),
+  resetPasswordExpiresAt: timestamp("reset_password_expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),

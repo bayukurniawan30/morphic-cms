@@ -51,6 +51,16 @@ app.get('/', async (c) => {
   return c.get('inertia')('Index', { title: 'Morphic CMS' });
 });
 
+app.get('/forgot-password', async (c) => {
+  return c.get('inertia')('Auth/ForgotPassword', { title: 'Forgot Password' });
+});
+
+app.get('/reset-password', async (c) => {
+  const token = c.req.query('token');
+  if (!token) return c.redirect('/forgot-password');
+  return c.get('inertia')('Auth/ResetPassword', { title: 'Reset Password', token });
+});
+
 import { getCookie } from 'hono/cookie';
 import { verify } from 'hono/jwt';
 
@@ -593,7 +603,13 @@ api.use('*', async (c, next) => {
   // Allow login and test routes to be skip auth if needed, 
   // but usually we want all /api routes to be authenticated except login
   const path = c.req.path;
-  if (path === '/api/auth/login' || path === '/api/test' || path.startsWith('/api/forms/') && path.endsWith('/submit')) {
+  if (
+    path === '/api/auth/login' || 
+    path === '/api/auth/forgot-password' || 
+    path === '/api/auth/reset-password' || 
+    path === '/api/test' || 
+    path.startsWith('/api/forms/') && path.endsWith('/submit')
+  ) {
     return await next();
   }
 
@@ -789,6 +805,91 @@ api.post('/auth/login', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('Login error:', err);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.post('/auth/forgot-password', async (c) => {
+  try {
+    const { email } = await c.req.json();
+    if (!email) return c.json({ error: 'Email is required' }, 400);
+
+    const userResult = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    const user = userResult[0];
+
+    if (!user) {
+      // For security, don't reveal if user exists
+      return c.json({ success: true, message: 'If an account exists with that email, a reset link has been sent.' });
+    }
+
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+    await db.update(users).set({
+      resetPasswordToken: token,
+      resetPasswordExpiresAt: expiresAt
+    }).where(eq(users.id, user.id));
+
+    const resetLink = `${process.env.APP_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+
+    await sendEmail({
+      to: email,
+      subject: 'Morphic CMS: Password Reset Request',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h1 style="color: #87787a; border-bottom: 2px solid #514849; padding-bottom: 10px;">Password Reset</h1>
+          <p style="font-size: 16px; line-height: 1.6; color: #555;">
+            You requested a password reset for your Morphic CMS account.
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #514849; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+          </div>
+          <p style="font-size: 14px; color: #666;">
+            If you did not request this, please ignore this email. This link will expire in 1 hour.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">
+            If the button doesn't work, copy and paste this link into your browser: <br />
+            <a href="${resetLink}" style="color: #514849;">${resetLink}</a>
+          </p>
+        </div>
+      `
+    });
+
+    return c.json({ success: true, message: 'If an account exists with that email, a reset link has been sent.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.post('/auth/reset-password', async (c) => {
+  try {
+    const { token, password } = await c.req.json();
+    if (!token || !password) return c.json({ error: 'Token and password are required' }, 400);
+
+    const userResult = await db.select().from(users).where(and(
+      eq(users.resetPasswordToken, token),
+      sql`${users.resetPasswordExpiresAt} > now()`
+    )).limit(1);
+    
+    const user = userResult[0];
+
+    if (!user) {
+      return c.json({ error: 'Invalid or expired reset token' }, 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await db.update(users).set({
+      password: hashedPassword,
+      resetPasswordToken: null,
+      resetPasswordExpiresAt: null
+    }).where(eq(users.id, user.id));
+
+    return c.json({ success: true, message: 'Password has been reset successfully.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
