@@ -197,6 +197,7 @@ export default function AddCollection({ user }: AddProps) {
     { value: 'textarea', label: 'Textarea' },
     { value: 'relation', label: 'Collection (Relation)' },
     { value: 'slug', label: 'Slug' },
+    { value: 'email', label: 'Email' },
     { value: 'array', label: 'Array (Repeater)' },
   ];
 

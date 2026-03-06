@@ -72,6 +72,17 @@ const FieldInput = ({
         />
       );
     
+    case 'email':
+      return (
+        <Input 
+          type="email"
+          value={value || ''}
+          onChange={e => handleValueChange(e.target.value)}
+          placeholder={`Enter ${field.label || field.name}`}
+          className={error ? 'border-destructive' : ''}
+        />
+      );
+    
     case 'textarea':
       return (
         <Textarea 
@@ -283,7 +294,7 @@ const FieldInput = ({
         return (
           <div className="space-y-4">
             {items.map((item: any, itemIndex: number) => (
-              <div key={itemIndex} className="relative p-6 border rounded-xl bg-muted/5 shadow-inner space-y-6 group animate-in fade-in slide-in-from-top-2 duration-300">
+              <div key={itemIndex} className="relative p-6 border rounded-xl bg-muted/4 shadow-inner space-y-6 group animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-50">
                     {field.label || field.name} #{itemIndex + 1}
@@ -305,7 +316,7 @@ const FieldInput = ({
                 <div className="space-y-6">
                   {field.fields?.map((childField) => (
                     <div key={childField.id} className="space-y-2 text-left">
-                      <Label className="text-sm font-medium">
+                      <Label className="text-sm font-medium text-muted-foreground/80">
                         {childField.label || childField.name} {childField.required && <span className="text-destructive">*</span>}
                       </Label>
                       <FieldInput
@@ -529,11 +540,11 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
           <div className="bg-card p-8 rounded-xl border shadow-sm space-y-8">
             {collection.fields.map((field) => (
               <div key={field.id} className="space-y-2">
-                <div className="flex items-center justify-between border-b pb-1">
+                <div className="flex items-center justify-between border-b border-border/30 pb-1">
                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                       {field.label || field.name} {field.required && <span className="text-destructive">*</span>}
                    </Label>
-                   <span className="text-[10px] font-mono opacity-20">{field.type}</span>
+                   <span className="text-[10px] font-mono opacity-40">{field.type}</span>
                 </div>
                 <FieldInput
                   field={field} 

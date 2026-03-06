@@ -218,6 +218,7 @@ export default function EditCollection({ collection, user }: EditProps) {
     { value: 'textarea', label: 'Textarea' },
     { value: 'relation', label: 'Collection (Relation)' },
     { value: 'slug', label: 'Slug' },
+    { value: 'email', label: 'Email' },
     { value: 'array', label: 'Array (Repeater)' },
   ];
 

@@ -16,6 +16,7 @@ export type FieldType =
   | 'relation'
   | 'slug'
   | 'boolean'
+  | 'email'
   | 'array';
 
 export type FieldOption = {
@@ -63,6 +64,13 @@ export function buildZodSchema(fields: FieldDefinition[]) {
         if (field.validation?.minLength !== undefined) strValidator = strValidator.min(field.validation.minLength);
         if (field.validation?.maxLength !== undefined) strValidator = strValidator.max(field.validation.maxLength);
         validator = strValidator;
+        break;
+      }
+      case 'email': {
+        let emailValidator = z.string().email('Invalid email address');
+        if (field.validation?.minLength !== undefined) emailValidator = emailValidator.min(field.validation.minLength);
+        if (field.validation?.maxLength !== undefined) emailValidator = emailValidator.max(field.validation.maxLength);
+        validator = emailValidator;
         break;
       }
       case 'number': {

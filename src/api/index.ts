@@ -6,7 +6,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import bcrypt from 'bcryptjs';
 
 import { db } from '../db/index.js';
-import { collections, entries, users, abilities, media, documents } from '../db/schema.js';
+import { collections, entries, users, abilities, media, documents, forms, formEntries } from '../db/schema.js';
 import { eq, isNull, asc, desc, and, sql } from 'drizzle-orm';
 import { buildZodSchema } from '../lib/dynamic-schema.js';
 import type { FieldDefinition } from '../lib/dynamic-schema.js';
@@ -229,6 +229,53 @@ app.get('/api-key-abilities/edit/:id', async (c) => {
     ability: ability[0], 
     collections: allCollections, 
     mode: 'edit' 
+  });
+});
+
+// --- Form Builder Routes ---
+app.get('/forms', async (c) => {
+  const userData = c.get('user');
+  if (!userData) return c.redirect('/');
+  
+  const allForms = await db.select().from(forms).orderBy(desc(forms.createdAt));
+  
+  return c.get('inertia')('Forms/List', { 
+    user: userData,
+    forms: allForms
+  });
+});
+
+app.get('/forms/add', async (c) => {
+  const userData = c.get('user');
+  if (!userData) return c.redirect('/');
+  return c.get('inertia')('Forms/Add', { user: userData });
+});
+
+app.get('/forms/edit/:id', async (c) => {
+  const userData = c.get('user');
+  if (!userData) return c.redirect('/');
+  
+  const id = parseInt(c.req.param('id'), 10);
+  const formResult = await db.select().from(forms).where(eq(forms.id, id)).limit(1);
+  if (formResult.length === 0) return c.redirect('/forms');
+  
+  return c.get('inertia')('Forms/Edit', { 
+    user: userData,
+    form: formResult[0]
+  });
+});
+
+app.get('/forms/:slug/entries', async (c) => {
+  const userData = c.get('user');
+  if (!userData) return c.redirect('/');
+  
+  const slug = c.req.param('slug');
+  const formResult = await db.select().from(forms).where(eq(forms.slug, slug)).limit(1);
+  if (formResult.length === 0) return c.redirect('/forms');
+  
+  return c.get('inertia')('Forms/EntriesList', { 
+    user: userData,
+    form: formResult[0]
   });
 });
 
@@ -540,7 +587,7 @@ api.use('*', async (c, next) => {
   // Allow login and test routes to be skip auth if needed, 
   // but usually we want all /api routes to be authenticated except login
   const path = c.req.path;
-  if (path === '/api/auth/login' || path === '/api/test') {
+  if (path === '/api/auth/login' || path === '/api/test' || path.startsWith('/api/forms/') && path.endsWith('/submit')) {
     return await next();
   }
 
@@ -1032,6 +1079,200 @@ api.delete('/entries/:id', async (c) => {
     if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404);
     return c.json({ success: true });
   } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// --- Form Builder API ---
+
+api.get('/forms', async (c) => {
+  try {
+    const result = await db.select().from(forms).orderBy(desc(forms.createdAt));
+    return c.json({ forms: result });
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.get('/forms/:idOrSlug', async (c) => {
+  try {
+    const idOrSlug = c.req.param('idOrSlug');
+    let result;
+    if (/^\d+$/.test(idOrSlug)) {
+      result = await db.select().from(forms).where(eq(forms.id, parseInt(idOrSlug, 10))).limit(1);
+    } else {
+      result = await db.select().from(forms).where(eq(forms.slug, idOrSlug)).limit(1);
+    }
+    if (result.length === 0) return c.json({ error: 'Form not found' }, 404);
+    return c.json({ form: result[0] });
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.post('/forms', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { name, slug, fields, storageType, apiUrl, apiMethod, apiHeaders, apiEntriesPath, allowedOrigins, honeypotField } = body;
+
+    if (!name || !slug) {
+      return c.json({ error: 'Name and Slug are required' }, 400);
+    }
+
+    if (storageType === 'external' && !apiUrl) {
+      return c.json({ error: 'API URL is required for external storage' }, 400);
+    }
+
+    const newForm = await db.insert(forms).values({
+      name,
+      slug,
+      fields: fields || [],
+      storageType: storageType || 'external',
+      apiUrl: storageType === 'external' ? apiUrl : null,
+      apiMethod: apiMethod || 'POST',
+      apiHeaders: apiHeaders || {},
+      apiEntriesPath: apiEntriesPath || null,
+      allowedOrigins: allowedOrigins || null,
+      honeypotField: honeypotField || null,
+    }).returning();
+
+    return c.json({ success: true, form: newForm[0] }, 201);
+  } catch (err) {
+    console.error('Error creating form:', err);
+    if (String(err).includes('unique constraint')) {
+      return c.json({ error: 'Slug already exists' }, 400);
+    }
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.put('/forms/:id', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'), 10);
+    const body = await c.req.json();
+    const { name, fields, storageType, apiUrl, apiMethod, apiHeaders, apiEntriesPath, allowedOrigins, honeypotField } = body;
+
+    const updated = await db.update(forms)
+      .set({ 
+        name, 
+        fields: fields || [],
+        storageType: storageType || 'external',
+        apiUrl: storageType === 'external' ? apiUrl : null,
+        apiMethod: apiMethod || 'POST',
+        apiHeaders: apiHeaders || {},
+        apiEntriesPath: apiEntriesPath || null,
+        allowedOrigins: allowedOrigins || null,
+        honeypotField: honeypotField || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(forms.id, id))
+      .returning();
+
+    if (updated.length === 0) return c.json({ error: 'Form not found' }, 404);
+    return c.json({ success: true, form: updated[0] });
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.delete('/forms/:id', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'), 10);
+    const deleted = await db.delete(forms).where(eq(forms.id, id)).returning();
+    if (deleted.length === 0) return c.json({ error: 'Form not found' }, 404);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Proxy for Third-Party Entries or Fetch Internal
+api.get('/forms/:slug/entries', async (c) => {
+  try {
+    const slug = c.req.param('slug');
+    const formResult = await db.select().from(forms).where(eq(forms.slug, slug)).limit(1);
+    if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404);
+    
+    const form = formResult[0];
+
+    if (form.storageType === 'internal') {
+      const entriesResult = await db.select().from(formEntries).where(eq(formEntries.formId, form.id)).orderBy(desc(formEntries.createdAt));
+      // Map to consistent structure
+      const entries = entriesResult.map(e => ({
+        id: e.id,
+        createdAt: e.createdAt,
+        ... (e.data as object)
+      }));
+      return c.json({ entries });
+    }
+
+    // This is where we would fetch from the third-party API
+    // For now, we return an empty array until integration is tested
+    return c.json({ entries: [], message: 'Third-party integration pending real API URL' });
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+// Public Form Submission
+api.post('/forms/:slug/submit', async (c) => {
+  try {
+    const slug = c.req.param('slug');
+    const formResult = await db.select().from(forms).where(eq(forms.slug, slug)).limit(1);
+    if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404);
+    
+    const form = formResult[0];
+    const body = await c.req.json();
+
+    // 1. Origin Check (CORS-like security)
+    const requestOrigin = c.req.header('Origin') || c.req.header('Referer');
+    if (form.allowedOrigins) {
+      const allowed = form.allowedOrigins.split(',').map(o => o.trim().toLowerCase());
+      if (!requestOrigin) {
+        return c.json({ error: 'Origin header required' }, 403);
+      }
+      const originMatch = allowed.some(domain => requestOrigin.toLowerCase().includes(domain.replace(/^https?:\/\//, '')));
+      if (!originMatch) {
+         return c.json({ error: 'Forbidden: Origin not allowed' }, 403);
+      }
+    }
+
+    // 2. Honeypot Check (Bot protection)
+    if (form.honeypotField && body[form.honeypotField]) {
+      console.warn(`Spam detected via honeypot field: ${form.honeypotField}`);
+      return c.json({ success: true, message: 'Form submitted successfully (spam filtered)' });
+    }
+
+    // Validate body against form fields (optional but recommended)
+    // For simplicity, we just save it now.
+    
+    if (form.storageType === 'internal') {
+      await db.insert(formEntries).values({
+        formId: form.id,
+        data: body,
+      });
+      return c.json({ success: true, message: 'Form submitted successfully (internal)' });
+    } else {
+      // Proxy the submission to the third-party API
+      if (!form.apiUrl) return c.json({ error: 'Form misconfigured: No API URL' }, 400);
+
+      const response = await fetch(form.apiUrl, {
+        method: form.apiMethod,
+        headers: {
+          'Content-Type': 'application/json',
+          ...form.apiHeaders,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        return c.json({ error: 'Failed to submit to third-party API' }, 500);
+      }
+
+      return c.json({ success: true, message: 'Form submitted successfully (external)' });
+    }
+  } catch (err) {
+    console.error('Submission error:', err);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });

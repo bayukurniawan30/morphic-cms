@@ -78,3 +78,27 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const forms = pgTable("forms", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  fields: jsonb("fields").$type<any[]>().notNull().default([]),
+  storageType: varchar("storage_type", { length: 20 }).notNull().default('external'), // 'internal' or 'external'
+  apiUrl: varchar("api_url", { length: 1024 }),
+  apiMethod: varchar("api_method", { length: 10 }).notNull().default('POST'),
+  apiHeaders: jsonb("api_headers").$type<Record<string, string>>().notNull().default({}),
+  apiEntriesPath: varchar("api_entries_path", { length: 255 }),
+  allowedOrigins: varchar("allowed_origins", { length: 1024 }), // Comma-separated list of domains
+  honeypotField: varchar("honeypot_field", { length: 255 }), // Field name for honeypot
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const formEntries = pgTable("form_entries", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").references(() => forms.id, { onDelete: 'cascade' }).notNull(),
+  data: jsonb("data").notNull().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+

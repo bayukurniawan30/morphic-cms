@@ -12,6 +12,11 @@ import {
   ShieldCheckIcon,
   HelpCircleIcon
 } from 'lucide-react';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { toast } from 'sonner';
 
 interface Collection {
@@ -131,9 +136,14 @@ export default function AbilityForm({ user, collections, ability, mode }: Props)
              <div className="p-4 bg-muted/30 border-b flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground ml-2 flex items-center gap-2">
                    Collection Permissions
-                   <span title="Define access levels for each collection.">
-                    <HelpCircleIcon className="w-4 h-4 text-muted-foreground" />
-                   </span>
+                   <Tooltip>
+                     <TooltipTrigger asChild>
+                       <HelpCircleIcon className="w-4 h-4 text-muted-foreground cursor-help" />
+                     </TooltipTrigger>
+                     <TooltipContent>
+                       Define access levels for each collection.
+                     </TooltipContent>
+                   </Tooltip>
                 </h3>
              </div>
              

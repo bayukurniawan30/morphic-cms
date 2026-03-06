@@ -127,6 +127,7 @@ export default function EntryForm({ collection }: EntryFormProps) {
     else if (field.type === 'date') inputType = 'date';
     else if (field.type === 'datetime') inputType = 'datetime-local';
     else if (field.type === 'time') inputType = 'time';
+    else if (field.type === 'email') inputType = 'email';
 
     return (
       <div key={field.id} className="space-y-2">
