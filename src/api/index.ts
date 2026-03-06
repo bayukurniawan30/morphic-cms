@@ -579,6 +579,12 @@ app.get('/collections/add', async (c) => {
   return c.get('inertia')('Collections/Add', { user: userData });
 });
 
+app.get('/api-docs', async (c) => {
+  const userData = c.get('user');
+  if (!userData) return c.redirect('/');
+  return c.get('inertia')('ApiDocs', { user: userData });
+});
+
 // Set up the API routes
 const api = new Hono<{ Variables: Variables }>();
 

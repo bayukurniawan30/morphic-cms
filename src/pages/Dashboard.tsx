@@ -219,7 +219,7 @@ export default function Dashboard({ user, stats, recentActivity, collectionBreak
                  Access your content programmatically via our REST endpoints.
                </p>
                <Button variant="secondary" className="w-full bg-zinc-100 hover:bg-white text-black font-bold h-11 rounded-xl" asChild>
-                  <Link href="/entries">
+                  <Link href="/api-docs">
                     Open API Docs
                     <ExternalLink className="w-4 h-4 ml-2" />
                   </Link>
