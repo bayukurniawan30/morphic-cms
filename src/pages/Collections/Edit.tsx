@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from 'sonner';
+import { FieldTypeSelector } from '@/components/FieldTypeSelector';
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema';
 
 interface Collection {
@@ -436,19 +437,10 @@ export default function EditCollection({ collection, user }: EditProps) {
 
                     <div className="md:col-span-3 space-y-2">
                       <Label>Field Type</Label>
-                      <Select 
+                      <FieldTypeSelector 
                         value={field.type} 
-                        onValueChange={(val: FieldType) => updateField(index, { type: val })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fieldTypes.map(t => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onSelect={(val: FieldType) => updateField(index, { type: val })} 
+                      />
                     </div>
 
                     <div className="md:col-span-3 flex items-center space-x-2 pb-3">
@@ -698,19 +690,11 @@ export default function EditCollection({ collection, user }: EditProps) {
                                 </div>
                                 <div className="col-span-3 space-y-1">
                                   <Label className="text-[10px]">Type</Label>
-                                  <Select 
+                                  <FieldTypeSelector 
                                     value={child.type} 
-                                    onValueChange={(val: FieldType) => updateChildField(index, childIndex, { type: val })}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs bg-background">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {fieldTypes.filter(t => t.value !== 'array').map(t => (
-                                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                    onSelect={(val: FieldType) => updateChildField(index, childIndex, { type: val })}
+                                    disabledTypes={['array']}
+                                  />
                                 </div>
                                 <div className="col-span-2 flex items-center space-x-2 pt-1 h-8">
                                   <Switch 

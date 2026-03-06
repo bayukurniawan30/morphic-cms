@@ -30,6 +30,7 @@ import {
   HelpCircleIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { FieldTypeSelector } from '@/components/FieldTypeSelector';
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema';
 import { useForm } from '@inertiajs/react';
 
@@ -177,17 +178,10 @@ export default function AddForm({ user }: AddProps) {
     }
   };
 
-  const restrictedFieldTypes: { value: FieldType; label: string }[] = [
-    { value: 'text', label: 'Text' },
-    { value: 'textarea', label: 'Textarea' },
-    { value: 'date', label: 'Date' },
-    { value: 'datetime', label: 'DateTime' },
-    { value: 'time', label: 'Time' },
-    { value: 'select', label: 'Select' },
-    { value: 'email', label: 'Email' },
-    { value: 'checkbox', label: 'Checkbox' },
-    { value: 'radio', label: 'Radio' },
+  const restrictedFieldTypes: FieldType[] = [
+    'text', 'textarea', 'date', 'datetime', 'time', 'select', 'email', 'checkbox', 'radio'
   ];
+
 
   const [headerKey, setHeaderKey] = useState('');
   const [headerValue, setHeaderValue] = useState('');
@@ -268,19 +262,11 @@ export default function AddForm({ user }: AddProps) {
 
                       <div className="md:col-span-3 space-y-2">
                         <Label>Field Type</Label>
-                        <Select 
+                        <FieldTypeSelector 
                           value={field.type} 
-                          onValueChange={(val: FieldType) => updateField(index, { type: val })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {restrictedFieldTypes.map(t => (
-                              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onSelect={(val: FieldType) => updateField(index, { type: val })}
+                          disabledTypes={['number', 'media', 'documents', 'rich-text', 'relation', 'slug', 'array', 'boolean']}
+                        />
                       </div>
 
                       <div className="md:col-span-2 flex items-center space-x-2 pb-3">

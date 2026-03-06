@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { SettingsIcon, SunIcon, MoonIcon, GithubIcon } from '@/components/icons';
+import { SettingsIcon, SunIcon, MoonIcon, GithubIcon, Logo } from '@/components/icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,9 +86,12 @@ export default function Layout({ user, children }: LayoutProps) {
         >
           {/* ... side content ... */}
           <div className="flex items-center justify-between h-16 px-6 border-b">
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold tracking-tight leading-none uppercase">Morphic</span>
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Headless CMS</span>
+            <div className="flex items-center gap-3">
+              <Logo className="h-10 w-10 text-[#514849] dark:text-white" />
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-tight leading-none uppercase text-[#514849] dark:text-white">Morphic</span>
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Headless CMS</span>
+              </div>
             </div>
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
               <X className="h-5 w-5" />
