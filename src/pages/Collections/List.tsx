@@ -206,7 +206,7 @@ export default function CollectionsList({ collections, user, filters, pagination
                     <tr key={collection.id} className="hover:bg-muted/50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center lg:space-x-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary hidden lg:block">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary hidden lg:flex">
                             <DatabaseIcon className="w-5 h-5" />
                           </div>
                           <span className="font-semibold text-foreground text-base">

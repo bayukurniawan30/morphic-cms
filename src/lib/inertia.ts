@@ -117,14 +117,44 @@ export const inertia = (viewFile: string = 'index.html') => {
         <body class="bg-background text-foreground">
             <div id="app" data-page='${JSON.stringify(inertiaProps).replace(/'/g, "&apos;")}'>
               <div id="inertia-loading" style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; background: #1a1a1a; color: #fff;">
-                <div style="width: 40px; height: 40px; border: 3px solid #333; border-top-color: #7c3aed; border-radius: 50%; animate: spin 1s linear infinite;"></div>
-                <script>
-                  const style = document.createElement('style');
-                  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-                  document.head.appendChild(style);
-                </script>
-                <p style="margin-top: 20px; font-weight: 500;">Morphic CMS</p>
-                <p style="font-size: 12px; color: #666;">Loading application assets...</p>
+                <style>
+                  @keyframes pulse-logo {
+                    0%, 100% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.1); opacity: 0.8; }
+                  }
+                  @keyframes color-cycle {
+                    0%, 100% { color: #9f9394; }
+                    50% { color: #514849; }
+                  }
+                  .logo-animate {
+                    animation: pulse-logo 2s ease-in-out infinite, color-cycle 3s ease-in-out infinite;
+                  }
+                </style>
+                <div class="logo-animate">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="64" 
+                    height="64" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="1.5" 
+                    stroke-linecap="round" 
+                    stroke-linejoin="round"
+                  >
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M21 8.007v7.986a2 2 0 0 1 -1.006 1.735l-7 4.007a2 2 0 0 1 -1.988 0l-7 -4.007a2 2 0 0 1 -1.006 -1.735v-7.986a2 2 0 0 1 1.006 -1.735l7 -4.007a2 2 0 0 1 1.988 0l7 4.007a2 2 0 0 1 1.006 1.735" />
+                    <path d="M3.29 6.97l4.21 2.03" />
+                    <path d="M20.71 6.97l-4.21 2.03" />
+                    <path d="M20.7 17h-17.4" />
+                    <path d="M11.76 2.03l-4.26 6.97l-4.3 7.84" />
+                    <path d="M12.24 2.03q 2.797 4.44 4.26 6.97t 4.3 7.84" />
+                    <path d="M12 17l-4.5 -8h9l-4.5 8" />
+                    <path d="M12 17v5" />
+                  </svg>
+                </div>
+                <p style="margin-top: 24px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 14px;">Morphic CMS</p>
+                <p style="font-size: 11px; color: #888; margin-top: 4px;">Preparing your workspace...</p>
               </div>
             </div>
             <script type="module" src="${jsPath}" onerror="console.error('Failed to load script: ${jsPath}'); document.getElementById('inertia-loading').innerHTML = '<p style=color:red>Failed to load application assets. Check console.</p>'"></script>

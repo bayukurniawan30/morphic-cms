@@ -18,11 +18,14 @@ createInertiaApp({
   setup({ el, App, props }) {
     console.log('🚀 Morphic CMS: Initializing Inertia App...');
     const root = createRoot(el);
-    root.render(
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <App {...props} />
-      </ThemeProvider>
-    );
-    console.log('✅ Morphic CMS: App Rendered');
+    // Temporary timeout to allow the user to see the loading screen
+    // setTimeout(() => {
+      root.render(
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <App {...props} />
+        </ThemeProvider>
+      );
+      console.log('✅ Morphic CMS: App Rendered');
+    // }, 10000);
   },
 });

@@ -104,7 +104,7 @@ export default function Edit({ userToEdit, user, abilities = [] }: { userToEdit:
   return (
     <Layout user={user}>
       <Head title="Edit User" />
-      <div className="w-full space-y-6 max-w-5xl mx-auto">
+      <div className="w-full space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Edit User</h1>
