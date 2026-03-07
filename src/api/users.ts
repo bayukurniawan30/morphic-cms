@@ -35,13 +35,27 @@ apiUsers.use('*', async (c, next) => {
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
     const decoded = await verify(token, secret, "HS256");
+    const currentUserId = Number(decoded.id);
+    const currentUserRole = decoded.role;
     
-    if (decoded.role !== 'super_admin') {
+    c.set('userId', currentUserId);
+
+    const path = c.req.path;
+    const method = c.req.method;
+
+    // Allow GET /api/users/:id and PUT /api/users/:id if it's the same user
+    const selfEditMatch = path.match(/^\/api\/users\/(\d+)$/);
+    if (selfEditMatch && (method === 'GET' || method === 'PUT')) {
+      const targetUserId = parseInt(selfEditMatch[1], 10);
+      if (currentUserRole === 'super_admin' || targetUserId === currentUserId) {
+        return await next();
+      }
+    }
+
+    if (currentUserRole !== 'super_admin') {
       return c.json({ error: 'Forbidden' }, 403);
     }
     
-    // Pass user ID to context if needed
-    c.set('userId', Number(decoded.id));
     await next();
   } catch (err) {
     return c.json({ error: 'Invalid token' }, 401);
@@ -122,8 +136,19 @@ apiUsers.put('/:id', async (c) => {
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email;
     if (username !== undefined) updateData.username = username;
-    if (role !== undefined) updateData.role = role;
-    if (body.abilityId !== undefined) updateData.abilityId = body.abilityId;
+    
+    // Security: Only super_admin can change roles or abilities
+    const currentUserToken = getCookie(c, 'morphic_token'); // We already verified this in middleware
+    const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
+    const decoded: any = await verify(currentUserToken!, secret, "HS256");
+
+    if (decoded.role === 'super_admin') {
+      if (role !== undefined) updateData.role = role;
+      if (body.abilityId !== undefined) updateData.abilityId = body.abilityId;
+    } else {
+      // Editors editing themselves cannot change these
+      // We don't set them in updateData so they stay as they are
+    }
     
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);

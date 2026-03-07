@@ -45,6 +45,7 @@ interface Collection {
 interface Entry {
   id: number;
   content: Record<string, any>;
+  updatedBy?: { id: number; name: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -104,10 +105,11 @@ export default function EntriesList({ collection, entries, user, pagination }: L
   React.useEffect(() => {
     if (!isDialogOpen) return;
 
+    const collectionType = (collection as any).type;
     const fetchPreview = async () => {
       setIsPreviewLoading(true);
       try {
-        const url = (collection as any).type === 'global' 
+        const url = collectionType === 'global' 
           ? `/api/collections/${collection.slug}/entries`
           : `/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`;
         const res = await fetch(url);
@@ -122,7 +124,7 @@ export default function EntriesList({ collection, entries, user, pagination }: L
 
     const timer = setTimeout(fetchPreview, 300); // Debounce
     return () => clearTimeout(timer);
-  }, [previewPage, previewLimit, collection.slug, isDialogOpen, (collection as any).type]);
+  }, [previewPage, previewLimit, collection.slug, isDialogOpen, collection]);
 
   React.useEffect(() => {
     const fetchRelations = async () => {
@@ -355,13 +357,14 @@ export default function EntriesList({ collection, entries, user, pagination }: L
                     </th>
                   ))}
                   <th className="px-6 py-4 font-medium uppercase tracking-wider">Created</th>
+                  <th className="px-6 py-4 font-medium uppercase tracking-wider">Last Updated By</th>
                   <th className="px-6 py-4 font-medium uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={visibleFields.length + 3} className="px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={visibleFields.length + 4} className="px-6 py-12 text-center text-muted-foreground">
                       <div className="max-w-xs mx-auto">
                         <DatabaseIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
                         <p className="text-lg font-medium">No entries yet</p>
@@ -388,6 +391,15 @@ export default function EntriesList({ collection, entries, user, pagination }: L
                           <CalendarIcon className="w-3 h-3 mr-1.5 opacity-40" />
                           {format(new Date(entry.createdAt), 'MMM d, yyyy')}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {entry.updatedBy ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-medium">{entry.updatedBy.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">System</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                         <Button variant="outline" size="sm" asChild>

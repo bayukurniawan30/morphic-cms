@@ -36,6 +36,8 @@ interface Collection {
   slug: string;
   fields: any[];
   type: 'collection' | 'global';
+  createdBy?: { id: number; name: string };
+  createdById?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -175,18 +177,19 @@ export default function CollectionsList({ collections, user, filters, pagination
                     </div>
                   </th>
                     <th className="px-6 py-4 font-medium uppercase tracking-wider">Slug</th>
-                  <th className="px-6 py-4 font-medium uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-4 font-medium uppercase tracking-wider">Fields</th>
-                  <th 
-                    className="px-6 py-4 font-medium uppercase tracking-wider cursor-pointer hover:bg-muted/60 transition-colors"
-                    onClick={() => toggleSort('createdAt')}
-                  >
-                    <div className="flex items-center">
-                      Created Date
-                      {renderSortIcon('createdAt')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 font-medium uppercase tracking-wider text-right">Actions</th>
+                    <th className="px-6 py-4 font-medium uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-4 font-medium uppercase tracking-wider text-center">Fields</th>
+                    <th className="px-6 py-4 font-medium uppercase tracking-wider">By</th>
+                    <th 
+                      className="px-6 py-4 font-medium uppercase tracking-wider cursor-pointer hover:bg-muted/60 transition-colors"
+                      onClick={() => toggleSort('createdAt')}
+                    >
+                      <div className="flex items-center">
+                        Created
+                        {renderSortIcon('createdAt')}
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 font-medium uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -234,9 +237,18 @@ export default function CollectionsList({ collections, user, filters, pagination
                           </Tooltip>
                         </TooltipProvider>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {collection.createdBy?.name ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-medium">{collection.createdBy.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">System</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
                         <div className="flex items-center space-x-2">
-                          <CalendarIcon className="w-3.5 h-3.5" />
+                          <CalendarIcon className="w-3.5 h-3.5 opacity-50" />
                           <span>{new Date(collection.createdAt).toLocaleDateString()}</span>
                         </div>
                       </td>

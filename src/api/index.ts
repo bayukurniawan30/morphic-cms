@@ -6,7 +6,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import bcrypt from 'bcryptjs';
 
 import { db } from '../db/index.js';
-import { collections, entries, users, abilities, media, documents, forms, formEntries } from '../db/schema.js';
+import { collections, entries, entryVersions, users, abilities, media, documents, forms, formEntries } from '../db/schema.js';
 import { eq, isNull, asc, desc, and, sql } from 'drizzle-orm';
 import { buildZodSchema } from '../lib/dynamic-schema.js';
 import type { FieldDefinition } from '../lib/dynamic-schema.js';
@@ -101,7 +101,8 @@ app.use('*', async (c, next) => {
         userData = { 
           id: dbUser.id,
           name: dbUser.name || dbUser.username, 
-          email: dbUser.email 
+          email: dbUser.email,
+          role: dbUser.role
         };
       }
     } catch (e) {
@@ -116,7 +117,8 @@ app.use('*', async (c, next) => {
         userData = { 
           id: dbUser.id,
           name: dbUser.name || dbUser.username, 
-          email: dbUser.email 
+          email: dbUser.email,
+          role: dbUser.role
         };
       }
     } catch (e) {
@@ -124,8 +126,6 @@ app.use('*', async (c, next) => {
     }
   }
 
-  // Fallback to null or keep the super admin mock if strictly needed
-  // If we only render pages for authenticated users, we enforce it on the specific routes
   c.set('user', userData);
   
   await next();
@@ -204,12 +204,14 @@ app.get('/dashboard', async (c) => {
 app.get('/email-settings', async (c) => {
   const userData = c.get('user');
   if (!userData) return c.redirect('/');
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard');
   return c.get('inertia')('EmailSettings', { user: userData  });
 });
 
 app.get('/api-key-abilities', async (c) => {
   const userData = c.get('user');
   if (!userData) return c.redirect('/');
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard');
   
   const allCollections = await db.select().from(collections).orderBy(asc(collections.name));
   const allAbilities = await db.select().from(abilities).orderBy(desc(abilities.createdAt));
@@ -299,6 +301,7 @@ app.get('/settings', async (c) => {
 app.get('/users', async (c) => {
   const userData = c.get('user');
   if (!userData) return c.redirect('/');
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard');
   
   const sort = c.req.query('sort') || 'createdAt';
   const dir = c.req.query('dir') || 'desc';
@@ -354,6 +357,7 @@ app.get('/users', async (c) => {
 app.get('/users/add', async (c) => {
   const userData = c.get('user');
   if (!userData) return c.redirect('/');
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard');
   const allAbilities = await db.select().from(abilities).orderBy(asc(abilities.name));
   return c.get('inertia')('Users/Add', { user: userData, abilities: allAbilities });
 });
@@ -362,6 +366,12 @@ app.get('/users/edit/:id', async (c) => {
   const userData = c.get('user');
   if (!userData) return c.redirect('/');
   const id = parseInt(c.req.param('id'), 10);
+
+  // Allow if super_admin OR if the user is editing themselves
+  if (userData.role !== 'super_admin' && userData.id !== id) {
+    return c.redirect('/dashboard');
+  }
+  
   const userResult = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (userResult.length === 0) return c.redirect('/users');
   
@@ -431,8 +441,15 @@ app.get('/collections', async (c) => {
   const totalCount = Number(countResult[0].count);
   const totalPages = Math.ceil(totalCount / limit);
 
-  const collectionsQuery = db.select()
+  const collectionsQuery = db.select({
+      collection: collections,
+      createdBy: {
+        id: users.id,
+        name: users.name
+      }
+    })
     .from(collections)
+    .leftJoin(users, eq(collections.createdById, users.id))
     .orderBy(orderClause)
     .limit(limit)
     .offset(offset);
@@ -442,7 +459,7 @@ app.get('/collections', async (c) => {
   const allCollections = await collectionsQuery;
 
   return c.get('inertia')('Collections/List', { 
-    collections: allCollections, 
+    collections: allCollections.map(r => ({ ...r.collection, createdBy: r.createdBy?.id ? r.createdBy : null })), 
     user: userData,
     filters: { sort, dir, type: typeFilter, page, limit },
     pagination: {
@@ -460,14 +477,20 @@ app.get('/entries', async (c) => {
   
   const typeFilter = c.req.query('type') || 'all';
   
-  const query = db.select().from(collections);
+  const query = db.select({
+      collection: collections,
+      createdBy: { id: users.id, name: users.name }
+    })
+    .from(collections)
+    .leftJoin(users, eq(collections.createdById, users.id));
+
   if (typeFilter !== 'all') {
     query.where(eq(collections.type, typeFilter as any));
   }
   
   const allCollections = await query.orderBy(asc(collections.name));
   return c.get('inertia')('Entries/Index', { 
-    collections: allCollections, 
+    collections: allCollections.map(r => ({ ...r.collection, createdBy: r.createdBy?.id ? r.createdBy : null })), 
     user: userData,
     filters: { type: typeFilter }
   });
@@ -494,8 +517,15 @@ app.get('/entries/:collectionId', async (c) => {
   const totalCount = Number(countResult[0].count);
   const totalPages = Math.ceil(totalCount / limit);
 
-  const entriesList = await db.select()
+  const entriesList = await db.select({
+      entry: entries,
+      updatedBy: {
+        id: users.id,
+        name: users.name
+      }
+    })
     .from(entries)
+    .leftJoin(users, eq(entries.updatedById, users.id))
     .where(eq(entries.collectionId, collectionId))
     .orderBy(desc(entries.createdAt))
     .limit(limit)
@@ -503,7 +533,7 @@ app.get('/entries/:collectionId', async (c) => {
 
   return c.get('inertia')('Entries/List', { 
     collection,
-    entries: entriesList, 
+    entries: entriesList.map(r => ({ ...r.entry, updatedBy: r.updatedBy })), 
     user: userData,
     pagination: {
       currentPage: page,
@@ -562,13 +592,25 @@ app.get('/entries/:collectionId/edit/:entryId', async (c) => {
   const collection = collectionResult[0];
   if (!collection) return c.redirect('/entries');
 
-  const entryResult = await db.select().from(entries).where(eq(entries.id, entryId)).limit(1);
+  const entryResult = await db.select({
+      entry: entries,
+      updatedBy: {
+        id: users.id,
+        name: users.name
+      }
+    })
+    .from(entries)
+    .leftJoin(users, eq(entries.updatedById, users.id))
+    .where(eq(entries.id, entryId))
+    .limit(1);
+
   const entry = entryResult[0];
   if (!entry) return c.redirect(`/entries/${collectionId}`);
 
   return c.get('inertia')('Entries/Form', { 
     collection,
-    entry,
+    entry: entry.entry,
+    updatedBy: entry.updatedBy,
     user: userData,
     mode: 'edit'
   });
@@ -658,6 +700,11 @@ const checkPermission = (c: any, collectionSlug: string, action: 'create' | 'rea
 };
 
 api.post('/test-email', async (c) => {
+  const userData = c.get('user');
+  if (userData?.role !== 'super_admin') {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+  
   try {
     const { to } = await c.req.json();
     if (!to) return c.json({ error: 'Recipient email is required' }, 400);
@@ -908,8 +955,21 @@ api.route('/documents', apiDocuments);
 // API Collections
 api.get('/collections', async (c) => {
   try {
-    const all = await db.select().from(collections).orderBy(desc(collections.createdAt));
-    return c.json({ collections: all });
+    const all = await db.select({
+      collection: collections,
+      createdBy: {
+        id: users.id,
+        name: users.name
+      }
+    })
+    .from(collections)
+    .leftJoin(users, eq(collections.createdById, users.id))
+    .orderBy(desc(collections.createdAt));
+
+    return c.json({ collections: all.map(r => ({ 
+      ...r.collection, 
+      createdBy: (r.createdBy && 'id' in r.createdBy && r.createdBy.id) ? r.createdBy : null 
+    })) });
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500);
   }
@@ -950,8 +1010,11 @@ api.post('/collections', async (c) => {
       name,
       slug,
       type: body.type || 'collection',
-      fields: fields || []
+      fields: fields || [],
+      createdById: c.get('user')?.id || null
     }).returning();
+
+    console.log(`✅ Collection created: ${name} (slug: ${slug}) by user ID: ${c.get('user')?.id || 'SYSTEM'}`);
 
     // Auto-expand "Read Access" ability for new collections
     try {
@@ -1048,15 +1111,20 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const isGlobal = col[0]?.type === 'global';
 
     if (isGlobal) {
-      const result = await db.select()
-        .from(entries)
-        .where(eq(entries.collectionId, id))
-        .orderBy(desc(entries.createdAt))
-        .limit(1);
+      const result = await db.select({
+        entry: entries,
+        updatedBy: { id: users.id, name: users.name }
+      })
+      .from(entries)
+      .leftJoin(users, eq(entries.updatedById, users.id))
+      .where(eq(entries.collectionId, id))
+      .orderBy(desc(entries.createdAt))
+      .limit(1);
       
+      const r = result[0];
       return c.json({ 
         type: 'global',
-        entry: result[0] || null 
+        entry: r ? { ...r.entry, updatedBy: r.updatedBy?.id ? r.updatedBy : null } : null 
       });
     }
 
@@ -1068,8 +1136,12 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const totalCount = Number(countResult[0].count);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const result = await db.select()
+    const result = await db.select({
+        entry: entries,
+        updatedBy: { id: users.id, name: users.name }
+      })
       .from(entries)
+      .leftJoin(users, eq(entries.updatedById, users.id))
       .where(eq(entries.collectionId, id))
       .orderBy(desc(entries.createdAt))
       .limit(limit)
@@ -1077,8 +1149,13 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
     return c.json({ 
       type: 'collection',
-      entries: result,
-      pagination: { currentPage: page, totalPages, totalCount, limit }
+      entries: result.map(r => ({ ...r.entry, updatedBy: r.updatedBy?.id ? r.updatedBy : null })),
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        limit
+      }
     });
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500);
@@ -1109,6 +1186,7 @@ api.post('/collections/:id/entries', async (c) => {
     const insertResult = await db.insert(entries).values({
       collectionId: collectionId,
       content: parseResult.data,
+      updatedById: c.get('user')?.id || null
     }).returning();
 
     return c.json({ success: true, entry: insertResult[0] }, 201);
@@ -1120,9 +1198,24 @@ api.post('/collections/:id/entries', async (c) => {
 api.get('/entries/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10);
-    const result = await db.select().from(entries).where(eq(entries.id, id)).limit(1);
+    const result = await db.select({
+      entry: entries,
+      updatedBy: {
+        id: users.id,
+        name: users.name
+      }
+    })
+    .from(entries)
+    .leftJoin(users, eq(entries.updatedById, users.id))
+    .where(eq(entries.id, id))
+    .limit(1);
+
     if (result.length === 0) return c.json({ error: 'Entry not found' }, 404);
-    return c.json({ entry: result[0] });
+    const r = result[0];
+    return c.json({ 
+      entry: r.entry, 
+      updatedBy: (r.updatedBy && 'id' in r.updatedBy && r.updatedBy.id) ? r.updatedBy : null 
+    });
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500);
   }
@@ -1150,8 +1243,41 @@ api.put('/entries/:id', async (c) => {
       return c.json({ error: 'Validation failed', details: parseResult.error.format() }, 400);
     }
 
+    // 1. Save current state to versions BEFORE updating
+    const lastVersionResult = await db.select({ max: sql`max(${entryVersions.versionNumber})` })
+      .from(entryVersions)
+      .where(eq(entryVersions.entryId, id));
+    
+    const nextVersion = (Number(lastVersionResult[0]?.max) || 0) + 1;
+
+    await db.insert(entryVersions).values({
+      entryId: id,
+      content: entry.content,
+      versionNumber: nextVersion,
+      createdById: entry.updatedById,
+      createdAt: entry.updatedAt
+    });
+
+    // 2. Clear old versions (keep only latest 5)
+    // We just added one, so after this update there will be 'nextVersion' versions.
+    // We want to keep the latest 5.
+    const allVersions = await db.select({ id: entryVersions.id })
+      .from(entryVersions)
+      .where(eq(entryVersions.entryId, id))
+      .orderBy(desc(entryVersions.versionNumber));
+    
+    if (allVersions.length > 5) {
+      const idsToDelete = allVersions.slice(5).map(v => v.id);
+      await db.delete(entryVersions).where(sql`${entryVersions.id} in ${idsToDelete}`);
+    }
+
+    // 3. Update the entry
     const updated = await db.update(entries)
-      .set({ content: parseResult.data, updatedAt: new Date() })
+      .set({ 
+        content: parseResult.data, 
+        updatedById: c.get('user')?.id || null,
+        updatedAt: new Date() 
+      })
       .where(eq(entries.id, id))
       .returning();
 
@@ -1186,6 +1312,95 @@ api.delete('/entries/:id', async (c) => {
     if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404);
     return c.json({ success: true });
   } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.get('/entries/:id/versions', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'), 10);
+    const result = await db.select({
+      id: entryVersions.id,
+      versionNumber: entryVersions.versionNumber,
+      content: entryVersions.content,
+      createdAt: entryVersions.createdAt,
+      createdBy: {
+        id: users.id,
+        name: users.name
+      }
+    })
+    .from(entryVersions)
+    .leftJoin(users, eq(entryVersions.createdById, users.id))
+    .where(eq(entryVersions.entryId, id))
+    .orderBy(desc(entryVersions.versionNumber));
+
+    return c.json({ versions: result });
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+api.post('/entries/:id/versions/:versionId/revert', async (c) => {
+  try {
+    const entryId = parseInt(c.req.param('id'), 10);
+    const versionId = parseInt(c.req.param('versionId'), 10);
+
+    const versionResult = await db.select().from(entryVersions).where(eq(entryVersions.id, versionId)).limit(1);
+    if (versionResult.length === 0) return c.json({ error: 'Version not found' }, 404);
+    const version = versionResult[0];
+
+    // Check entry exists and permissions
+    const existingEntry = await db.select().from(entries).where(eq(entries.id, entryId)).limit(1);
+    if (existingEntry.length === 0) return c.json({ error: 'Entry not found' }, 404);
+    const entry = existingEntry[0];
+
+    const collectionResult = await db.select().from(collections).where(eq(collections.id, entry.collectionId)).limit(1);
+    const collection = collectionResult[0];
+    if (!checkPermission(c, collection.slug, 'update')) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    // Save CURRENT state as a new version before reverting? 
+    // Usually revert is like a normal save. 
+    // Let's just update the entry with version content.
+    const lastVersionResult = await db.select({ max: sql`max(${entryVersions.versionNumber})` })
+      .from(entryVersions)
+      .where(eq(entryVersions.entryId, entryId));
+    
+    const nextVersion = (Number(lastVersionResult[0]?.max) || 0) + 1;
+
+    // Save current content as version before overwriting
+    await db.insert(entryVersions).values({
+      entryId: entryId,
+      content: entry.content,
+      versionNumber: nextVersion,
+      createdById: entry.updatedById,
+      createdAt: entry.updatedAt
+    });
+
+    const updated = await db.update(entries)
+      .set({ 
+        content: version.content, 
+        updatedById: c.get('user')?.id || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(entries.id, entryId))
+      .returning();
+
+    // Clean up versions (keep 5)
+    const allVersions = await db.select({ id: entryVersions.id })
+      .from(entryVersions)
+      .where(eq(entryVersions.entryId, entryId))
+      .orderBy(desc(entryVersions.versionNumber));
+    
+    if (allVersions.length > 5) {
+      const idsToDelete = allVersions.slice(5).map(v => v.id);
+      await db.delete(entryVersions).where(sql`${entryVersions.id} in ${idsToDelete}`);
+    }
+
+    return c.json({ success: true, entry: updated[0] });
+  } catch (err) {
+    console.error('Revert error:', err);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });

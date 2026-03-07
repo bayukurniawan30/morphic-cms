@@ -15,10 +15,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Layout from '@/components/Layout';
 import RichTextEditor from '@/components/RichTextEditor';
-import { ArrowLeftIcon, SaveIcon, Loader2Icon, FileText, X, ImagePlus } from 'lucide-react';
+import { ArrowLeft, Save, Loader2Icon, FileText, XIcon, ImagePlus, History, RotateCcw, User, Clock } from 'lucide-react';
 import MediaPicker from '@/components/MediaPicker';
 import { toast } from 'sonner';
 import { FieldDefinition } from '@/lib/dynamic-schema';
+import { cn } from '@/lib/utils';
+import { useCallback } from 'react';
 
 interface Collection {
   id: number;
@@ -36,6 +38,7 @@ interface Entry {
 interface FormProps {
   collection: Collection;
   entry?: Entry;
+  updatedBy?: { id: number; name: string };
   user?: any;
   mode: 'create' | 'edit';
 }
@@ -209,7 +212,7 @@ const FieldInput = ({
                     }}
                     className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                   >
-                    <X className="w-3 h-3" />
+                    <XIcon className="w-3 h-3" />
                   </button>
                 </div>
               ))}
@@ -309,7 +312,7 @@ const FieldInput = ({
                       handleValueChange(next);
                     }}
                   >
-                    <X className="w-4 h-4" />
+                    <XIcon className="w-4 h-4" />
                   </Button>
                 </div>
                 
@@ -362,12 +365,60 @@ const FieldInput = ({
   }
 };
 
-export default function EntriesForm({ collection, entry, user, mode }: FormProps) {
+export default function EntriesForm({ collection, entry, updatedBy, user, mode }: FormProps) {
   const [formData, setFormData] = useState<Record<string, any>>(entry?.content || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, any>>({});
   const [availableDocuments, setAvailableDocuments] = useState<any[]>([]);
   const [activeMediaPickerField, setActiveMediaPickerField] = useState<string | null>(null);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isPreviewingVersion, setPreviewingVersion] = useState<any | null>(null);
+
+  const fetchVersions = useCallback(async () => {
+    if (mode === 'edit' && entry?.id) {
+      try {
+        const res = await fetch(`/api/entries/${entry.id}/versions`);
+        if (res.ok) {
+          const data = await res.json();
+          setVersions(data.versions || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch versions', err);
+      }
+    }
+  }, [mode, entry?.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (mode === 'edit' && entry?.id && isMounted) {
+      fetchVersions();
+    }
+    return () => { isMounted = false; };
+  }, [mode, entry?.id, fetchVersions]);
+
+  const handleRevert = async (version: any) => {
+    if (!confirm(`Are you sure you want to revert to version #${version.versionNumber}? Current unsaved changes will be lost.`)) return;
+    
+    try {
+      const res = await fetch(`/api/entries/${entry?.id}/versions/${version.id}/revert`, {
+        method: 'POST'
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        setFormData(result.entry.content);
+        setPreviewingVersion(null);
+        setSidebarOpen(false);
+        toast.success('Successfully reverted to version #' + version.versionNumber);
+        fetchVersions();
+      } else {
+        toast.error('Failed to revert');
+      }
+    } catch (err) {
+      toast.error('Network error during revert');
+    }
+  };
 
   const slugify = (text: string) => {
     return text
@@ -386,11 +437,6 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
       // Auto-fill slug fields
       collection.fields.forEach(field => {
         if (field.type === 'slug' && field.slugSourceField === name) {
-          // Only auto-fill if the slug is empty or was previously auto-generated from the old value
-          // For simplicity, let's auto-fill if the source field is being changed
-          // but allow manual override later. 
-          // If we want to be smart: only auto-fill if the slug field is currently empty or matches the slugified old value.
-          // But usually, users expect reactive slugs.
           next[field.name] = slugify(value || '');
         }
       });
@@ -427,7 +473,6 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
 
       if (!res.ok) {
         if (result.error === 'Validation failed' && result.details) {
-          // Zod nested errors handling
           const fieldErrors: Record<string, string> = {};
           Object.keys(result.details).forEach(key => {
             if (key !== '_errors') {
@@ -444,7 +489,6 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
       }
 
       toast.success(mode === 'create' ? 'Entry created successfully' : 'Entry updated successfully');
-      
       window.location.href = `/entries/${collection.id}`;
     } catch (err) {
       toast.error('Network error');
@@ -460,7 +504,7 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
       
       for (const field of relationFields) {
         const id = field.relationCollectionId!;
-        if (relationData[id]) continue;
+        if (relationData[id]) continue; 
 
         try {
           const res = await fetch(`/api/collections/${id}/entries`);
@@ -475,7 +519,8 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
     };
 
     fetchRelations();
-  }, [collection.fields, relationData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collection.fields]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -520,24 +565,78 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
       <Head title={`${mode === 'create' ? 'Add' : 'Edit'} ${collection.name} Entry | Morphic`} />
       
       <div className="space-y-6 pb-12">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" asChild className="rounded-full">
-            <Link href={`/entries/${collection.id}`}>
-              <ArrowLeftIcon className="w-5 h-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {mode === 'create' ? 'Add Entry' : 'Edit Entry'}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Collection: <span className="font-semibold text-foreground">{collection.name}</span>
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="icon" asChild className="rounded-full">
+              <Link href={`/entries/${collection.id}`}>
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {mode === 'create' ? 'Add Entry' : 'Edit Entry'}
+              </h1>
+              <div className="flex items-center space-x-4 mt-1">
+                <p className="text-muted-foreground text-sm">
+                  Collection: <span className="font-semibold text-foreground">{collection.name}</span>
+                </p>
+                {mode === 'edit' && updatedBy && (
+                  <>
+                    <span className="text-muted-foreground/30">•</span>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <User className="w-3 h-3 mr-1" />
+                      Last updated by <span className="font-semibold text-foreground ml-1">{updatedBy.name}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
+
+          {mode === 'edit' && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setSidebarOpen(true)}
+              className="relative"
+            >
+              <History className="w-4 h-4 mr-2" />
+              History
+              {versions.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold border-2 border-background">
+                  {versions.length}
+                </span>
+              )}
+            </Button>
+          )}
         </div>
 
+        {isPreviewingVersion && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-4 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+             <div className="flex items-center text-amber-800 dark:text-amber-400">
+                <RotateCcw className="w-5 h-5 mr-3" />
+                <div>
+                   <p className="font-semibold">Previewing Version #{isPreviewingVersion.versionNumber}</p>
+                   <p className="text-sm opacity-80">This is a read-only preview. Click "Revert" to restore these values.</p>
+                </div>
+             </div>
+             <div className="flex space-x-2">
+                <Button size="sm" variant="ghost" className="text-amber-800 dark:text-amber-400" onClick={() => {
+                  setFormData(entry?.content || {});
+                  setPreviewingVersion(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => handleRevert(isPreviewingVersion)}>
+                  Revert to this Version
+                </Button>
+             </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-card p-8 rounded-xl border shadow-sm space-y-8">
+          <div className={`bg-card p-8 rounded-xl border shadow-sm space-y-8 ${isPreviewingVersion ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}>
             {collection.fields.map((field) => (
               <div key={field.id} className="space-y-2">
                 <div className="flex items-center justify-between border-b border-border/30 pb-1">
@@ -569,21 +668,94 @@ export default function EntriesForm({ collection, entry, user, mode }: FormProps
              <Button type="button" variant="outline" asChild>
                <Link href={`/entries/${collection.id}`}>Cancel</Link>
              </Button>
-             <Button type="submit" disabled={isSubmitting}>
-               {isSubmitting ? (
-                 <>
-                   <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                   Saving...
-                 </>
-               ) : (
-                 <>
-                   {mode === 'create' ? 'Save Entry' : 'Update Entry'}
-                 </>
-               )}
-             </Button>
+             {!isPreviewingVersion && (
+               <Button type="submit" disabled={isSubmitting}>
+                 {isSubmitting ? (
+                   <>
+                     <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                     Saving...
+                   </>
+                 ) : (
+                   <>
+                     {mode === 'create' ? 'Save Entry' : 'Update Entry'}
+                   </>
+                 )}
+               </Button>
+             )}
           </div>
         </form>
       </div>
+
+      {/* History Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-full max-w-md bg-card border-l h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-6 border-b flex items-center justify-between bg-muted/20">
+              <div className="flex items-center space-x-2">
+                <History className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-bold">Version History</h2>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+                <XIcon className="w-5 h-5" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <p className="text-xs text-muted-foreground mb-4">
+                We store up to the last 5 versions of this entry. Click on a version to preview it.
+              </p>
+              
+              {versions.length > 0 ? (
+                versions.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      setPreviewingVersion(v);
+                      setFormData(v.content);
+                      setSidebarOpen(false);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={cn(
+                      "w-full text-left p-4 rounded-xl border transition-all group hover:border-primary/50 hover:shadow-md",
+                      isPreviewingVersion?.id === v.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'bg-background'
+                    )}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                       <span className="text-xs font-bold uppercase tracking-widest text-primary">Version #{v.versionNumber}</span>
+                       <Clock className="w-3 h-3 text-muted-foreground opacity-50" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm font-medium">
+                        <User className="w-3 h-3 mr-1.5 opacity-60" />
+                        {v.createdBy?.name || 'Unknown User'}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Saved on {new Date(v.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="mt-3 flex items-center text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                       <RotateCcw className="w-3 h-3 mr-1" />
+                       PREVIEW TO REVERT
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="h-64 flex flex-col items-center justify-center text-muted-foreground italic border-2 border-dashed rounded-xl">
+                  <History className="w-8 h-8 mb-2 opacity-20" />
+                  <p>No previous versions found.</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 border-t bg-muted/10">
+              <Button variant="outline" className="w-full" onClick={() => setSidebarOpen(false)}>
+                Close History
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <MediaPicker 
         open={!!activeMediaPickerField}

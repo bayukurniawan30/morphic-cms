@@ -6,6 +6,7 @@ export const collections = pgTable("collections", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   type: varchar("type", { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
   fields: jsonb("fields").$type<any[]>().notNull().default([]),
+  createdById: integer("created_by_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -14,8 +15,18 @@ export const entries = pgTable("entries", {
   id: serial("id").primaryKey(),
   collectionId: integer("collection_id").references(() => collections.id, { onDelete: 'cascade' }).notNull(),
   content: jsonb("content").notNull().default({}),
+  updatedById: integer("updated_by_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const entryVersions = pgTable("entry_versions", {
+  id: serial("id").primaryKey(),
+  entryId: integer("entry_id").references(() => entries.id, { onDelete: 'cascade' }).notNull(),
+  content: jsonb("content").notNull().default({}),
+  versionNumber: integer("version_number").notNull(),
+  createdById: integer("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const roleEnum = pgEnum('role', ['super_admin', 'editor']);

@@ -26,6 +26,7 @@ interface UserProps {
   id?: number;
   name?: string;
   email?: string;
+  role?: 'super_admin' | 'editor';
 }
 
 interface LayoutProps {
@@ -183,17 +184,21 @@ export default function Layout({ user, children }: LayoutProps) {
               </div>
             )}
             
-            <div className="pt-2 pb-2">
-              <h3 className={cn("px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 transition-all", !isSidebarOpen && "lg:hidden")}>
-                Settings
-              </h3>
-              <div className="space-y-1">
-                <NavItem href="/email-settings" icon={Mail} label="Email" isSidebarOpen={isSidebarOpen} currentUrl={url} />
-                <NavItem href="/api-key-abilities" icon={ShieldCheck} label="API Key Abilities" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+            {user.role === 'super_admin' && (
+              <div className="pt-2 pb-2">
+                <h3 className={cn("px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 transition-all", !isSidebarOpen && "lg:hidden")}>
+                  Settings
+                </h3>
+                <div className="space-y-1">
+                  <NavItem href="/email-settings" icon={Mail} label="Email" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+                  <NavItem href="/api-key-abilities" icon={ShieldCheck} label="API Key Abilities" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+                </div>
               </div>
-            </div>
+            )}
 
-            <NavItem href="/users" icon={Users} label="Users" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+            {user.role === 'super_admin' && (
+              <NavItem href="/users" icon={Users} label="Users" isSidebarOpen={isSidebarOpen} currentUrl={url} />
+            )}
           </nav>
 
           <div className={cn("p-2 border-t space-y-2 bg-muted/20 transition-all", !isSidebarOpen && "lg:p-1")}>
