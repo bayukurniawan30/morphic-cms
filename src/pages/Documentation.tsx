@@ -118,6 +118,15 @@ export default function Documentation({ user }: { user: any }) {
     }
   }, [])
 
+  const scrollToSection = (e: React.MouseEvent, id: string) => {
+    e.preventDefault()
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
+      setIsMobileMenuOpen(false)
+    }
+  }
+
   const menuItems = [
     { id: 'intro', label: 'Introduction', icon: Book },
     { id: 'getting-started', label: 'Quick Start', icon: Zap },
@@ -507,7 +516,7 @@ export default function Documentation({ user }: { user: any }) {
                     <a
                       key={item.id}
                       href={`#${item.id}`}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => scrollToSection(e, item.id)}
                       className={cn(
                         'flex items-center space-x-3 px-4 py-2.5 transition-all',
                         activeHash === `#${item.id}`
@@ -584,7 +593,7 @@ export default function Documentation({ user }: { user: any }) {
                     <a
                       key={item.id}
                       href={`#${item.id}`}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => scrollToSection(e, item.id)}
                       className={cn(
                         'flex items-center space-x-3 px-4 py-2.5 transition-all',
                         activeHash === `#${item.id}`
