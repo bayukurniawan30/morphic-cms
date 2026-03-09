@@ -207,8 +207,16 @@ export default function Documentation({ user }: { user: any }) {
               <Database className='w-4 h-4 mr-2' /> Database First
             </h4>
             <p className='text-sm'>
-              Built on top of Drizzle ORM and Postgres for maximum performance
-              and reliability.
+              Built on top of Drizzle ORM and Postgres. We recommend using{' '}
+              <a
+                href='https://neon.tech'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-primary underline hover:opacity-80'
+              >
+                Neon.tech
+              </a>{' '}
+              for a free, high-performance serverless Postgres database.
             </p>
           </div>
           <div className='p-4 rounded-xl border bg-muted/30'>
@@ -246,6 +254,28 @@ export default function Documentation({ user }: { user: any }) {
             Rename <code>.env.example</code> to <code>.env</code> and add your{' '}
             <code>DATABASE_URL</code>.
           </p>
+          <div className='bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start space-x-3 mt-2'>
+            <Database className='w-5 h-5 text-primary mt-0.5' />
+            <div className='text-sm space-y-2'>
+              <p className='font-bold'>Recommended: Neon Database</p>
+              <p className='text-muted-foreground'>
+                You can use{' '}
+                <a
+                  href='https://neon.tech'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='underline'
+                >
+                  Neon.tech
+                </a>{' '}
+                for a free Postgres database. Copy your connection string and
+                paste it into <code>DATABASE_URL</code>:
+              </p>
+              <CodeBlock
+                code={`DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"`}
+              />
+            </div>
+          </div>
 
           <div className='flex items-center space-x-2 text-sm pt-4'>
             <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
