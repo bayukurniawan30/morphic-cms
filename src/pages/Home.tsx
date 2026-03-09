@@ -45,14 +45,13 @@ export default function Home() {
             <Link href='/docs' className='hover:text-white transition-colors'>
               Documentation
             </Link>
-            <Button
-              asChild
+            <Link
+              href='https://github.com/bayukurniawan30/morphic-cms'
               className='rounded-full px-6 shadow-xl shadow-primary/20'
+              target='_blank'
             >
-              <Link href='https://github.com/bayukurniawan30/morphic-cms'>
-                Star on GitHub
-              </Link>
-            </Button>
+              Star on GitHub
+            </Link>
           </div>
         </div>
       </nav>
