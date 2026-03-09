@@ -1,13 +1,13 @@
-import { Context, Next } from 'hono';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs'
+import { Context, Next } from 'hono'
+import { fileURLToPath } from 'url'
+import path from 'path'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-let manifest: any = null;
-const isDev = process.env.NODE_ENV !== 'production';
+let manifest: any = null
+const isDev = process.env.NODE_ENV !== 'production'
 
 // Load manifest once on startup in production
 if (!isDev) {
@@ -18,15 +18,15 @@ if (!isDev) {
     path.join(__dirname, '..', 'dist', '.vite', 'manifest.json'),
     path.join('/var/task', 'dist', '.vite', 'manifest.json'),
     path.join('/var/task', '.vite', 'manifest.json'),
-    './dist/.vite/manifest.json'
-  ];
-  
+    './dist/.vite/manifest.json',
+  ]
+
   for (const manifestPath of possiblePaths) {
     try {
       if (fs.existsSync(manifestPath)) {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        console.log('✅ Vite manifest found at:', manifestPath);
-        break;
+        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+        console.log('✅ Vite manifest found at:', manifestPath)
+        break
       }
     } catch (e) {
       // Continue searching
@@ -34,7 +34,9 @@ if (!isDev) {
   }
 
   if (!manifest) {
-    console.error('❌ CRITICAL: Vite manifest not found. Production assets will fail to load.');
+    console.error(
+      '❌ CRITICAL: Vite manifest not found. Production assets will fail to load.'
+    )
   }
 }
 
@@ -43,19 +45,19 @@ export const inertia = (viewFile: string = 'index.html') => {
     // Determine if this is an Inertia request outside the closure
     const getHeader = (name: string) => {
       try {
-        return c.req.header(name);
+        return c.req.header(name)
       } catch (e) {
-        const rawHeaders = (c.req.raw as any)?.headers;
+        const rawHeaders = (c.req.raw as any)?.headers
         if (rawHeaders) {
-          return typeof rawHeaders.get === 'function' 
-            ? rawHeaders.get(name) 
-            : rawHeaders[name.toLowerCase()];
+          return typeof rawHeaders.get === 'function'
+            ? rawHeaders.get(name)
+            : rawHeaders[name.toLowerCase()]
         }
-        return undefined;
+        return undefined
       }
-    };
+    }
 
-    const isInertiaRequest = getHeader('X-Inertia') === 'true';
+    const isInertiaRequest = getHeader('X-Inertia') === 'true'
 
     c.set('inertia', (component: string, props: any = {}) => {
       const inertiaProps = {
@@ -63,30 +65,33 @@ export const inertia = (viewFile: string = 'index.html') => {
         props,
         url: c.req.url,
         version: null,
-      };
+      }
 
       if (isInertiaRequest) {
         return c.json(inertiaProps, 200, {
           'X-Inertia': 'true',
-          'Vary': 'Accept',
-        });
+          Vary: 'Accept',
+        })
       }
 
       // Determine asset paths
-      let jsPath = '/src/client.tsx';
-      let cssTags = '';
+      let jsPath = '/src/client.tsx'
+      let cssTags = ''
 
       if (!isDev && manifest) {
-        const entry = manifest['index.html'];
+        const entry = manifest['index.html']
         if (entry) {
-          jsPath = `/${entry.file}`;
+          jsPath = `/${entry.file}`
           if (entry.css) {
-            cssTags = entry.css.map((css: string) => `<link rel="stylesheet" href="/${css}">`).join('\n');
+            cssTags = entry.css
+              .map((css: string) => `<link rel="stylesheet" href="/${css}">`)
+              .join('\n')
           }
         }
       }
 
-      const vitePreamble = isDev ? `
+      const vitePreamble = isDev
+        ? `
         <script type="module">
           import RefreshRuntime from "/@react-refresh"
           RefreshRuntime.injectIntoGlobalHook(window)
@@ -95,7 +100,8 @@ export const inertia = (viewFile: string = 'index.html') => {
           window.__vite_plugin_react_preamble_installed__ = true
         </script>
         <script type="module" src="/@vite/client"></script>
-      ` : '';
+      `
+        : ''
 
       // Serve HTML with data-page attribute for initial load
       const html = `<!DOCTYPE html>
@@ -115,7 +121,7 @@ export const inertia = (viewFile: string = 'index.html') => {
             ${vitePreamble}
         </head>
         <body class="bg-background text-foreground">
-            <div id="app" data-page='${JSON.stringify(inertiaProps).replace(/'/g, "&apos;")}'>
+            <div id="app" data-page='${JSON.stringify(inertiaProps).replace(/'/g, '&apos;')}'>
               <div id="inertia-loading" style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; background: #1a1a1a; color: #fff;">
                 <style>
                   @keyframes pulse-logo {
@@ -159,17 +165,17 @@ export const inertia = (viewFile: string = 'index.html') => {
             </div>
             <script type="module" src="${jsPath}" onerror="console.error('Failed to load script: ${jsPath}'); document.getElementById('inertia-loading').innerHTML = '<p style=color:red>Failed to load application assets. Check console.</p>'"></script>
         </body>
-        </html>`;
+        </html>`
 
-      return c.html(html);
-    });
+      return c.html(html)
+    })
 
-    await next();
-  };
-};
+    await next()
+  }
+}
 
 declare module 'hono' {
   interface ContextVariableMap {
-    inertia: (component: string, props?: any) => Response | Promise<Response>;
+    inertia: (component: string, props?: any) => Response | Promise<Response>
   }
 }

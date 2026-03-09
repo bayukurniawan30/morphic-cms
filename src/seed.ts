@@ -1,36 +1,40 @@
-import { db } from './db/index.js';
-import { users } from './db/schema.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs'
+import { db } from './db/index.js'
+import { users } from './db/schema.js'
 
 async function seed() {
-  console.log('Seeding default super admin user...');
-  
-  const email = 'baycore.dev@gmail.com';
-  const rawPassword = 'secret123';
-  
+  console.log('Seeding default super admin user...')
+
+  const email = 'admin@morphic.cms'
+  const rawPassword = 'password123'
+
   // Hash the password with bcrypt (cost factor 10)
-  const hashedPassword = await bcrypt.hash(rawPassword, 10);
+  const hashedPassword = await bcrypt.hash(rawPassword, 10)
 
   try {
-    const [user] = await db.insert(users).values({
-      email: email,
-      username: 'superadmin', // Username is required and unique
-      password: hashedPassword,
-      role: 'super_admin'
-    }).returning();
-    
-    console.log(`✅ Super admin created successfully!`);
-    console.log(`Email: ${user.email}`);
-    console.log(`Role: ${user.role}`);
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: email,
+        username: 'superadmin', // Username is required and unique
+        password: hashedPassword,
+        role: 'super_admin',
+      })
+      .returning()
+
+    console.log(`✅ Super admin created successfully!`)
+    console.log(`Email: ${user.email}`)
+    console.log(`Role: ${user.role}`)
   } catch (err: any) {
-    if (err.code === '23505') { // Postgres unique violation error code
-      console.log('⚠️ Super admin user already exists. Skipping seed.');
+    if (err.code === '23505') {
+      // Postgres unique violation error code
+      console.log('⚠️ Super admin user already exists. Skipping seed.')
     } else {
-      console.error('❌ Failed to seed super admin:', err);
+      console.error('❌ Failed to seed super admin:', err)
     }
   }
-  
-  process.exit(0);
+
+  process.exit(0)
 }
 
-seed();
+seed()

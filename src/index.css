@@ -36,7 +36,7 @@
     --primary: 350 6% 80%; /* deep-mocha-200 */
     --primary-foreground: 353 6% 30%; /* deep-mocha-700 */
     --secondary: 353 6% 30%; /* deep-mocha-700 */
-    --secondary-foreground: 330 8% 95%; 
+    --secondary-foreground: 330 8% 95%;
     --muted: 353 6% 30%; /* deep-mocha-700 */
     --muted-foreground: 355 6% 60%; /* deep-mocha-400 */
     --accent: 353 6% 30%;
@@ -50,6 +50,9 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   * {
     @apply border-border;
   }
@@ -78,14 +81,14 @@
 }
 
 .prose table th {
-  background-color: hsl(var(--muted)/0.5);
+  background-color: hsl(var(--muted) / 0.5);
   font-weight: bold;
   text-align: left;
 }
 
 .prose table .selectedCell:after {
   background: rgba(200, 200, 255, 0.4);
-  content: "";
+  content: '';
   left: 0;
   right: 0;
   top: 0;

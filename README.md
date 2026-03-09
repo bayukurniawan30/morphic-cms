@@ -5,6 +5,7 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 ## 🚀 Tech Stack
 
 ### Backend
+
 - **Framework**: [Hono](https://hono.dev/) - A small, fast, and ultra-lightweight web framework.
 - **Runtime**: Node.js (with Hono v4+).
 - **ORM**: [Drizzle ORM](https://orm.drizzle.team/) - A TypeScript ORM for SQL databases with maximum type safety.
@@ -12,6 +13,7 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 - **Auth**: JWT-based authentication with `hono/jwt` and `bcryptjs` for security.
 
 ### Frontend
+
 - **Framework**: [React](https://reactjs.org/) with [Inertia.js](https://inertiajs.com/) - Build single-page apps without the complexity of modern SPAs.
 - **Build Tool**: [Vite](https://vite.dev/) - Fast and lean development server.
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with a custom "Deep Mocha" premium theme.
@@ -23,24 +25,28 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 ## 🛠️ Getting Started
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/) (v18+ recommended)
 - [pnpm](https://pnpm.io/) (preferred package manager)
 
 ### Installation
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/bayukurniawan30/morphic-cms
    cd morphic-cms
    ```
 
 2. **Install dependencies**:
+
    ```bash
    pnpm install
    ```
 
 3. **Set up environment variables**:
    Create a `.env` file in the root directory and add the following:
+
    ```env
    DATABASE_URL=
    JWT_SECRET=
@@ -62,15 +68,19 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
 This project uses **Drizzle ORM** for database schema management and migrations.
 
 ### Schema Synchronization (Fast Path)
+
 To quickly push your schema changes directly to the database (recommended for local development):
+
 ```bash
 pnpm db:push
 ```
 
 ### Migrations (Production Path)
+
 To generate and run official migration files:
 
 1. **Generate migrations**:
+
    ```bash
    pnpm db:generate
    ```
@@ -81,13 +91,17 @@ To generate and run official migration files:
    ```
 
 ### Seeding
+
 To populate your database with initial data (e.g., default super admin):
+
 ```bash
 pnpm db:seed
 ```
 
 ### Database Studio
+
 Explore and edit your data visually:
+
 ```bash
 pnpm db:studio
 ```
@@ -97,6 +111,7 @@ pnpm db:studio
 This project is optimized for deployment on **Vercel** using the **Hono Framework Preset**.
 
 ### 1. Vercel Configuration
+
 - **Framework Preset**: Select `Hono` in the Vercel Dashboard.
 - **Node Runtime**: Pin to `20.x` or `22.x` in `package.json`.
 - **Environment Variables**:
@@ -109,6 +124,7 @@ This project is optimized for deployment on **Vercel** using the **Hono Framewor
   - `NODE_ENV`: Set to `production`.
 
 ### 2. Architecture Notes
+
 - **ESM Native**: All internal imports must use the `.js` extension to comply with ESM in Node environments.
 - **Root Entry Point**: The project uses a root `index.ts` to export the Hono `app` directly for Vercel's automatic detection.
 - **Asset Handling**: In production, the Hono server reads `dist/.vite/manifest.json` at runtime to resolve hashed JS/CSS filenames.
@@ -117,6 +133,7 @@ This project is optimized for deployment on **Vercel** using the **Hono Framewor
 ---
 
 ## 🛠️ Tech Stack
+
 - **Backend**: [Hono](https://hono.dev/) (Web Standards Framework)
 - **Frontend**: [React](https://react.dev/) + [Inertia.js](https://inertiajs.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
@@ -127,4 +144,5 @@ This project is optimized for deployment on **Vercel** using the **Hono Framewor
 ---
 
 ## 📝 License
+
 MIT

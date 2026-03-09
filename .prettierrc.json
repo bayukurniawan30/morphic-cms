@@ -8,9 +8,7 @@
   "trailingComma": "es5",
   "bracketSpacing": true,
   "endOfLine": "lf",
-  "plugins": [
-    "@trivago/prettier-plugin-sort-imports"
-  ],
+  "plugins": ["@trivago/prettier-plugin-sort-imports"],
   "importOrder": [
     "^path$",
     "^vite$",
