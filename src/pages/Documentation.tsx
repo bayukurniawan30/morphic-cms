@@ -6,6 +6,8 @@ import { Head, Link } from '@inertiajs/react'
 import {
   Book,
   Check,
+  ChevronDown,
+  ChevronUp,
   Cloud,
   Copy,
   Database,
@@ -85,6 +87,7 @@ const Section = ({
 
 export default function Documentation({ user }: { user: any }) {
   const [activeHash, setActiveHash] = React.useState('')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   React.useEffect(() => {
     const observerOptions = {
@@ -254,9 +257,9 @@ export default function Documentation({ user }: { user: any }) {
             Rename <code>.env.example</code> to <code>.env</code> and add your{' '}
             <code>DATABASE_URL</code>.
           </p>
-          <div className='bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start space-x-3 mt-2'>
-            <Database className='w-5 h-5 text-primary mt-0.5' />
-            <div className='text-sm space-y-2'>
+          <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4 mt-4'>
+            <Database className='w-5 h-5 text-primary shrink-0' />
+            <div className='text-sm space-y-2 w-full flex-1'>
               <p className='font-bold'>Recommended: Neon Database</p>
               <p className='text-muted-foreground'>
                 You can use{' '}
@@ -490,6 +493,65 @@ export default function Documentation({ user }: { user: any }) {
             </aside>
             <main className='flex-1 bg-background'>{MainContent}</main>
           </div>
+
+          {/* Mobile Menu Trigger at Bottom */}
+          <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
+            {/* Menu Drawer */}
+            {isMobileMenuOpen && (
+              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-300'>
+                <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
+                  Documentation Sections
+                </div>
+                <nav className='grid grid-cols-1 gap-0.5'>
+                  {menuItems.map((item) => (
+                    <a
+                      key={item.id}
+                      href={`#${item.id}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        'flex items-center space-x-3 px-4 py-2.5 transition-all',
+                        activeHash === `#${item.id}`
+                          ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      <item.icon className='w-4 h-4' />
+                      <span className='text-sm'>{item.label}</span>
+                    </a>
+                  ))}
+                </nav>
+              </div>
+            )}
+
+            {/* Bottom Toggle Bar */}
+            <Button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-6 bg-white/90 backdrop-blur-md border-t border-border hover:bg-slate-50 transition-all group rounded-none text-foreground'
+              variant='ghost'
+            >
+              <div className='flex items-center space-x-3'>
+                <div className='p-1.5 rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors'>
+                  <Book className='w-4 h-4' />
+                </div>
+                <div className='flex items-baseline space-x-2'>
+                  <span className='text-[10px] text-muted-foreground font-black uppercase tracking-wider'>
+                    On this page:
+                  </span>
+                  <span className='text-xs font-bold'>
+                    {menuItems.find((m) => `#m.id` === activeHash)?.label ||
+                      'Introduction'}
+                  </span>
+                </div>
+              </div>
+              <div className='text-muted-foreground group-hover:text-foreground transition-colors'>
+                {isMobileMenuOpen ? (
+                  <ChevronDown className='w-4 h-4' />
+                ) : (
+                  <ChevronUp className='w-4 h-4' />
+                )}
+              </div>
+            </Button>
+          </div>
         </Layout>
       ) : (
         <div className='min-h-screen bg-slate-50 dark:bg-slate-950'>
@@ -508,6 +570,66 @@ export default function Documentation({ user }: { user: any }) {
               </div>
             </div>
           </nav>
+
+          {/* Mobile Menu Trigger at Bottom */}
+          <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
+            {/* Menu Drawer */}
+            {isMobileMenuOpen && (
+              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-300'>
+                <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
+                  Documentation Sections
+                </div>
+                <nav className='grid grid-cols-1 gap-0.5'>
+                  {menuItems.map((item) => (
+                    <a
+                      key={item.id}
+                      href={`#${item.id}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        'flex items-center space-x-3 px-4 py-2.5 transition-all',
+                        activeHash === `#${item.id}`
+                          ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      <item.icon className='w-4 h-4' />
+                      <span className='text-sm'>{item.label}</span>
+                    </a>
+                  ))}
+                </nav>
+              </div>
+            )}
+
+            {/* Bottom Toggle Bar */}
+            <Button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-6 bg-white/90 backdrop-blur-md border-t border-border hover:bg-slate-50 transition-all group rounded-none text-foreground'
+              variant='ghost'
+            >
+              <div className='flex items-center space-x-3'>
+                <div className='p-1.5 rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors'>
+                  <Book className='w-4 h-4' />
+                </div>
+                <div className='flex items-baseline space-x-2'>
+                  <span className='text-[10px] text-muted-foreground font-black uppercase tracking-wider'>
+                    On this page:
+                  </span>
+                  <span className='text-xs font-bold'>
+                    {menuItems.find((m) => `#${m.id}` === activeHash)?.label ||
+                      'Introduction'}
+                  </span>
+                </div>
+              </div>
+              <div className='text-muted-foreground group-hover:text-foreground transition-colors'>
+                {isMobileMenuOpen ? (
+                  <ChevronDown className='w-4 h-4' />
+                ) : (
+                  <ChevronUp className='w-4 h-4' />
+                )}
+              </div>
+            </Button>
+          </div>
+
           <div className='flex flex-col lg:flex-row max-w-7xl mx-auto min-h-screen'>
             <aside className='hidden lg:block w-64 p-8 sticky top-20 h-[calc(100vh-80px)] overflow-y-auto'>
               <nav className='space-y-2'>

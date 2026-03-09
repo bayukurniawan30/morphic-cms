@@ -6,16 +6,20 @@ import {
   FileCode,
   Globe,
   Layers,
+  Menu,
   Monitor,
   Server,
   Shield,
   ShoppingBag,
   Smartphone,
   Sparkles,
+  X,
   Zap,
 } from 'lucide-react'
+import React, { useState } from 'react'
 
 export default function Home() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   return (
     <div className='min-h-screen bg-slate-950 text-white selection:bg-primary/30'>
       <Head title='Morphic CMS - Modern Headless CMS' />
@@ -58,7 +62,61 @@ export default function Home() {
               </a>
             </Button>
           </div>
+
+          {/* Mobile Menu Button */}
+          <div className='md:hidden flex items-center'>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className='p-2 text-slate-400 hover:text-white transition-colors focus:outline-none'
+            >
+              {isMenuOpen ? (
+                <X className='w-6 h-6' />
+              ) : (
+                <Menu className='w-6 h-6' />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        {isMenuOpen && (
+          <div className='md:hidden absolute top-20 left-0 w-full bg-slate-950/95 backdrop-blur-xl border-b border-white/5 py-8 px-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-300 z-50'>
+            <a
+              href='#features'
+              onClick={() => setIsMenuOpen(false)}
+              className='block text-lg font-medium text-slate-400 hover:text-white transition-colors'
+            >
+              Features
+            </a>
+            <a
+              href='#use-cases'
+              onClick={() => setIsMenuOpen(false)}
+              className='block text-lg font-medium text-slate-400 hover:text-white transition-colors'
+            >
+              Use Case
+            </a>
+            <Link
+              href='/docs'
+              className='block text-lg font-medium text-slate-400 hover:text-white transition-colors'
+            >
+              Documentation
+            </Link>
+            <div className='pt-4'>
+              <Button
+                asChild
+                className='w-full rounded-full py-6 text-lg shadow-xl shadow-primary/20'
+              >
+                <a
+                  href='https://github.com/bayukurniawan30/morphic-cms'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  Star on GitHub
+                </a>
+              </Button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -69,7 +127,7 @@ export default function Home() {
             <span>Introducing Morphic CMS v1.0</span>
           </div>
 
-          <h1 className='text-6xl md:text-8xl font-black tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500 animate-in fade-in slide-in-from-bottom-6 duration-1000'>
+          <h1 className='text-4xl md:text-8xl font-black tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500 animate-in fade-in slide-in-from-bottom-6 duration-1000'>
             Content Management <br className='hidden md:block' />
             <span className='text-primary'>Without the Friction.</span>
           </h1>
