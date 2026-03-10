@@ -11,6 +11,7 @@ import {
   Cloud,
   Copy,
   Database,
+  FileCheck,
   Key,
   Layers,
   Server,
@@ -131,6 +132,7 @@ export default function Documentation({ user }: { user: any }) {
     { id: 'intro', label: 'Introduction', icon: Book },
     { id: 'getting-started', label: 'Quick Start', icon: Zap },
     { id: 'field-types', label: 'Field Types', icon: Layers },
+    { id: 'form-builder', label: 'Form Builder', icon: FileCheck },
     { id: 'api-reference', label: 'API Reference', icon: Terminal },
     { id: 'auth', label: 'Authentication', icon: Shield },
     { id: 'storage', label: 'Storage', icon: Cloud },
@@ -336,6 +338,44 @@ export default function Documentation({ user }: { user: any }) {
               </div>
             </div>
           ))}
+        </div>
+      </Section>
+
+      <Section id='form-builder' title='Form Builder' icon={FileCheck}>
+        <p>
+          Create custom forms without writing any backend code. Morphic handles
+          validation, email notifications, and secure submissions for you.
+        </p>
+        <div className='space-y-8 mt-8'>
+          <div className='space-y-4'>
+            <h4 className='font-bold text-sm uppercase tracking-widest opacity-60'>
+              Handling Submissions
+            </h4>
+            <p className='text-sm'>
+              Submit form data from your frontend using a simple POST request:
+            </p>
+            <CodeBlock
+              code={`POST /api/forms/:slug/submissions\nContent-Type: application/json\n\n{\n  "name": "John Doe",\n  "email": "john@example.com",\n  "message": "Hello!"\n}`}
+            />
+          </div>
+          <div className='bg-primary/5 border border-primary/20 p-6 rounded-2xl'>
+            <h4 className='font-bold mb-4'>Frontend Example (Fetch)</h4>
+            <div className='bg-slate-950 p-4 rounded-lg overflow-x-auto'>
+              <code className='text-xs text-slate-300'>
+                {`const handleSubmit = async (data) => {
+  const response = await fetch('/api/forms/contact-us/submissions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  
+  if (response.ok) {
+    alert('Thank you for your submission!');
+  }
+};`}
+              </code>
+            </div>
+          </div>
         </div>
       </Section>
 
