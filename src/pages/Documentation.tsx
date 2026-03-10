@@ -296,6 +296,21 @@ export default function Documentation({ user }: { user: any }) {
             <span className='font-bold'>Push Schema & Seed</span>
           </div>
           <CodeBlock code={`pnpm db:push\npnpm db:seed`} />
+
+          <div className='flex items-center space-x-2 text-sm pt-4'>
+            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+              4
+            </span>
+            <span className='font-bold'>Run & Login</span>
+          </div>
+          <p className='text-sm opacity-80'>
+            Launch the development server and access the admin panel:
+          </p>
+          <CodeBlock code={`pnpm dev`} />
+          <p className='text-sm opacity-80'>
+            Open your browser and navigate to <code>/login</code> to start
+            managing your content.
+          </p>
         </div>
       </Section>
 

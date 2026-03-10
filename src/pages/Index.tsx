@@ -48,7 +48,7 @@ export default function Index({ title }: { title: string }) {
             {title}
           </h1>
           <p className='text-muted-foreground mt-2'>
-            Sign in to manage your collections
+            Sign in to manage your content
           </p>
         </div>
 

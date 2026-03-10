@@ -102,7 +102,7 @@ const NavItem = ({
 }
 
 export default function Layout({ user, children }: LayoutProps) {
-  const [isSidebarOpen, setSidebarOpen] = useState(true) // Expanded by default on desktop
+  const [isSidebarOpen, setSidebarOpen] = useState(false) // Closed by default
 
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { url } = usePage()

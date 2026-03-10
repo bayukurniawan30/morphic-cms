@@ -12,17 +12,14 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Head, Link, router } from '@inertiajs/react'
 import {
-  PlusIcon,
   ArrowLeftIcon,
-  EditIcon,
-  TrashIcon,
-  DatabaseIcon,
+  CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  CalendarIcon,
-  MoreVerticalIcon,
   CodeIcon,
   CopyIcon,
+  DatabaseIcon,
+  PlusIcon,
   TerminalIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -251,7 +248,7 @@ export default function EntriesList({
       <Head title={`${collection.name} Entries | Morphic`} />
 
       <div className='flex flex-col space-y-6'>
-        <div className='flex flex-col sm:flex-row justify-between items-end space-y-4 sm:space-y-0'>
+        <div className='flex flex-col sm:flex-row justify-between lg:items-end space-y-4 sm:space-y-0'>
           <div className='flex items-center space-x-4'>
             <Button
               variant='ghost'
