@@ -384,23 +384,53 @@ export default function EntriesList({
                           </span>
                         )}
                       </div>
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        className='h-7 text-[10px]'
-                        onClick={() => {
-                          const json = JSON.stringify(
-                            previewData || { entries, pagination },
-                            null,
-                            2
-                          )
-                          navigator.clipboard.writeText(json)
-                          toast.success('JSON copied to clipboard')
-                        }}
-                      >
-                        <CopyIcon className='w-3 h-3 mr-1.5' />
-                        Copy JSON
-                      </Button>
+                      <div className='flex items-center space-x-2'>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className='h-7 text-[10px]'
+                          onClick={() => {
+                            const name = collection.name.replace(/[^a-zA-Z0-9]/g, '')
+                            let fieldsTs = ''
+                            
+                            collection.fields.forEach((f: any) => {
+                              let type = 'any'
+                              if (['text', 'textarea', 'rich-text', 'slug', 'email', 'date', 'datetime', 'time', 'select', 'radio'].includes(f.type)) type = 'string'
+                              if (['number'].includes(f.type)) type = 'number'
+                              if (['boolean', 'checkbox'].includes(f.type)) type = 'boolean'
+                              if (f.type === 'array') type = 'any[]'
+                              if (f.type === 'relation') type = '{ id: number; [key: string]: any }'
+                              
+                              fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
+                            })
+
+                            const tsInterface = `export interface ${name}Content {\n${fieldsTs}}\n\nexport interface ${name}Entry {\n  id: number;\n  content: ${name}Content;\n  createdAt: string;\n  updatedAt: string;\n}\n`
+                            
+                            navigator.clipboard.writeText(tsInterface)
+                            toast.success('TypeScript interface copied to clipboard')
+                          }}
+                        >
+                          <CodeIcon className='w-3 h-3 mr-1.5' />
+                          Copy Types
+                        </Button>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className='h-7 text-[10px]'
+                          onClick={() => {
+                            const json = JSON.stringify(
+                              previewData || { entries, pagination },
+                              null,
+                              2
+                            )
+                            navigator.clipboard.writeText(json)
+                            toast.success('JSON copied to clipboard')
+                          }}
+                        >
+                          <CopyIcon className='w-3 h-3 mr-1.5' />
+                          Copy JSON
+                        </Button>
+                      </div>
                     </div>
                     <ScrollArea className='h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300'>
                       <div className='min-w-max'>

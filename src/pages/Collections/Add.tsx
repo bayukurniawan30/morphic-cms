@@ -762,7 +762,7 @@ export default function AddCollection({ user }: AddProps) {
                             <SelectContent>
                               {data.fields
                                 .filter(
-                                  (f) => f.type === 'text' && f.id !== field.id
+                                  (f) => f.type === 'text' && f.id !== field.id && f.name.trim() !== ''
                                 )
                                 .map((f) => (
                                   <SelectItem key={f.id} value={f.name}>
@@ -770,7 +770,7 @@ export default function AddCollection({ user }: AddProps) {
                                   </SelectItem>
                                 ))}
                               {data.fields.filter(
-                                (f) => f.type === 'text' && f.id !== field.id
+                                (f) => f.type === 'text' && f.id !== field.id && f.name.trim() !== ''
                               ).length === 0 && (
                                 <p className='text-[10px] p-2 text-muted-foreground italic text-center'>
                                   No text fields available

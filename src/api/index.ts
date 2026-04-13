@@ -1,6 +1,6 @@
 import { serveStatic } from '@hono/node-server/serve-static'
 import bcrypt from 'bcryptjs'
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql, inArray } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
@@ -1345,11 +1345,73 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     }
 
     const col = await db
-      .select({ type: collections.type })
+      .select({ type: collections.type, fields: collections.fields })
       .from(collections)
       .where(eq(collections.id, id))
       .limit(1)
+
     const isGlobal = col[0]?.type === 'global'
+    const fieldsDef: any[] = (col[0]?.fields as any) || []
+
+    const populateRelations = async (entriesList: any[]) => {
+      const relationFields = fieldsDef.filter((f) => f.type === 'relation' && f.relationCollectionId)
+      if (relationFields.length === 0) return entriesList
+
+      const relationData: Record<number, Record<number, any>> = {}
+      const neededIdsByCollection: Record<number, Set<number>> = {}
+
+      for (const entry of entriesList) {
+        for (const field of relationFields) {
+          const val = entry.content?.[field.name]
+          if (val) {
+            const relColId = field.relationCollectionId
+            if (!neededIdsByCollection[relColId]) neededIdsByCollection[relColId] = new Set()
+            
+            if (Array.isArray(val)) {
+              val.forEach((v) => neededIdsByCollection[relColId].add(v))
+            } else {
+              neededIdsByCollection[relColId].add(val)
+            }
+          }
+        }
+      }
+
+      for (const [colIdStr, idsSet] of Object.entries(neededIdsByCollection)) {
+        const ids = Array.from(idsSet) as number[]
+        if (ids.length === 0) continue
+        const rels = await db
+          .select()
+          .from(entries)
+          .where(and(eq(entries.collectionId, Number(colIdStr)), inArray(entries.id, ids)))
+        
+        relationData[Number(colIdStr)] = {}
+        for (const rel of rels) {
+          relationData[Number(colIdStr)][rel.id] = rel
+        }
+      }
+
+      return entriesList.map((entry) => {
+        const newContent = { ...entry.content }
+        for (const field of relationFields) {
+          const val = entry.content?.[field.name]
+          if (val) {
+            const relColId = field.relationCollectionId
+            if (Array.isArray(val)) {
+              newContent[field.name] = val.map((v: any) => {
+                const relatedEntry = relationData[relColId]?.[v]
+                return relatedEntry ? { id: relatedEntry.id, ...relatedEntry.content } : v
+              })
+            } else {
+              const relatedEntry = relationData[relColId]?.[val]
+              if (relatedEntry) {
+                newContent[field.name] = { id: relatedEntry.id, ...relatedEntry.content }
+              }
+            }
+          }
+        }
+        return { ...entry, content: newContent }
+      })
+    }
 
     if (isGlobal) {
       const result = await db
@@ -1364,10 +1426,13 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         .limit(1)
 
       const r = result[0]
+      if (!r) return c.json({ type: 'global', entry: null })
+      const populated = await populateRelations([r.entry])
+
       return c.json({
         type: 'global',
-        entry: r
-          ? { ...r.entry, updatedBy: r.updatedBy?.id ? r.updatedBy : null }
+        entry: populated[0]
+          ? { ...populated[0], updatedBy: r.updatedBy?.id ? r.updatedBy : null }
           : null,
       })
     }
@@ -1395,11 +1460,13 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .limit(limit)
       .offset(offset)
 
+    const populatedEntries = await populateRelations(result.map((r) => r.entry))
+
     return c.json({
       type: 'collection',
-      entries: result.map((r) => ({
-        ...r.entry,
-        updatedBy: r.updatedBy?.id ? r.updatedBy : null,
+      entries: populatedEntries.map((pe, idx) => ({
+        ...pe,
+        updatedBy: result[idx].updatedBy?.id ? result[idx].updatedBy : null,
       })),
       pagination: {
         currentPage: page,

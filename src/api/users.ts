@@ -5,6 +5,7 @@ import { getCookie } from 'hono/cookie'
 import { verify } from 'hono/jwt'
 import { db } from '../db/index.js'
 import { users, abilities } from '../db/schema.js'
+import { sendEmail } from '../lib/email.js'
 
 type Variables = {
   userId: number
@@ -121,6 +122,36 @@ apiUsers.post('/', async (c) => {
         email: users.email,
         username: users.username,
       })
+
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const loginUrl = `${process.env.APP_URL || 'http://localhost:5173'}/login`
+        await sendEmail({
+          to: email,
+          subject: 'Welcome to Morphic CMS',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+              <h1 style="color: #87787a; border-bottom: 2px solid #514849; padding-bottom: 10px;">Welcome, ${name}!</h1>
+              <p style="font-size: 16px; line-height: 1.6; color: #555;">
+                An account has been created for you on Morphic CMS with the <strong>${role || 'editor'}</strong> role.
+              </p>
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Username:</strong> ${username}</p>
+                <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
+              </div>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${loginUrl}" style="background-color: #514849; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Login Now</a>
+              </div>
+              <p style="font-size: 14px; color: #666;">
+                We recommend changing your password after your first login.
+              </p>
+            </div>
+          `
+        })
+      } catch (err) {
+        console.error('Failed to send welcome email:', err)
+      }
+    }
 
     return c.json({ success: true, user: newUser[0] }, 201)
   } catch (error: any) {

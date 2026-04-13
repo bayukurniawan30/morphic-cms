@@ -3,11 +3,15 @@ import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
 import {
   ArrowRight,
+  CheckCircle2,
+  Cloud,
+  Database,
   FileCode,
   Globe,
   Layers,
   Menu,
   Monitor,
+  Rocket,
   Server,
   Shield,
   ShoppingBag,
@@ -407,6 +411,100 @@ export default function Home() {
                   The perfect companion for microservices. Store and retrieve
                   meta-data, config, and content for distributed systems.
                 </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Deployment Section */}
+        <section id="deployment" className="py-32 px-6 border-t border-white/5 relative overflow-hidden bg-slate-950">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+             <div className="text-center mb-20">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-xs font-medium text-green-400 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <Rocket className="w-4 h-4" />
+                <span>Zero Cost Setup</span>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-1000">
+                Production Ready, <span className="text-primary">Completely Free.</span>
+              </h2>
+              <p className="text-slate-400 max-w-2xl mx-auto text-lg animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                Morphic CMS is designed to run perfectly on modern free-tier infrastructures. You can host your entire CMS backend, database, and media storage without spending a dime.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Vercel */}
+              <div className="group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-white/30 transition-all duration-300 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-[50px] group-hover:bg-white/10 transition-colors" />
+                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform">
+                  <svg className="w-7 h-7" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor"/></svg>
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-white">Vercel</h3>
+                <div className="text-sm text-primary mb-4 font-medium hover:text-primary/80 transition-colors">Hosting & Compute</div>
+                <p className="text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors">
+                  Deploy Morphic instantly to Vercel. Leverage their generous free tier for lightning-fast Edge & Serverless functions globally.
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Global Edge CDN
+                  </li>
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Serverless API Functions
+                  </li>
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Automatic SSL & CI/CD
+                  </li>
+                </ul>
+              </div>
+
+              {/* Neon DB */}
+              <div className="group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-green-500/50 transition-all duration-300 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-[50px] group-hover:bg-green-500/20 transition-colors" />
+                <div className="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center text-green-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Database className="w-7 h-7" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-white">Neon PostgreSQL</h3>
+                <div className="text-sm text-green-400 mb-4 font-medium hover:text-green-300 transition-colors">Database Storage</div>
+                <p className="text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors">
+                  Power your content with modern, serverless PostgreSQL. Enjoy a robust free tier with auto-scaling and branching.
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Serverless Architecture
+                  </li>
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Database Branching
+                  </li>
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Generous Compute & Storage
+                  </li>
+                </ul>
+              </div>
+
+              {/* Cloudinary */}
+              <div className="group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[50px] group-hover:bg-blue-500/20 transition-colors" />
+                <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Cloud className="w-7 h-7" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-white">Cloudinary</h3>
+                <div className="text-sm text-blue-400 mb-4 font-medium hover:text-blue-300 transition-colors">Asset & Media CDN</div>
+                <p className="text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors">
+                  Store and serve your images and media automatically optimized and transformed using their robust free plan.
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Auto Format & Optimization
+                  </li>
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Powerful Transformation API
+                  </li>
+                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Global Media Delivery
+                  </li>
+                </ul>
               </div>
             </div>
           </div>

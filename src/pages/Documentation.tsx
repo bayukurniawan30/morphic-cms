@@ -226,7 +226,7 @@ export default function Documentation({ user }: { user: any }) {
                 href='https://neon.tech'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='text-primary underline hover:opacity-80'
+                className='text-primary underline hover:text-primary/80'
               >
                 Neon.tech
               </a>{' '}
@@ -264,7 +264,7 @@ export default function Documentation({ user }: { user: any }) {
             </span>
             <span className='font-bold'>Setup Environment</span>
           </div>
-          <p className='text-sm opacity-80'>
+          <p className='mb-4'>
             Rename <code>.env.example</code> to <code>.env</code> and add your{' '}
             <code>DATABASE_URL</code>.
           </p>
@@ -305,11 +305,11 @@ export default function Documentation({ user }: { user: any }) {
             </span>
             <span className='font-bold'>Run & Login</span>
           </div>
-          <p className='text-sm opacity-80'>
+          <p className='mb-4'>
             Launch the development server and access the admin panel:
           </p>
           <CodeBlock code={`pnpm dev`} />
-          <p className='text-sm opacity-80'>
+          <p className='mb-4'>
             Open your browser and navigate to <code>/login</code> to start
             managing your content.
           </p>
@@ -348,10 +348,10 @@ export default function Documentation({ user }: { user: any }) {
         </p>
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
-            <h4 className='font-bold text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500'>
               Handling Submissions
             </h4>
-            <p className='text-sm'>
+            <p className='mb-4'>
               Submit form data from your frontend using a simple POST request:
             </p>
             <CodeBlock
@@ -383,65 +383,65 @@ export default function Documentation({ user }: { user: any }) {
         <p>Morphic generates predictable, resource-oriented REST APIs.</p>
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Collections
             </h4>
             <CodeBlock code={`GET /api/collections`} />
-            <p className='text-sm'>
+            <p className='mb-4'>
               Retrieve a list of all your defined collections.
             </p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Entries
             </h4>
             <CodeBlock
               code={`GET /api/collections/:slug/entries?page=1&limit=10`}
             />
-            <p className='text-sm'>
+            <p className='mb-4'>
               Returns a paginated list of entries for the given collection slug
               or ID.
             </p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Single Entry
             </h4>
             <CodeBlock code={`GET /api/collections/:slug/entries/:entryId`} />
-            <p className='text-sm'>Fetch a specific entry by its ID or slug.</p>
+            <p className='mb-4'>Fetch a specific entry by its ID or slug.</p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-blue-500 mr-2' />
               Create Entry
             </h4>
             <CodeBlock
               code={`POST /api/collections/:id/entries\nContent-Type: application/json\n\n{\n  "title": "New Entry",\n  "content": "..."\n}`}
             />
-            <p className='text-sm'>
+            <p className='mb-4'>
               Requires an API key with <code>create</code> permissions.
             </p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-amber-500 mr-2' />
               Update Entry
             </h4>
             <CodeBlock
               code={`PUT /api/collections/:id/entries/:entryId\nContent-Type: application/json\n\n{\n  "title": "Updated Title"\n}`}
             />
-            <p className='text-sm'>Partially update an existing entry.</p>
+            <p className='mb-4'>Partially update an existing entry.</p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest opacity-60'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-red-500 mr-2' />
               Delete Entry
             </h4>
             <CodeBlock code={`DELETE /api/collections/:id/entries/:entryId`} />
-            <p className='text-sm'>
+            <p className='mb-4'>
               Permanently remove an entry. Returns a <code>200 OK</code> status
               on success.
             </p>

@@ -253,7 +253,7 @@ export default function CollectionsList({
                     >
                       <td className='px-6 py-4'>
                         <div className='flex items-center lg:space-x-3'>
-                          <div className='w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary hidden lg:flex'>
+                          <div className='w-10 h-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary hidden lg:flex'>
                             <DatabaseIcon className='w-5 h-5' />
                           </div>
                           <span className='font-semibold text-foreground text-base'>
