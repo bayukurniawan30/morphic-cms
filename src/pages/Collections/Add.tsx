@@ -32,6 +32,7 @@ export default function AddCollection({ user }: AddProps) {
   const { data, setData, post, processing, errors } = useForm({
     name: '',
     type: 'collection' as 'collection' | 'global',
+    enableTrash: false,
     fields: [] as FieldDefinition[],
   })
 
@@ -281,6 +282,21 @@ export default function AddCollection({ user }: AddProps) {
                   : 'Collections are for content that repeats, like blog posts or products.'}
               </p>
             </div>
+
+            {data.type === 'collection' && (
+              <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border max-w-md'>
+                <div className='space-y-0.5'>
+                  <Label>Enable Trash</Label>
+                  <p className='text-xs text-muted-foreground'>
+                    Deleted entries will be moved to a trash bin instead of being permanently removed.
+                  </p>
+                </div>
+                <Switch
+                  checked={data.enableTrash}
+                  onCheckedChange={(val) => setData('enableTrash', val)}
+                />
+              </div>
+            )}
           </div>
 
           <div className='space-y-4'>

@@ -36,6 +36,7 @@ interface Collection {
   id: number
   name: string
   slug: string
+  enableTrash?: boolean
   fields: Field[]
 }
 
@@ -59,6 +60,7 @@ interface ListProps {
   }
   filters?: {
     type?: string
+    trash?: boolean
   }
 }
 
@@ -67,16 +69,19 @@ export default function EntriesList({
   entries,
   user,
   pagination,
+  filters,
 }: ListProps) {
-  const handleDelete = async (entryId: number) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return
+  const isTrash = filters?.trash || false;
+
+  const handleDelete = async (entryId: number, force?: boolean) => {
+    if (!confirm(`Are you sure you want to ${force ? 'permanently delete' : 'delete'} this entry?`)) return
 
     try {
-      const res = await fetch(`/api/entries/${entryId}`, {
+      const res = await fetch(`/api/entries/${entryId}${force ? '?force=true' : ''}`, {
         method: 'DELETE',
       })
       if (res.ok) {
-        toast.success('Entry deleted successfully')
+        toast.success(`Entry ${force ? 'permanently deleted' : 'moved to trash'}`)
         window.location.reload()
       } else {
         const data = await res.json()
@@ -87,8 +92,23 @@ export default function EntriesList({
     }
   }
 
+  const handleRestore = async (entryId: number) => {
+    try {
+      const res = await fetch(`/api/entries/${entryId}/restore`, { method: 'POST' })
+      if (res.ok) {
+        toast.success('Entry restored')
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Failed to restore entry')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    }
+  }
+
   const handlePageChange = (page: number) => {
-    router.get(`/entries/${collection.id}`, { page }, { preserveState: true })
+    router.get(`/entries/${collection.id}`, { page, trash: isTrash }, { preserveState: true })
   }
 
   // Get visible columns (first 3 fields)
@@ -455,6 +475,26 @@ export default function EntriesList({
           </div>
         </div>
 
+        {collection.enableTrash && (
+          <div className='flex items-center space-x-2'>
+            <Button
+              variant={!isTrash ? 'secondary' : 'ghost'}
+              size='sm'
+              onClick={() => router.get(`/entries/${collection.id}`, { trash: false }, { preserveState: true })}
+            >
+              Active
+            </Button>
+            <Button
+              variant={isTrash ? 'secondary' : 'ghost'}
+              size='sm'
+              onClick={() => router.get(`/entries/${collection.id}`, { trash: true }, { preserveState: true })}
+              className={isTrash ? '' : 'text-muted-foreground'}
+            >
+              Trash
+            </Button>
+          </div>
+        )}
+
         <div className='bg-card rounded-xl shadow-sm border overflow-hidden'>
           <div className='overflow-x-auto'>
             <table className='w-full text-sm text-left'>
@@ -540,20 +580,37 @@ export default function EntriesList({
                         )}
                       </td>
                       <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
-                        <Button variant='outline' size='sm' asChild>
-                          <Link
-                            href={`/entries/${collection.id}/edit/${entry.id}`}
-                          >
-                            Edit
-                          </Link>
-                        </Button>
-                        <Button
-                          variant='destructive'
-                          size='sm'
-                          onClick={() => handleDelete(entry.id)}
-                        >
-                          Delete
-                        </Button>
+                        {!isTrash ? (
+                          <>
+                            <Button variant='outline' size='sm' asChild>
+                              <Link
+                                href={`/entries/${collection.id}/edit/${entry.id}`}
+                              >
+                                Edit
+                              </Link>
+                            </Button>
+                            <Button
+                              variant='destructive'
+                              size='sm'
+                              onClick={() => handleDelete(entry.id)}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button variant='outline' size='sm' onClick={() => handleRestore(entry.id)}>
+                              Restore
+                            </Button>
+                            <Button
+                              variant='destructive'
+                              size='sm'
+                              onClick={() => handleDelete(entry.id, true)}
+                            >
+                              Delete Permanently
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))

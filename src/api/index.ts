@@ -1,6 +1,6 @@
 import { serveStatic } from '@hono/node-server/serve-static'
 import bcrypt from 'bcryptjs'
-import { and, asc, desc, eq, isNull, sql, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, isNotNull, sql, inArray } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
@@ -206,6 +206,7 @@ app.get('/dashboard', requireAuth, async (c) => {
   const entriesCountRes = await db
     .select({ count: sql`count(*)` })
     .from(entries)
+    .where(isNull(entries.deletedAt))
   const totalEntries = Number(entriesCountRes[0].count)
 
   const mediaCountRes = await db.select({ count: sql`count(*)` }).from(media)
@@ -233,6 +234,7 @@ app.get('/dashboard', requireAuth, async (c) => {
     })
     .from(entries)
     .leftJoin(collections, eq(entries.collectionId, collections.id))
+    .where(isNull(entries.deletedAt))
     .orderBy(desc(entries.updatedAt))
     .limit(5)
 
@@ -245,7 +247,7 @@ app.get('/dashboard', requireAuth, async (c) => {
       count: sql`count(${entries.id})`,
     })
     .from(collections)
-    .leftJoin(entries, eq(collections.id, entries.collectionId))
+    .leftJoin(entries, and(eq(collections.id, entries.collectionId), isNull(entries.deletedAt)))
     .where(eq(collections.type, 'collection'))
     .groupBy(collections.id)
     .orderBy(desc(sql`count(${entries.id})`))
@@ -619,10 +621,21 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
   const limit = parseInt(c.req.query('limit') || '10', 10)
   const offset = (page - 1) * limit
 
+  const isTrash = c.req.query('trash') === 'true'
+  let whereClause = eq(entries.collectionId, collectionId)
+  
+  if (collection.enableTrash) {
+    if (isTrash) {
+      whereClause = and(whereClause, isNotNull(entries.deletedAt)) as any
+    } else {
+      whereClause = and(whereClause, isNull(entries.deletedAt)) as any
+    }
+  }
+
   const countResult = await db
     .select({ count: sql`count(*)` })
     .from(entries)
-    .where(eq(entries.collectionId, collectionId))
+    .where(whereClause)
   const totalCount = Number(countResult[0].count)
   const totalPages = Math.ceil(totalCount / limit)
 
@@ -636,7 +649,7 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
     })
     .from(entries)
     .leftJoin(users, eq(entries.updatedById, users.id))
-    .where(eq(entries.collectionId, collectionId))
+    .where(whereClause)
     .orderBy(desc(entries.createdAt))
     .limit(limit)
     .offset(offset)
@@ -650,6 +663,9 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
       totalPages,
       totalCount,
       limit,
+    },
+    filters: {
+      trash: isTrash,
     },
   })
 })
@@ -1211,6 +1227,7 @@ api.post('/collections', async (c) => {
         name,
         slug,
         type: body.type || 'collection',
+        enableTrash: body.enableTrash || false,
         fields: fields || [],
         createdById: c.get('user')?.id || null,
       })
@@ -1265,6 +1282,7 @@ api.put('/collections/:id', async (c) => {
       .set({
         name,
         type: body.type || 'collection',
+        enableTrash: body.enableTrash || false,
         fields: fields || [],
         updatedAt: new Date(),
       })
@@ -1382,7 +1400,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         const rels = await db
           .select()
           .from(entries)
-          .where(and(eq(entries.collectionId, Number(colIdStr)), inArray(entries.id, ids)))
+          .where(and(eq(entries.collectionId, Number(colIdStr)), inArray(entries.id, ids), isNull(entries.deletedAt)))
         
         relationData[Number(colIdStr)] = {}
         for (const rel of rels) {
@@ -1421,7 +1439,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         })
         .from(entries)
         .leftJoin(users, eq(entries.updatedById, users.id))
-        .where(eq(entries.collectionId, id))
+        .where(and(eq(entries.collectionId, id), isNull(entries.deletedAt)))
         .orderBy(desc(entries.createdAt))
         .limit(1)
 
@@ -1441,10 +1459,28 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const limit = parseInt(c.req.query('limit') || '10', 10)
     const offset = (page - 1) * limit
 
+    const isTrash = c.req.query('trash') === 'true'
+    let whereClause = eq(entries.collectionId, id)
+    
+    // col is fetched above (line 1347-1351). It doesn't have enableTrash. We must fetch it.
+    const colExtended = await db
+      .select({ enableTrash: collections.enableTrash })
+      .from(collections)
+      .where(eq(collections.id, id))
+      .limit(1)
+
+    if (colExtended[0]?.enableTrash) {
+      if (isTrash) {
+        whereClause = and(whereClause, isNotNull(entries.deletedAt)) as any
+      } else {
+        whereClause = and(whereClause, isNull(entries.deletedAt)) as any
+      }
+    }
+
     const countResult = await db
       .select({ count: sql`count(*)` })
       .from(entries)
-      .where(eq(entries.collectionId, id))
+      .where(whereClause)
     const totalCount = Number(countResult[0].count)
     const totalPages = Math.ceil(totalCount / limit)
 
@@ -1455,7 +1491,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       })
       .from(entries)
       .leftJoin(users, eq(entries.updatedById, users.id))
-      .where(eq(entries.collectionId, id))
+      .where(whereClause)
       .orderBy(desc(entries.createdAt))
       .limit(limit)
       .offset(offset)
@@ -1540,7 +1576,7 @@ api.get('/entries/:id', async (c) => {
       })
       .from(entries)
       .leftJoin(users, eq(entries.updatedById, users.id))
-      .where(eq(entries.id, id))
+      .where(and(eq(entries.id, id), isNull(entries.deletedAt)))
       .limit(1)
 
     if (result.length === 0) return c.json({ error: 'Entry not found' }, 404)
@@ -1652,6 +1688,7 @@ api.delete('/entries/:id', async (c) => {
     const entryData = await db
       .select({
         slug: collections.slug,
+        collectionId: collections.id,
       })
       .from(entries)
       .innerJoin(collections, eq(entries.collectionId, collections.id))
@@ -1668,11 +1705,59 @@ api.delete('/entries/:id', async (c) => {
       )
     }
 
-    const deleted = await db
-      .delete(entries)
+    const colQuery = await db.select({ enableTrash: collections.enableTrash }).from(collections).where(eq(collections.id, entryData[0].collectionId)).limit(1)
+    const isTrashEnabled = colQuery[0]?.enableTrash
+    
+    const force = c.req.query('force') === 'true'
+
+    if (isTrashEnabled && !force) {
+      const updated = await db
+        .update(entries)
+        .set({ deletedAt: new Date() })
+        .where(eq(entries.id, id))
+        .returning()
+      if (updated.length === 0) return c.json({ error: 'Entry not found' }, 404)
+      return c.json({ success: true, message: 'Entry moved to trash' })
+    } else {
+      const deleted = await db
+        .delete(entries)
+        .where(eq(entries.id, id))
+        .returning()
+      if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
+      return c.json({ success: true })
+    }
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+api.post('/entries/:id/restore', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'), 10)
+    if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400)
+
+    const entryData = await db
+      .select({
+        slug: collections.slug,
+      })
+      .from(entries)
+      .innerJoin(collections, eq(entries.collectionId, collections.id))
+      .where(eq(entries.id, id))
+      .limit(1)
+
+    if (entryData.length === 0) return c.json({ error: 'Entry not found' }, 404)
+
+    if (!checkPermission(c, entryData[0].slug, 'update')) {
+      return c.json({ error: 'Forbidden' }, 403)
+    }
+
+    const updated = await db
+      .update(entries)
+      .set({ deletedAt: null })
       .where(eq(entries.id, id))
       .returning()
-    if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
+
+    if (updated.length === 0) return c.json({ error: 'Entry not found' }, 404)
     return c.json({ success: true })
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500)

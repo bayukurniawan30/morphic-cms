@@ -6,6 +6,7 @@ import {
   timestamp,
   pgEnum,
   integer,
+  boolean,
 } from 'drizzle-orm/pg-core'
 
 export const collections = pgTable('collections', {
@@ -13,6 +14,7 @@ export const collections = pgTable('collections', {
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
   type: varchar('type', { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
+  enableTrash: boolean('enable_trash').notNull().default(false),
   fields: jsonb('fields').$type<any[]>().notNull().default([]),
   createdById: integer('created_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -28,6 +30,7 @@ export const entries = pgTable('entries', {
   updatedById: integer('updated_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
 })
 
 export const entryVersions = pgTable('entry_versions', {
