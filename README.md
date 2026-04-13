@@ -2,6 +2,8 @@
 
 Morphic CMS is a modern, lightweight, and high-performance headless CMS built with a focus on speed, developer experience, and elegant design. It leverages a powerful tech stack to provide a seamless workflow for managing dynamic content and user administration.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,RESEND_API_KEY,EMAIL_FROM)
+
 ## 🚀 Tech Stack
 
 ### Backend
@@ -52,6 +54,7 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
    JWT_SECRET=
    JWT_EXPIRES_IN_DAYS=
    CLOUDINARY_CLOUD_NAME=
+   CLOUDINARY_UPLOAD_PRESET=
    # Email Service (Resend)
    RESEND_API_KEY=re_...
    EMAIL_FROM=Morphic CMS <onboarding@resend.dev>
