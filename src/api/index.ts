@@ -1,8 +1,18 @@
 import { serveStatic } from '@hono/node-server/serve-static'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
-import { and, asc, desc, eq, isNull, isNotNull, sql, inArray } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  sql,
+} from 'drizzle-orm'
 import { Hono } from 'hono'
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 import { db } from '../db/index.js'
 import {
@@ -13,6 +23,7 @@ import {
   entryVersions,
   formEntries,
   forms,
+  locales,
   media,
   users,
 } from '../db/schema.js'
@@ -50,6 +61,24 @@ const seedAbilities = async () => {
   }
 }
 seedAbilities().catch(console.error)
+
+// Seed default locales
+const seedLocales = async () => {
+  const enLocale = await db
+    .select()
+    .from(locales)
+    .where(eq(locales.code, 'en'))
+    .limit(1)
+  if (enLocale.length === 0) {
+    await db.insert(locales).values({
+      code: 'en',
+      name: 'English',
+      isDefault: true,
+    })
+    console.log('✅ Seeded: English locale')
+  }
+}
+seedLocales().catch(console.error)
 
 // Inertia middleware injects c.set('inertia', renderFn)
 app.use('*', inertia())
@@ -91,12 +120,6 @@ app.get('/docs', async (c) => {
     user: userData,
     title: 'Documentation | Morphic CMS',
   })
-})
-
-// Logout endpoint
-app.all('/logout', async (c) => {
-  deleteCookie(c, 'morphic_token')
-  return c.redirect('/login')
 })
 
 // Middleware to inject the authenticated user into the Inertia shared props globally
@@ -186,6 +209,43 @@ const requireAuth = async (c: any, next: any) => {
   await next()
 }
 
+// Locales Management Pages
+app.get('/localization', requireAuth, async (c) => {
+  const userData = c.get('user')
+  return c.get('inertia')('Localization/List', {
+    user: userData,
+    title: 'Localization',
+  })
+})
+
+app.get('/localization/add', requireAuth, async (c) => {
+  const userData = c.get('user')
+  return c.get('inertia')('Localization/Form', {
+    user: userData,
+    title: 'Add Language',
+    mode: 'create',
+  })
+})
+
+app.get('/localization/edit/:id', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const id = parseInt(c.req.param('id'), 10)
+  const localeResult = await db
+    .select()
+    .from(locales)
+    .where(eq(locales.id, id))
+    .limit(1)
+  const locale = localeResult[0]
+  if (!locale) return c.redirect('/localization')
+
+  return c.get('inertia')('Localization/Form', {
+    user: userData,
+    title: 'Edit Language',
+    mode: 'edit',
+    locale,
+  })
+})
+
 // Serve the Dashboard page
 app.get('/dashboard', requireAuth, async (c) => {
   const userData = c.get('user')
@@ -247,7 +307,10 @@ app.get('/dashboard', requireAuth, async (c) => {
       count: sql`count(${entries.id})`,
     })
     .from(collections)
-    .leftJoin(entries, and(eq(collections.id, entries.collectionId), isNull(entries.deletedAt)))
+    .leftJoin(
+      entries,
+      and(eq(collections.id, entries.collectionId), isNull(entries.deletedAt))
+    )
     .where(eq(collections.type, 'collection'))
     .groupBy(collections.id)
     .orderBy(desc(sql`count(${entries.id})`))
@@ -623,13 +686,17 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
 
   const isTrash = c.req.query('trash') === 'true'
   let whereClause = eq(entries.collectionId, collectionId)
-  
+
   if (collection.enableTrash) {
     if (isTrash) {
       whereClause = and(whereClause, isNotNull(entries.deletedAt)) as any
     } else {
       whereClause = and(whereClause, isNull(entries.deletedAt)) as any
     }
+  }
+  const localeFilter = c.req.query('locale')
+  if (localeFilter) {
+    whereClause = and(whereClause, eq(entries.locale, localeFilter)) as any
   }
 
   const countResult = await db
@@ -664,8 +731,10 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
       totalCount,
       limit,
     },
+    allLocales: await db.select().from(locales),
     filters: {
       trash: isTrash,
+      locale: localeFilter || null,
     },
   })
 })
@@ -683,10 +752,33 @@ app.get('/entries/:collectionId/add', requireAuth, async (c) => {
 
   if (!collection) return c.redirect('/entries')
 
+  const allLocales = await db.select().from(locales)
+
+  const translationGroupId = c.req.query('translationGroupId')
+  const sourceLocale = c.req.query('sourceLocale')
+  let sourceEntry = null
+
+  if (translationGroupId && sourceLocale) {
+    const results = await db
+      .select()
+      .from(entries)
+      .where(
+        and(
+          eq(entries.translationGroupId, translationGroupId),
+          eq(entries.locale, sourceLocale)
+        )
+      )
+      .limit(1)
+    sourceEntry = results[0]
+  }
+
   return c.get('inertia')('Entries/Form', {
     collection,
     user: userData,
     mode: 'create',
+    locales: allLocales,
+    translationGroupId: translationGroupId || null,
+    sourceEntry: sourceEntry || null,
   })
 })
 
@@ -748,12 +840,28 @@ app.get('/entries/:collectionId/edit/:entryId', requireAuth, async (c) => {
   const entry = entryResult[0]
   if (!entry) return c.redirect(`/entries/${collectionId}`)
 
+  const allLocales = await db.select().from(locales)
+  const existingTranslations: Record<string, number> = {}
+
+  if (collection.localized && entry.entry.translationGroupId) {
+    const transResults = await db
+      .select({ id: entries.id, locale: entries.locale })
+      .from(entries)
+      .where(eq(entries.translationGroupId, entry.entry.translationGroupId))
+
+    transResults.forEach((r) => {
+      existingTranslations[r.locale] = r.id
+    })
+  }
+
   return c.get('inertia')('Entries/Form', {
     collection,
     entry: entry.entry,
     updatedBy: entry.updatedBy,
     user: userData,
     mode: 'edit',
+    locales: allLocales,
+    existingTranslations,
   })
 })
 
@@ -832,6 +940,100 @@ api.use('*', async (c, next) => {
   }
 
   await next()
+})
+
+// Locales API
+api.get('/locales', async (c) => {
+  const allLocales = await db.select().from(locales).orderBy(asc(locales.name))
+  return c.json({ locales: allLocales })
+})
+
+api.post('/locales', async (c) => {
+  try {
+    const { code, name, isDefault } = await c.req.json()
+    if (!code || !name)
+      return c.json({ error: 'Code and name are required' }, 400)
+
+    // If setting as default, unset others
+    if (isDefault) {
+      await db.update(locales).set({ isDefault: false })
+    }
+
+    const result = await db
+      .insert(locales)
+      .values({ code, name, isDefault: !!isDefault })
+      .returning()
+    return c.json({ locale: result[0] })
+  } catch (err) {
+    return c.json({ error: 'Failed to create locale' }, 500)
+  }
+})
+
+api.put('/locales/:id', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'), 10)
+    const { code, name, isDefault } = await c.req.json()
+
+    // Protected en locale
+    const existing = await db
+      .select()
+      .from(locales)
+      .where(eq(locales.id, id))
+      .limit(1)
+    if (existing[0]?.code === 'en' && code !== 'en') {
+      return c.json(
+        { error: 'Cannot change the code of the default English locale' },
+        400
+      )
+    }
+
+    if (isDefault) {
+      await db.update(locales).set({ isDefault: false })
+    }
+
+    const result = await db
+      .update(locales)
+      .set({ code, name, isDefault: !!isDefault, updatedAt: new Date() })
+      .where(eq(locales.id, id))
+      .returning()
+    return c.json({ locale: result[0] })
+  } catch (err) {
+    return c.json({ error: 'Failed to update locale' }, 500)
+  }
+})
+
+api.delete('/locales/:id', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'), 10)
+    const localeResult = await db
+      .select()
+      .from(locales)
+      .where(eq(locales.id, id))
+      .limit(1)
+    const locale = localeResult[0]
+
+    if (!locale) return c.json({ error: 'Locale not found' }, 404)
+    if (locale.code === 'en')
+      return c.json({ error: 'Cannot delete default English locale' }, 400)
+
+    // Check if in use
+    const usedEntries = await db
+      .select({ id: entries.id })
+      .from(entries)
+      .where(eq(entries.locale, locale.code))
+      .limit(1)
+    if (usedEntries.length > 0) {
+      return c.json(
+        { error: 'Cannot delete locale while it is being used by entries' },
+        400
+      )
+    }
+
+    await db.delete(locales).where(eq(locales.id, id))
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ error: 'Failed to delete locale' }, 500)
+  }
 })
 
 const checkPermission = (
@@ -1216,8 +1418,14 @@ api.post('/collections', async (c) => {
   try {
     const body = await c.req.json()
     const { name, fields } = body
-
     if (!name) return c.json({ error: 'Name is required' }, 400)
+
+    const hasStatusField = fields?.some(
+      (f: any) => f.name.toLowerCase() === 'status'
+    )
+    if (hasStatusField) {
+      return c.json({ error: "'status' is a reserved field name" }, 400)
+    }
 
     const slug = await generateUniqueSlug(name)
 
@@ -1228,6 +1436,7 @@ api.post('/collections', async (c) => {
         slug,
         type: body.type || 'collection',
         enableTrash: body.enableTrash || false,
+        localized: body.localized || false,
         fields: fields || [],
         createdById: c.get('user')?.id || null,
       })
@@ -1274,8 +1483,14 @@ api.put('/collections/:id', async (c) => {
     const id = parseInt(c.req.param('id'), 10)
     const body = await c.req.json()
     const { name, fields } = body
-
     if (!name) return c.json({ error: 'Name is required' }, 400)
+
+    const hasStatusField = fields?.some(
+      (f: any) => f.name.toLowerCase() === 'status'
+    )
+    if (hasStatusField) {
+      return c.json({ error: "'status' is a reserved field name" }, 400)
+    }
 
     const updated = await db
       .update(collections)
@@ -1283,6 +1498,7 @@ api.put('/collections/:id', async (c) => {
         name,
         type: body.type || 'collection',
         enableTrash: body.enableTrash || false,
+        localized: body.localized || false,
         fields: fields || [],
         updatedAt: new Date(),
       })
@@ -1372,7 +1588,9 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const fieldsDef: any[] = (col[0]?.fields as any) || []
 
     const populateRelations = async (entriesList: any[]) => {
-      const relationFields = fieldsDef.filter((f) => f.type === 'relation' && f.relationCollectionId)
+      const relationFields = fieldsDef.filter(
+        (f) => f.type === 'relation' && f.relationCollectionId
+      )
       if (relationFields.length === 0) return entriesList
 
       const relationData: Record<number, Record<number, any>> = {}
@@ -1383,8 +1601,9 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
           const val = entry.content?.[field.name]
           if (val) {
             const relColId = field.relationCollectionId
-            if (!neededIdsByCollection[relColId]) neededIdsByCollection[relColId] = new Set()
-            
+            if (!neededIdsByCollection[relColId])
+              neededIdsByCollection[relColId] = new Set()
+
             if (Array.isArray(val)) {
               val.forEach((v) => neededIdsByCollection[relColId].add(v))
             } else {
@@ -1400,8 +1619,15 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         const rels = await db
           .select()
           .from(entries)
-          .where(and(eq(entries.collectionId, Number(colIdStr)), inArray(entries.id, ids), isNull(entries.deletedAt)))
-        
+          .where(
+            and(
+              eq(entries.collectionId, Number(colIdStr)),
+              inArray(entries.id, ids),
+              isNull(entries.deletedAt),
+              eq(entries.status, 'published')
+            )
+          )
+
         relationData[Number(colIdStr)] = {}
         for (const rel of rels) {
           relationData[Number(colIdStr)][rel.id] = rel
@@ -1417,12 +1643,17 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
             if (Array.isArray(val)) {
               newContent[field.name] = val.map((v: any) => {
                 const relatedEntry = relationData[relColId]?.[v]
-                return relatedEntry ? { id: relatedEntry.id, ...relatedEntry.content } : v
+                return relatedEntry
+                  ? { id: relatedEntry.id, ...relatedEntry.content }
+                  : v
               })
             } else {
               const relatedEntry = relationData[relColId]?.[val]
               if (relatedEntry) {
-                newContent[field.name] = { id: relatedEntry.id, ...relatedEntry.content }
+                newContent[field.name] = {
+                  id: relatedEntry.id,
+                  ...relatedEntry.content,
+                }
               }
             }
           }
@@ -1432,16 +1663,46 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     }
 
     if (isGlobal) {
-      const result = await db
+      const requestedLocale = c.req.query('locale') || 'en'
+
+      let result = await db
         .select({
           entry: entries,
           updatedBy: { id: users.id, name: users.name },
         })
         .from(entries)
         .leftJoin(users, eq(entries.updatedById, users.id))
-        .where(and(eq(entries.collectionId, id), isNull(entries.deletedAt)))
+        .where(
+          and(
+            eq(entries.collectionId, id),
+            isNull(entries.deletedAt),
+            eq(entries.status, 'published'),
+            eq(entries.locale, requestedLocale)
+          )
+        )
         .orderBy(desc(entries.createdAt))
         .limit(1)
+
+      // Fallback to default if requested locale not found
+      if (result.length === 0 && requestedLocale !== 'en') {
+        result = await db
+          .select({
+            entry: entries,
+            updatedBy: { id: users.id, name: users.name },
+          })
+          .from(entries)
+          .leftJoin(users, eq(entries.updatedById, users.id))
+          .where(
+            and(
+              eq(entries.collectionId, id),
+              isNull(entries.deletedAt),
+              eq(entries.status, 'published'),
+              eq(entries.locale, 'en')
+            )
+          )
+          .orderBy(desc(entries.createdAt))
+          .limit(1)
+      }
 
       const r = result[0]
       if (!r) return c.json({ type: 'global', entry: null })
@@ -1460,8 +1721,19 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const offset = (page - 1) * limit
 
     const isTrash = c.req.query('trash') === 'true'
-    let whereClause = eq(entries.collectionId, id)
-    
+    const localeQuery = c.req.query('locale')
+    const requestedLocale = localeQuery || 'en'
+
+    let whereClause = and(
+      eq(entries.collectionId, id),
+      eq(entries.status, 'published')
+    ) as any
+
+    // Only filter by locale if not explicitly requesting all
+    if (localeQuery !== '_all') {
+      whereClause = and(whereClause, eq(entries.locale, requestedLocale)) as any
+    }
+
     // col is fetched above (line 1347-1351). It doesn't have enableTrash. We must fetch it.
     const colExtended = await db
       .select({ enableTrash: collections.enableTrash })
@@ -1475,6 +1747,8 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       } else {
         whereClause = and(whereClause, isNull(entries.deletedAt)) as any
       }
+    } else {
+      whereClause = and(whereClause, isNull(entries.deletedAt)) as any
     }
 
     const countResult = await db
@@ -1540,6 +1814,66 @@ api.post('/collections/:id/entries', async (c) => {
 
   try {
     const body = await c.req.json()
+
+    // Handle Bulk Localization Save
+    if (body.locales && typeof body.locales === 'object') {
+      const localesData = body.locales
+      const validationErrors: Record<string, any> = {}
+      const validatedEntries: any[] = []
+      
+      const translationGroupId = body.translationGroupId || crypto.randomUUID()
+      const status = body.status || 'published'
+
+      for (const [localeCode, content] of Object.entries(localesData)) {
+        // Skip empty drafts
+        if (!content || Object.keys(content as object).length === 0) continue
+
+        const parseResult = dynamicSchema.safeParse(content)
+        if (!parseResult.success) {
+          validationErrors[localeCode] = parseResult.error.format()
+          continue
+        }
+
+        validatedEntries.push({
+          collectionId,
+          content: parseResult.data,
+          status,
+          locale: localeCode,
+          translationGroupId,
+          updatedById: c.get('user')?.id || null,
+        })
+      }
+
+      if (Object.keys(validationErrors).length > 0) {
+        return c.json(
+          { error: 'Validation failed', details: validationErrors, isBulk: true },
+          400
+        )
+      }
+
+      if (validatedEntries.length === 0) {
+        return c.json({ error: 'No content provided' }, 400)
+      }
+
+      // Transactional bulk insert
+      const results = await db.transaction(async (tx) => {
+        const inserted = []
+        for (const entryData of validatedEntries) {
+          const res = await tx.insert(entries).values(entryData).returning()
+          inserted.push(res[0])
+        }
+        return inserted
+      })
+
+      // Try to return the entry matching currentLocale or default locale or first
+      const primaryEntry = results.find(r => r.locale === body.currentLocale) || 
+                          results.find(r => r.locale === 'en') || 
+                          results[0]
+
+      return c.json({ success: true, entry: primaryEntry, results }, 201)
+    }
+
+    // Fallback to single entry save (Backward compatibility)
     const parseResult = dynamicSchema.safeParse(body)
     if (!parseResult.success) {
       return c.json(
@@ -1553,12 +1887,16 @@ api.post('/collections/:id/entries', async (c) => {
       .values({
         collectionId: collectionId,
         content: parseResult.data,
+        status: body.status || 'published',
+        locale: body.locale || 'en',
+        translationGroupId: body.translationGroupId || crypto.randomUUID(),
         updatedById: c.get('user')?.id || null,
       })
       .returning()
 
     return c.json({ success: true, entry: insertResult[0] }, 201)
   } catch (e) {
+    console.error('Error creating entries:', e)
     return c.json({ error: 'Invalid JSON or Internal error' }, 400)
   }
 })
@@ -1566,6 +1904,7 @@ api.post('/collections/:id/entries', async (c) => {
 api.get('/entries/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const requestedLocale = c.req.query('locale')
     const result = await db
       .select({
         entry: entries,
@@ -1576,11 +1915,48 @@ api.get('/entries/:id', async (c) => {
       })
       .from(entries)
       .leftJoin(users, eq(entries.updatedById, users.id))
-      .where(and(eq(entries.id, id), isNull(entries.deletedAt)))
+      .where(
+        and(
+          eq(entries.id, id),
+          isNull(entries.deletedAt),
+          eq(entries.status, 'published')
+        )
+      )
       .limit(1)
 
     if (result.length === 0) return c.json({ error: 'Entry not found' }, 404)
-    const r = result[0]
+    let r = result[0]
+
+    // If a different locale is requested, try to find it in the same group
+    if (
+      requestedLocale &&
+      r.entry.locale !== requestedLocale &&
+      r.entry.translationGroupId
+    ) {
+      const translation = await db
+        .select({
+          entry: entries,
+          updatedBy: {
+            id: users.id,
+            name: users.name,
+          },
+        })
+        .from(entries)
+        .leftJoin(users, eq(entries.updatedById, users.id))
+        .where(
+          and(
+            eq(entries.translationGroupId, r.entry.translationGroupId),
+            eq(entries.locale, requestedLocale),
+            isNull(entries.deletedAt),
+            eq(entries.status, 'published')
+          )
+        )
+        .limit(1)
+
+      if (translation.length > 0) {
+        r = translation[0]
+      }
+    }
     return c.json({
       entry: r.entry,
       updatedBy:
@@ -1642,6 +2018,8 @@ api.put('/entries/:id', async (c) => {
       entryId: id,
       content: entry.content,
       versionNumber: nextVersion,
+      status: entry.status,
+      locale: entry.locale,
       createdById: entry.updatedById,
       createdAt: entry.updatedAt,
     })
@@ -1667,6 +2045,8 @@ api.put('/entries/:id', async (c) => {
       .update(entries)
       .set({
         content: parseResult.data,
+        status: body.status || entry.status,
+        locale: body.locale || entry.locale,
         updatedById: c.get('user')?.id || null,
         updatedAt: new Date(),
       })
@@ -1705,9 +2085,13 @@ api.delete('/entries/:id', async (c) => {
       )
     }
 
-    const colQuery = await db.select({ enableTrash: collections.enableTrash }).from(collections).where(eq(collections.id, entryData[0].collectionId)).limit(1)
+    const colQuery = await db
+      .select({ enableTrash: collections.enableTrash })
+      .from(collections)
+      .where(eq(collections.id, entryData[0].collectionId))
+      .limit(1)
     const isTrashEnabled = colQuery[0]?.enableTrash
-    
+
     const force = c.req.query('force') === 'true'
 
     if (isTrashEnabled && !force) {
@@ -1838,6 +2222,7 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
       entryId: entryId,
       content: entry.content,
       versionNumber: nextVersion,
+      status: entry.status,
       createdById: entry.updatedById,
       createdAt: entry.updatedAt,
     })
@@ -1846,6 +2231,7 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
       .update(entries)
       .set({
         content: version.content,
+        status: version.status || 'published',
         updatedById: c.get('user')?.id || null,
         updatedAt: new Date(),
       })

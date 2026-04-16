@@ -15,8 +15,18 @@ export const collections = pgTable('collections', {
   slug: varchar('slug', { length: 255 }).notNull().unique(),
   type: varchar('type', { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
   enableTrash: boolean('enable_trash').notNull().default(false),
+  localized: boolean('localized').notNull().default(false),
   fields: jsonb('fields').$type<any[]>().notNull().default([]),
   createdById: integer('created_by_id').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const locales = pgTable('locales', {
+  id: serial('id').primaryKey(),
+  code: varchar('code', { length: 10 }).notNull().unique(),
+  name: varchar('name', { length: 100 }).notNull(),
+  isDefault: boolean('is_default').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -28,6 +38,9 @@ export const entries = pgTable('entries', {
     .notNull(),
   content: jsonb('content').notNull().default({}),
   updatedById: integer('updated_by_id').references(() => users.id),
+  status: varchar('status', { length: 20 }).notNull().default('published'),
+  locale: varchar('locale', { length: 10 }).notNull().default('en'),
+  translationGroupId: varchar('translation_group_id', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at'),
@@ -40,6 +53,8 @@ export const entryVersions = pgTable('entry_versions', {
     .notNull(),
   content: jsonb('content').notNull().default({}),
   versionNumber: integer('version_number').notNull(),
+  status: varchar('status', { length: 20 }),
+  locale: varchar('locale', { length: 10 }),
   createdById: integer('created_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })

@@ -26,6 +26,7 @@ import {
   FileImageIcon,
   FileText,
   Globe,
+  Languages,
   LayoutDashboard,
   LayoutGrid,
   Mail,
@@ -301,6 +302,13 @@ export default function Layout({ user, children }: LayoutProps) {
                     href='/api-key-abilities'
                     icon={ShieldCheck}
                     label='API Key Abilities'
+                    isSidebarOpen={isSidebarOpen}
+                    currentUrl={url}
+                  />
+                  <NavItem
+                    href='/localization'
+                    icon={Languages}
+                    label='Localization'
                     isSidebarOpen={isSidebarOpen}
                     currentUrl={url}
                   />

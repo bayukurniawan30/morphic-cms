@@ -33,6 +33,7 @@ export default function AddCollection({ user }: AddProps) {
     name: '',
     type: 'collection' as 'collection' | 'global',
     enableTrash: false,
+    localized: false,
     fields: [] as FieldDefinition[],
   })
 
@@ -82,6 +83,16 @@ export default function AddCollection({ user }: AddProps) {
     }
     if (data.fields.length === 0) {
       toast.error('At least one field is required')
+      return
+    }
+
+    const hasStatusField = data.fields.some(
+      (f) => f.name.toLowerCase() === 'status'
+    )
+    if (hasStatusField) {
+      toast.error(
+        "'status' is a reserved field name and cannot be used. Please use a different name."
+      )
       return
     }
 
@@ -284,17 +295,35 @@ export default function AddCollection({ user }: AddProps) {
             </div>
 
             {data.type === 'collection' && (
-              <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border max-w-md'>
-                <div className='space-y-0.5'>
-                  <Label>Enable Trash</Label>
-                  <p className='text-xs text-muted-foreground'>
-                    Deleted entries will be moved to a trash bin instead of being permanently removed.
-                  </p>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl'>
+                <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border'>
+                  <div className='space-y-0.5'>
+                    <Label>Enable Trash</Label>
+                    <p className='text-xs text-muted-foreground'>
+                      Deleted entries will be moved to a trash bin.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={data.enableTrash}
+                    onCheckedChange={(val) => setData('enableTrash', val)}
+                  />
                 </div>
-                <Switch
-                  checked={data.enableTrash}
-                  onCheckedChange={(val) => setData('enableTrash', val)}
-                />
+
+                <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border'>
+                  <div className='space-y-0.5'>
+                    <Label className='flex items-center gap-2'>
+                      Localization
+                      <span className='px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-bold uppercase'>NEW</span>
+                    </Label>
+                    <p className='text-xs text-muted-foreground'>
+                      Support multiple languages for this collection.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={data.localized}
+                    onCheckedChange={(val) => setData('localized', val)}
+                  />
+                </div>
               </div>
             )}
           </div>

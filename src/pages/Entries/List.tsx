@@ -9,7 +9,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 import { Head, Link, router } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
@@ -44,12 +52,21 @@ interface Entry {
   id: number
   content: Record<string, any>
   updatedBy?: { id: number; name: string }
+  status: 'published' | 'draft'
+  locale?: string
   createdAt: string
   updatedAt: string
 }
 
 interface ListProps {
-  collection: Collection
+  collection: {
+    id: number
+    name: string
+    slug: string
+    localized?: boolean
+    enableTrash?: boolean
+    fields: Field[]
+  }
   entries: Entry[]
   user?: any
   pagination?: {
@@ -61,7 +78,9 @@ interface ListProps {
   filters?: {
     type?: string
     trash?: boolean
+    locale?: string
   }
+  allLocales?: { id: number; code: string; name: string; isDefault: boolean }[]
 }
 
 export default function EntriesList({
@@ -70,18 +89,29 @@ export default function EntriesList({
   user,
   pagination,
   filters,
+  allLocales = [],
 }: ListProps) {
-  const isTrash = filters?.trash || false;
+  const isTrash = filters?.trash || false
 
   const handleDelete = async (entryId: number, force?: boolean) => {
-    if (!confirm(`Are you sure you want to ${force ? 'permanently delete' : 'delete'} this entry?`)) return
+    if (
+      !confirm(
+        `Are you sure you want to ${force ? 'permanently delete' : 'delete'} this entry?`
+      )
+    )
+      return
 
     try {
-      const res = await fetch(`/api/entries/${entryId}${force ? '?force=true' : ''}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(
+        `/api/entries/${entryId}${force ? '?force=true' : ''}`,
+        {
+          method: 'DELETE',
+        }
+      )
       if (res.ok) {
-        toast.success(`Entry ${force ? 'permanently deleted' : 'moved to trash'}`)
+        toast.success(
+          `Entry ${force ? 'permanently deleted' : 'moved to trash'}`
+        )
         window.location.reload()
       } else {
         const data = await res.json()
@@ -94,7 +124,9 @@ export default function EntriesList({
 
   const handleRestore = async (entryId: number) => {
     try {
-      const res = await fetch(`/api/entries/${entryId}/restore`, { method: 'POST' })
+      const res = await fetch(`/api/entries/${entryId}/restore`, {
+        method: 'POST',
+      })
       if (res.ok) {
         toast.success('Entry restored')
         window.location.reload()
@@ -108,7 +140,11 @@ export default function EntriesList({
   }
 
   const handlePageChange = (page: number) => {
-    router.get(`/entries/${collection.id}`, { page, trash: isTrash }, { preserveState: true })
+    router.get(
+      `/entries/${collection.id}`,
+      { page, trash: isTrash, locale: filters?.locale },
+      { preserveState: true }
+    )
   }
 
   // Get visible columns (first 3 fields)
@@ -122,6 +158,7 @@ export default function EntriesList({
   // API Preview states
   const [previewPage, setPreviewPage] = React.useState(1)
   const [previewLimit, setPreviewLimit] = React.useState(10)
+  const [previewLocale, setPreviewLocale] = React.useState('')
   const [previewData, setPreviewData] = React.useState<any>(null)
   const [isPreviewLoading, setIsPreviewLoading] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
@@ -133,10 +170,15 @@ export default function EntriesList({
     const fetchPreview = async () => {
       setIsPreviewLoading(true)
       try {
-        const url =
+        let url =
           collectionType === 'global'
             ? `/api/collections/${collection.slug}/entries`
             : `/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+
+        if (collection.localized && previewLocale) {
+          url += (url.includes('?') ? '&' : '?') + `locale=${previewLocale}`
+        }
+
         const res = await fetch(url)
         const data = await res.json()
         setPreviewData(data)
@@ -149,7 +191,14 @@ export default function EntriesList({
 
     const timer = setTimeout(fetchPreview, 300) // Debounce
     return () => clearTimeout(timer)
-  }, [previewPage, previewLimit, collection.slug, isDialogOpen, collection])
+  }, [
+    previewPage,
+    previewLimit,
+    previewLocale,
+    collection.slug,
+    isDialogOpen,
+    collection,
+  ])
 
   React.useEffect(() => {
     const fetchRelations = async () => {
@@ -318,7 +367,14 @@ export default function EntriesList({
 
                 <div className='flex-1 space-y-4 overflow-hidden flex flex-col mt-4'>
                   {(collection as any).type !== 'global' && (
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border'>
+                    <div
+                      className={cn(
+                        'grid gap-4 bg-muted/30 p-4 rounded-lg border',
+                        collection.localized
+                          ? 'grid-cols-1 md:grid-cols-3'
+                          : 'grid-cols-1 md:grid-cols-2'
+                      )}
+                    >
                       <div className='space-y-2'>
                         <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
                           Page Number
@@ -354,10 +410,32 @@ export default function EntriesList({
                           }
                           className='h-8 text-xs'
                         />
-                        <p className='text-[10px] text-muted-foreground italic'>
-                          Max 100 entries per request.
-                        </p>
                       </div>
+                      {collection.localized && (
+                        <div className='space-y-2'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            Locale
+                          </label>
+                          <Select
+                            value={previewLocale}
+                            onValueChange={setPreviewLocale}
+                          >
+                            <SelectTrigger className='h-8 text-xs'>
+                              <SelectValue placeholder='Select locale' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='_all'>
+                                All Languages
+                              </SelectItem>
+                              {allLocales.map((l) => (
+                                <SelectItem key={l.code} value={l.code}>
+                                  {l.name} ({l.code})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -368,21 +446,32 @@ export default function EntriesList({
                     <div className='flex space-x-2'>
                       <Input
                         readOnly
-                        value={
-                          (collection as any).type === 'global'
-                            ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                            : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
-                        }
+                        value={(() => {
+                          let url =
+                            (collection as any).type === 'global'
+                              ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                              : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+
+                          if (collection.localized && previewLocale) {
+                            url += `&locale=${previewLocale}`
+                          }
+                          return url
+                        })()}
                         className='font-mono text-xs bg-muted/50'
                       />
                       <Button
                         variant='secondary'
                         size='icon'
                         onClick={() => {
-                          const url =
+                          let url =
                             (collection as any).type === 'global'
                               ? `${window.location.origin}/api/collections/${collection.slug}/entries`
                               : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+
+                          if (collection.localized && previewLocale) {
+                            url += `&locale=${previewLocale}`
+                          }
+
                           navigator.clipboard.writeText(url)
                           toast.success('URL copied to clipboard')
                         }}
@@ -410,24 +499,45 @@ export default function EntriesList({
                           size='sm'
                           className='h-7 text-[10px]'
                           onClick={() => {
-                            const name = collection.name.replace(/[^a-zA-Z0-9]/g, '')
+                            const name = collection.name.replace(
+                              /[^a-zA-Z0-9]/g,
+                              ''
+                            )
                             let fieldsTs = ''
-                            
+
                             collection.fields.forEach((f: any) => {
                               let type = 'any'
-                              if (['text', 'textarea', 'rich-text', 'slug', 'email', 'date', 'datetime', 'time', 'select', 'radio'].includes(f.type)) type = 'string'
+                              if (
+                                [
+                                  'text',
+                                  'textarea',
+                                  'rich-text',
+                                  'slug',
+                                  'email',
+                                  'date',
+                                  'datetime',
+                                  'time',
+                                  'select',
+                                  'radio',
+                                ].includes(f.type)
+                              )
+                                type = 'string'
                               if (['number'].includes(f.type)) type = 'number'
-                              if (['boolean', 'checkbox'].includes(f.type)) type = 'boolean'
+                              if (['boolean', 'checkbox'].includes(f.type))
+                                type = 'boolean'
                               if (f.type === 'array') type = 'any[]'
-                              if (f.type === 'relation') type = '{ id: number; [key: string]: any }'
-                              
+                              if (f.type === 'relation')
+                                type = '{ id: number; [key: string]: any }'
+
                               fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
                             })
 
                             const tsInterface = `export interface ${name}Content {\n${fieldsTs}}\n\nexport interface ${name}Entry {\n  id: number;\n  content: ${name}Content;\n  createdAt: string;\n  updatedAt: string;\n}\n`
-                            
+
                             navigator.clipboard.writeText(tsInterface)
-                            toast.success('TypeScript interface copied to clipboard')
+                            toast.success(
+                              'TypeScript interface copied to clipboard'
+                            )
                           }}
                         >
                           <CodeIcon className='w-3 h-3 mr-1.5' />
@@ -480,18 +590,69 @@ export default function EntriesList({
             <Button
               variant={!isTrash ? 'secondary' : 'ghost'}
               size='sm'
-              onClick={() => router.get(`/entries/${collection.id}`, { trash: false }, { preserveState: true })}
+              onClick={() =>
+                router.get(
+                  `/entries/${collection.id}`,
+                  { trash: false },
+                  { preserveState: true }
+                )
+              }
             >
               Active
             </Button>
             <Button
               variant={isTrash ? 'secondary' : 'ghost'}
               size='sm'
-              onClick={() => router.get(`/entries/${collection.id}`, { trash: true }, { preserveState: true })}
+              onClick={() =>
+                router.get(
+                  `/entries/${collection.id}`,
+                  { trash: true },
+                  { preserveState: true }
+                )
+              }
               className={isTrash ? '' : 'text-muted-foreground'}
             >
               Trash
             </Button>
+          </div>
+        )}
+
+        {collection.localized && (
+          <div className='flex items-center space-x-2 bg-muted/40 p-1 rounded-lg border w-fit'>
+            <Button
+              variant={!filters?.locale ? 'secondary' : 'ghost'}
+              size='sm'
+              onClick={() =>
+                router.get(
+                  `/entries/${collection.id}`,
+                  { locale: '' },
+                  { preserveState: true }
+                )
+              }
+              className='h-8 text-xs'
+            >
+              All Languages
+            </Button>
+            {allLocales.map((l) => (
+              <Button
+                key={l.id}
+                variant={filters?.locale === l.code ? 'secondary' : 'ghost'}
+                size='sm'
+                onClick={() =>
+                  router.get(
+                    `/entries/${collection.id}`,
+                    { locale: l.code },
+                    { preserveState: true }
+                  )
+                }
+                className='h-8 text-xs gap-2'
+              >
+                <span className='font-mono uppercase text-[10px]'>
+                  {l.code}
+                </span>
+                <span>{l.name}</span>
+              </Button>
+            ))}
           </div>
         )}
 
@@ -517,6 +678,14 @@ export default function EntriesList({
                   <th className='px-6 py-4 font-medium uppercase tracking-wider'>
                     Last Updated By
                   </th>
+                  {collection.localized && (
+                    <th className='px-6 py-4 font-medium uppercase tracking-wider'>
+                      Locale
+                    </th>
+                  )}
+                  <th className='px-6 py-4 font-medium uppercase tracking-wider'>
+                    Status
+                  </th>
                   <th className='px-6 py-4 font-medium uppercase tracking-wider text-right'>
                     Actions
                   </th>
@@ -526,7 +695,7 @@ export default function EntriesList({
                 {entries.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={visibleFields.length + 4}
+                      colSpan={visibleFields.length + 7}
                       className='px-6 py-12 text-center text-muted-foreground'
                     >
                       <div className='max-w-xs mx-auto'>
@@ -579,6 +748,33 @@ export default function EntriesList({
                           </span>
                         )}
                       </td>
+                      {collection.localized && (
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-mono text-[10px] uppercase font-bold'>
+                            {entry.locale || 'en'}
+                          </span>
+                        </td>
+                      )}
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <span
+                          className={cn(
+                            'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                            entry.status === 'published'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'w-1.5 h-1.5 rounded-full mr-1.5',
+                              entry.status === 'published'
+                                ? 'bg-green-500'
+                                : 'bg-zinc-400'
+                            )}
+                          />
+                          {entry.status || 'published'}
+                        </span>
+                      </td>
                       <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
                         {!isTrash ? (
                           <>
@@ -599,7 +795,11 @@ export default function EntriesList({
                           </>
                         ) : (
                           <>
-                            <Button variant='outline' size='sm' onClick={() => handleRestore(entry.id)}>
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              onClick={() => handleRestore(entry.id)}
+                            >
                               Restore
                             </Button>
                             <Button

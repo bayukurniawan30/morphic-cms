@@ -3,6 +3,12 @@ import MediaPicker from '@/components/MediaPicker'
 import RichTextEditor from '@/components/RichTextEditor'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -19,19 +25,20 @@ import { cn } from '@/lib/utils'
 import { Head, Link } from '@inertiajs/react'
 import {
   ArrowLeft,
-  Save,
-  Loader2Icon,
-  FileText,
-  XIcon,
-  ImagePlus,
-  History,
-  RotateCcw,
-  User,
+  ChevronDown,
   Clock,
+  FileText,
+  History,
+  ImagePlus,
+  Loader2Icon,
+  RotateCcw,
+  Save,
+  Send,
+  User,
+  XIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React, { useState, useEffect } from 'react'
-import { useCallback } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 interface Collection {
   id: number
@@ -44,14 +51,26 @@ interface Collection {
 interface Entry {
   id: number
   content: Record<string, any>
+  status: 'published' | 'draft'
 }
 
 interface FormProps {
-  collection: Collection
-  entry?: Entry
+  collection: {
+    id: number
+    name: string
+    slug: string
+    type: 'collection' | 'global'
+    localized?: boolean
+    fields: FieldDefinition[]
+  }
+  entry?: Entry & { locale?: string; translationGroupId?: string }
   updatedBy?: { id: number; name: string }
   user?: any
   mode: 'create' | 'edit'
+  locales?: { id: number; code: string; name: string; isDefault: boolean }[]
+  existingTranslations?: Record<string, number>
+  translationGroupId?: string
+  sourceEntry?: Entry
 }
 
 const FieldInput = ({
@@ -300,8 +319,9 @@ const FieldInput = ({
             (typeof value === 'number' ? value.toString() : '')
           }
           onValueChange={(val) => {
-            const doc = availableDocuments.find((d) => d.id === parseInt(val))
-            handleValueChange(doc || parseInt(val))
+            const id = parseInt(val, 10)
+            const doc = availableDocuments.find((d) => d.id === id)
+            handleValueChange(doc || id)
           }}
         >
           <SelectTrigger className={error ? 'border-destructive' : ''}>
@@ -429,9 +449,27 @@ export default function EntriesForm({
   updatedBy,
   user,
   mode,
+  locales = [],
+  existingTranslations = {},
+  translationGroupId: initialGroupId,
+  sourceEntry,
 }: FormProps) {
   const [formData, setFormData] = useState<Record<string, any>>(
-    entry?.content || {}
+    entry?.content || sourceEntry?.content || {}
+  )
+  const initialLocale = entry?.locale ||
+    new URLSearchParams(window.location.search).get('locale') ||
+    locales.find((l) => l.isDefault)?.code ||
+    'en'
+  const [allDrafts, setAllDrafts] = useState<Record<string, Record<string, any>>>({
+    [initialLocale]: entry?.content || sourceEntry?.content || {}
+  })
+  const [currentLocale, setCurrentLocale] = useState<string>(initialLocale)
+  const [translationGroupId, setTranslationGroupId] = useState<string | null>(
+    entry?.translationGroupId || initialGroupId || null
+  )
+  const [status, setStatus] = useState<'published' | 'draft'>(
+    entry?.status || 'published'
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, any>>({})
@@ -521,6 +559,12 @@ export default function EntriesForm({
         }
       })
 
+      // Update drafts as well
+      setAllDrafts(prevDrafts => ({
+        ...prevDrafts,
+        [currentLocale]: next
+      }))
+
       return next
     })
     // Clear error for this field
@@ -531,10 +575,15 @@ export default function EntriesForm({
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (
+    e?: React.FormEvent,
+    statusOverride?: 'published' | 'draft'
+  ) => {
+    if (e) e.preventDefault()
     setIsSubmitting(true)
     setErrors({})
+
+    const finalStatus = statusOverride || status
 
     const url =
       mode === 'create'
@@ -542,27 +591,49 @@ export default function EntriesForm({
         : `/api/entries/${entry?.id}`
 
     const method = mode === 'create' ? 'POST' : 'PUT'
+    
+    // Prepare payload
+    const payload: any = {
+      status: finalStatus,
+      translationGroupId: translationGroupId,
+    }
+
+    if (mode === 'create' && collection.localized) {
+      payload.locales = allDrafts
+      payload.currentLocale = currentLocale
+    } else {
+      Object.assign(payload, formData)
+      payload.locale = currentLocale
+    }
 
     try {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       const result = await res.json()
 
       if (!res.ok) {
         if (result.error === 'Validation failed' && result.details) {
-          const fieldErrors: Record<string, string> = {}
-          Object.keys(result.details).forEach((key) => {
-            if (key !== '_errors') {
-              fieldErrors[key] =
-                result.details[key]._errors?.[0] || 'Invalid value'
-            }
-          })
-          setErrors(fieldErrors)
-          toast.error('Please check the form for errors')
+          if (result.isBulk) {
+            // Flatten errors for the active locale or just set the whole thing
+            // For simplicity in the UI, we'll store the whole details object in errors
+            // and adapt the FieldInput to read from it if it's bulk
+            setErrors(result.details)
+            toast.error('Validation failed in one or more languages')
+          } else {
+            const fieldErrors: Record<string, string> = {}
+            Object.keys(result.details).forEach((key) => {
+              if (key !== '_errors') {
+                fieldErrors[key] =
+                  result.details[key]._errors?.[0] || 'Invalid value'
+              }
+            })
+            setErrors(fieldErrors)
+            toast.error('Please check the form for errors')
+          }
         } else {
           toast.error(result.error || 'Failed to save entry')
         }
@@ -575,7 +646,12 @@ export default function EntriesForm({
           ? 'Entry created successfully'
           : 'Entry updated successfully'
       )
-      window.location.href = `/entries/${collection.id}`
+      
+      if (mode === 'create' && result.entry) {
+        window.location.href = `/entries/${collection.id}/edit/${result.entry.id}`
+      } else {
+        window.location.href = `/entries/${collection.id}`
+      }
     } catch (err) {
       toast.error('Network error')
       setIsSubmitting(false)
@@ -757,6 +833,76 @@ export default function EntriesForm({
           </div>
         )}
 
+        {collection.localized && (
+          <div className='flex items-center space-x-2 bg-muted/40 p-1.5 rounded-lg border w-fit'>
+            {locales.map((l) => {
+              const hasTranslation =
+                existingTranslations[l.code] || entry?.locale === l.code
+              const isActive = currentLocale === l.code
+              const hasError = errors[l.code] && Object.keys(errors[l.code]).length > 0
+
+              return (
+                <Button
+                  key={l.code}
+                  type='button'
+                  variant={isActive ? 'default' : 'ghost'}
+                  size='sm'
+                  className={cn(
+                    'h-8 px-3 text-xs gap-2 relative',
+                    !hasTranslation &&
+                      !isActive &&
+                      'text-muted-foreground opacity-60',
+                    hasError && 'ring-1 ring-destructive'
+                  )}
+                  onClick={() => {
+                    if (isActive) return
+
+                    if (existingTranslations[l.code]) {
+                      // Redirect to existing translation
+                      window.location.href = `/entries/${collection.id}/edit/${existingTranslations[l.code]}`
+                    } else if (
+                      mode === 'edit' ||
+                      (mode === 'create' && translationGroupId)
+                    ) {
+                      // Create new translation for this group
+                      window.location.href = `/entries/${collection.id}/add?translationGroupId=${translationGroupId}&sourceLocale=${currentLocale}&locale=${l.code}`
+                    } else {
+                      // Just switch locale for new entry
+                      
+                      // Save current to draft before switching
+                      setAllDrafts(prev => ({ ...prev, [currentLocale]: formData }))
+                      
+                      const targetLocale = l.code
+                      setCurrentLocale(targetLocale)
+                      
+                      // Load or initialize target draft
+                      const targetDraft = allDrafts[targetLocale] || {}
+                      setFormData(targetDraft)
+                      
+                      toast(`Entry language set to ${l.name}`, {
+                        description: targetDraft && Object.keys(targetDraft).length > 0
+                          ? 'Resumed your draft for ' + l.name
+                          : 'You are now creating this entry in ' + l.name
+                      })
+                    }
+                  }}
+                >
+                  <span className='font-mono uppercase text-[10px]'>
+                    {l.code}
+                  </span>
+                  <span>{l.name}</span>
+                  {hasTranslation && (
+                    <div className='w-1.5 h-1.5 rounded-full bg-primary/50' />
+                  )}
+                  {hasError && (
+                    <div className='absolute -top-1 -right-1 w-2 h-2 rounded-full bg-destructive shadow-sm animate-pulse' />
+                  )}
+                </Button>
+              )
+            })}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className='space-y-6'>
           <div
             className={`bg-card p-8 rounded-xl border shadow-sm space-y-8 ${isPreviewingVersion ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}
@@ -778,7 +924,11 @@ export default function EntriesForm({
                   field={field}
                   value={formData[field.name]}
                   onChange={(val) => handleFieldChange(field.name, val)}
-                  error={errors[field.name]}
+                  error={
+                    errors[currentLocale]
+                      ? errors[currentLocale][field.name]?._errors?.[0]
+                      : errors[field.name]
+                  }
                   relationData={relationData}
                   availableDocuments={availableDocuments}
                   onMediaPickerOpen={setActiveMediaPickerField}
@@ -788,9 +938,13 @@ export default function EntriesForm({
                     You can select multiple files for this field.
                   </p>
                 )}
-                {errors[field.name] && (
+                {(errors[currentLocale]
+                  ? errors[currentLocale][field.name]?._errors?.[0]
+                  : errors[field.name]) && (
                   <p className='text-xs font-medium text-destructive mt-1'>
-                    {errors[field.name]}
+                    {errors[currentLocale]
+                      ? errors[currentLocale][field.name]?._errors?.[0]
+                      : errors[field.name]}
                   </p>
                 )}
               </div>
@@ -802,16 +956,45 @@ export default function EntriesForm({
               <Link href={`/entries/${collection.id}`}>Cancel</Link>
             </Button>
             {!isPreviewingVersion && (
-              <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
-                    Saving...
-                  </>
-                ) : (
-                  <>{mode === 'create' ? 'Save Entry' : 'Update Entry'}</>
-                )}
-              </Button>
+              <div className='flex items-center'>
+                <div className='flex -space-x-px'>
+                  <Button
+                    type='button'
+                    disabled={isSubmitting}
+                    onClick={() => handleSubmit(undefined, 'published')}
+                    className='rounded-r-none border-r border-primary-foreground/20'
+                  >
+                    {isSubmitting ? (
+                      <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
+                    ) : (
+                      <Send className='w-4 h-4 mr-2' />
+                    )}
+                    {mode === 'create' ? 'Publish' : 'Update & Publish'}
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type='button'
+                        size='icon'
+                        disabled={isSubmitting}
+                        className='rounded-l-none'
+                      >
+                        <ChevronDown className='w-4 h-4' />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end' className='w-48'>
+                      <DropdownMenuItem
+                        onClick={() => handleSubmit(undefined, 'draft')}
+                        className='cursor-pointer'
+                      >
+                        <Save className='w-4 h-4 mr-2' />
+                        Save as Draft
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             )}
           </div>
         </form>
