@@ -1,7 +1,7 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
-import { Edit, Languages, Plus, Trash2 } from 'lucide-react'
+import { Languages, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 
@@ -132,16 +132,6 @@ export default function List({ user }: ListProps) {
                         )}
                       </td>
                       <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          asChild
-                          title='Edit'
-                        >
-                          <Link href={`/localization/edit/${locale.id}`}>
-                            <Edit className='w-3.5 h-3.5' />
-                          </Link>
-                        </Button>
                         {locale.code !== 'en' && (
                           <Button
                             variant='destructive'
