@@ -12,7 +12,7 @@ import {
   sql,
 } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { getCookie, setCookie } from 'hono/cookie'
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 import { db } from '../db/index.js'
 import {
@@ -99,6 +99,11 @@ app.get('/', async (c) => {
 // Serve the Login page at /login
 app.get('/login', async (c) => {
   return c.get('inertia')('Index', { title: 'Morphic CMS - Login' })
+})
+
+app.get('/logout', async (c) => {
+  deleteCookie(c, 'morphic_token')
+  return c.redirect('/login')
 })
 
 app.get('/forgot-password', async (c) => {
