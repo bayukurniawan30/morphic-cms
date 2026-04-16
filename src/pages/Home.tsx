@@ -4,10 +4,13 @@ import { Head, Link } from '@inertiajs/react'
 import {
   ArrowRight,
   CheckCircle2,
+  CheckSquare,
   Cloud,
   Database,
   FileCode,
   Globe,
+  History,
+  Languages,
   Layers,
   Menu,
   Monitor,
@@ -17,6 +20,7 @@ import {
   ShoppingBag,
   Smartphone,
   Sparkles,
+  Trash2,
   X,
   Zap,
 } from 'lucide-react'
@@ -221,6 +225,50 @@ export default function Home() {
                 <p className='text-slate-400 text-sm leading-relaxed'>
                   Granular permission management for both users and API keys.
                   You decide who can see and modify what.
+                </p>
+              </div>
+
+              <div className='p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all hover:translate-y-[-4px] group text-left'>
+                <div className='w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-orange-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <Languages className='w-6 h-6' />
+                </div>
+                <h3 className='text-xl font-bold mb-4'>Localization</h3>
+                <p className='text-slate-400 text-sm leading-relaxed'>
+                  Built-in multi-language support. Manage translations for every entry 
+                  and deliver localized content to your global audience.
+                </p>
+              </div>
+
+              <div className='p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all hover:translate-y-[-4px] group text-left'>
+                <div className='w-12 h-12 bg-cyan-500/20 rounded-2xl flex items-center justify-center text-cyan-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <History className='w-6 h-6' />
+                </div>
+                <h3 className='text-xl font-bold mb-4'>Content Versioning</h3>
+                <p className='text-slate-400 text-sm leading-relaxed'>
+                  Automatic history tracking. View past versions, compare changes, 
+                  and revert to any previous state with a single click.
+                </p>
+              </div>
+
+              <div className='p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all hover:translate-y-[-4px] group text-left'>
+                <div className='w-12 h-12 bg-red-500/20 rounded-2xl flex items-center justify-center text-red-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <Trash2 className='w-6 h-6' />
+                </div>
+                <h3 className='text-xl font-bold mb-4'>Soft Delete (Trash)</h3>
+                <p className='text-slate-400 text-sm leading-relaxed'>
+                  Safety first. Accidentally deleted content goes to the trash where 
+                  it can be restored or permanently removed when you're sure.
+                </p>
+              </div>
+
+              <div className='p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all hover:translate-y-[-4px] group text-left'>
+                <div className='w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <CheckSquare className='w-6 h-6' />
+                </div>
+                <h3 className='text-xl font-bold mb-4'>Form Builder</h3>
+                <p className='text-slate-400 text-sm leading-relaxed'>
+                  Create custom forms, capture submissions internally or via 
+                  webhooks, and manage your leads directly within the CMS.
                 </p>
               </div>
             </div>
