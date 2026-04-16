@@ -2,9 +2,9 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import {
   DropdownMenu,
@@ -14,41 +14,60 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import BubbleMenuExtension from '@tiptap/extension-bubble-menu'
+import { Color } from '@tiptap/extension-color'
 import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
 import { Table } from '@tiptap/extension-table'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
-import { useEditor, EditorContent } from '@tiptap/react'
+import TextAlign from '@tiptap/extension-text-align'
+import { TextStyle } from '@tiptap/extension-text-style'
+import Youtube from '@tiptap/extension-youtube'
+import { EditorContent, useEditor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Baseline,
   Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Quote,
   Code,
-  Undo,
-  Redo,
-  Strikethrough,
+  Columns,
+  ExternalLink,
   Heading1,
   Heading2,
   Heading3,
   Heading4,
   Heading5,
-  Table as TableIcon,
-  Plus,
-  Trash2,
-  Columns,
-  Rows,
   ImageIcon,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Plus,
+  Quote,
+  Redo,
+  Rows,
   Settings,
+  Strikethrough,
+  Table as TableIcon,
+  Trash2,
+  Undo,
+  Unlink,
+  Youtube as YoutubeIcon,
 } from 'lucide-react'
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import MediaPicker from './MediaPicker'
 
 interface RichTextEditorProps {
@@ -56,6 +75,56 @@ interface RichTextEditorProps {
   onChange: (value: string) => void
   placeholder?: string
 }
+
+const PRESET_COLORS = [
+  // Grayscale
+  '#000000',
+  '#262626',
+  '#434343',
+  '#666666',
+  '#999999',
+  '#b7b7b7',
+  '#cccccc',
+  '#d9d9d9',
+  '#efefef',
+  '#ffffff',
+  // Reds & Pinks
+  '#980000',
+  '#ff0000',
+  '#ff4444',
+  '#e06666',
+  '#ea9999',
+  // Oranges & Yellows
+  '#ff9900',
+  '#f6b26b',
+  '#ffd966',
+  '#ffff00',
+  '#fff2cc',
+  // Greens
+  '#00ff00',
+  '#6aa84f',
+  '#93c47d',
+  '#b6d7a8',
+  '#d9ead3',
+  // Teals & Cyans
+  '#00ffff',
+  '#45818e',
+  '#76a5af',
+  '#a2c4c9',
+  '#d1e0e0',
+  // Blues
+  '#4a86e8',
+  '#3d85c6',
+  '#6d9eeb',
+  '#a4c2f4',
+  '#cfe2f3',
+  // Purples
+  '#9900ff',
+  '#8e7cc3',
+  '#b4a7d6',
+  '#d9d2e9',
+  '#ff00ff',
+]
 
 const RichTextEditor = ({
   value,
@@ -65,6 +134,10 @@ const RichTextEditor = ({
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false)
   const [isImageSettingsOpen, setIsImageSettingsOpen] = useState(false)
   const [imageSettings, setImageSettings] = useState({ alt: '', width: '' })
+  const [isYoutubeDialogOpen, setIsYoutubeDialogOpen] = useState(false)
+  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
 
   const editor = useEditor({
     extensions: [
@@ -108,6 +181,23 @@ const RichTextEditor = ({
             'rounded-lg border shadow-sm max-w-full h-auto my-4 mx-auto block transition-all',
         },
       }),
+      Youtube.configure({
+        HTMLAttributes: {
+          class: 'rounded-lg border shadow-sm my-4 block max-w-full',
+        },
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class:
+            'text-primary underline underline-offset-4 cursor-pointer hover:text-primary/80 transition-colors',
+        },
+      }),
+      TextStyle,
+      Color,
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -135,6 +225,39 @@ const RichTextEditor = ({
     if (url) {
       editor.chain().focus().setImage({ src: url }).run()
     }
+  }
+
+  const addYoutubeVideo = () => {
+    if (youtubeUrl) {
+      editor.commands.setYoutubeVideo({
+        src: youtubeUrl,
+      })
+      setYoutubeUrl('')
+      setIsYoutubeDialogOpen(false)
+    }
+  }
+
+  const setLink = () => {
+    // If URL is empty, remove the link
+    if (linkUrl === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    } else {
+      // Set the link
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange('link')
+        .setLink({ href: linkUrl })
+        .run()
+    }
+    setIsLinkDialogOpen(false)
+    setLinkUrl('')
+  }
+
+  const openLinkSettings = () => {
+    const previousUrl = editor.getAttributes('link').href
+    setLinkUrl(previousUrl || '')
+    setIsLinkDialogOpen(true)
   }
 
   const handleUpdateImage = () => {
@@ -190,6 +313,44 @@ const RichTextEditor = ({
         >
           <Strikethrough className='h-4 w-4' />
         </Toggle>
+
+        <Separator orientation='vertical' className='mx-1 h-4' />
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Toggle
+              size='sm'
+              pressed={editor.isActive('textStyle', {
+                color: editor.getAttributes('textStyle').color,
+              })}
+              aria-label='Select color'
+            >
+              <Baseline className='h-4 w-4' />
+            </Toggle>
+          </PopoverTrigger>
+          <PopoverContent className='w-[240px] p-2'>
+            <div className='grid grid-cols-10 gap-1'>
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type='button'
+                  className='h-4 w-4 rounded-sm border border-muted transition-transform hover:scale-110 active:scale-95'
+                  style={{ backgroundColor: color }}
+                  onClick={() => editor.chain().focus().setColor(color).run()}
+                  title={color}
+                />
+              ))}
+              <button
+                type='button'
+                className='col-span-1 h-4 w-4 rounded-sm border border-muted bg-background flex items-center justify-center text-[10px] font-bold hover:bg-muted'
+                onClick={() => editor.chain().focus().unsetColor().run()}
+                title='Reset color'
+              >
+                Ø
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <Separator orientation='vertical' className='mx-1 h-4' />
 
@@ -292,11 +453,73 @@ const RichTextEditor = ({
 
         <Toggle
           size='sm'
+          pressed={editor.isActive({ textAlign: 'left' })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign('left').run()
+          }
+          aria-label='Align left'
+        >
+          <AlignLeft className='h-4 w-4' />
+        </Toggle>
+        <Toggle
+          size='sm'
+          pressed={editor.isActive({ textAlign: 'center' })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign('center').run()
+          }
+          aria-label='Align center'
+        >
+          <AlignCenter className='h-4 w-4' />
+        </Toggle>
+        <Toggle
+          size='sm'
+          pressed={editor.isActive({ textAlign: 'right' })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign('right').run()
+          }
+          aria-label='Align right'
+        >
+          <AlignRight className='h-4 w-4' />
+        </Toggle>
+        <Toggle
+          size='sm'
+          pressed={editor.isActive({ textAlign: 'justify' })}
+          onPressedChange={() =>
+            editor.chain().focus().setTextAlign('justify').run()
+          }
+          aria-label='Align justify'
+        >
+          <AlignJustify className='h-4 w-4' />
+        </Toggle>
+
+        <Separator orientation='vertical' className='mx-1 h-4' />
+
+        <Toggle
+          size='sm'
+          pressed={editor.isActive('link')}
+          onPressedChange={openLinkSettings}
+          aria-label='Link'
+        >
+          <LinkIcon className='h-4 w-4' />
+        </Toggle>
+
+        <Separator orientation='vertical' className='mx-1 h-4' />
+
+        <Toggle
+          size='sm'
           pressed={editor.isActive('image')}
           onPressedChange={() => setIsMediaPickerOpen(true)}
           aria-label='Insert image'
         >
           <ImageIcon className='h-4 w-4' />
+        </Toggle>
+        <Toggle
+          size='sm'
+          pressed={editor.isActive('youtube')}
+          onPressedChange={() => setIsYoutubeDialogOpen(true)}
+          aria-label='Insert YouTube video'
+        >
+          <YoutubeIcon className='h-4 w-4' />
         </Toggle>
 
         <Separator orientation='vertical' className='mx-1 h-4' />
@@ -430,6 +653,53 @@ const RichTextEditor = ({
         </div>
       </BubbleMenu>
 
+      <BubbleMenu
+        editor={editor}
+        shouldShow={({ editor }) => editor.isActive('link')}
+      >
+        <div className='flex items-center gap-1 border bg-card shadow-md rounded-md overflow-hidden p-1 min-w-[300px]'>
+          <div className='flex-1 px-2 py-1 text-xs text-muted-foreground truncate max-w-[200px]'>
+            {editor.getAttributes('link').href}
+          </div>
+          <Separator orientation='vertical' className='h-4' />
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={openLinkSettings}
+            className='h-8 px-2 flex items-center gap-1'
+          >
+            <Settings className='h-3 w-3' />
+            <span className='text-[10px]'>Edit</span>
+          </Button>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            asChild
+            className='h-8 px-2'
+          >
+            <a
+              href={editor.getAttributes('link').href}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='flex items-center'
+            >
+              <ExternalLink className='h-3 w-3' />
+            </a>
+          </Button>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={() => editor.chain().focus().unsetLink().run()}
+            className='h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10'
+          >
+            <Unlink className='h-3 w-3' />
+          </Button>
+        </div>
+      </BubbleMenu>
+
       <EditorContent editor={editor} />
 
       <MediaPicker
@@ -481,6 +751,79 @@ const RichTextEditor = ({
             </Button>
             <Button type='button' onClick={handleUpdateImage}>
               Apply Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isYoutubeDialogOpen} onOpenChange={setIsYoutubeDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Insert YouTube Video</DialogTitle>
+          </DialogHeader>
+          <div className='grid gap-4 py-4'>
+            <div className='grid gap-2'>
+              <Label htmlFor='youtube-url'>YouTube URL</Label>
+              <Input
+                id='youtube-url'
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder='https://www.youtube.com/watch?v=...'
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setIsYoutubeDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type='button'
+              onClick={addYoutubeVideo}
+              disabled={!youtubeUrl}
+            >
+              Insert Video
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>
+              {editor.isActive('link') ? 'Edit Link' : 'Add Link'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='grid gap-4 py-4'>
+            <div className='grid gap-2'>
+              <Label htmlFor='link-url'>URL</Label>
+              <Input
+                id='link-url'
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder='https://example.com'
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setLink()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setIsLinkDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type='button' onClick={setLink}>
+              {editor.isActive('link') ? 'Update Link' : 'Add Link'}
             </Button>
           </DialogFooter>
         </DialogContent>

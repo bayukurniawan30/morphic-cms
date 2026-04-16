@@ -1,19 +1,8 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link, router } from '@inertiajs/react'
-import {
-  PlusIcon,
-  FileCheckIcon,
-  CalendarIcon,
-  TrashIcon,
-  EditIcon,
-  SearchIcon,
-  ChevronLeft,
-  ChevronRight,
-  Database,
-} from 'lucide-react'
+import { Head, Link } from '@inertiajs/react'
+import { EditIcon, FileCheckIcon, PlusIcon, TrashIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import React from 'react'
 
 interface Form {
   id: number
@@ -112,7 +101,7 @@ export default function FormsList({ forms, user }: ListProps) {
                 {forms?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className='px-6 py-12 text-center text-muted-foreground'
                     >
                       <FileCheckIcon className='w-12 h-12 mx-auto mb-4 opacity-20' />
