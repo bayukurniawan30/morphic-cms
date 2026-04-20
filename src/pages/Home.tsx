@@ -24,6 +24,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import { APP_VERSION } from '@/lib/version'
 import { useState } from 'react'
 
 export default function Home() {
@@ -132,7 +133,7 @@ export default function Home() {
         <section className='pt-24 pb-20 px-6 max-w-7xl mx-auto text-center'>
           <div className='inline-flex items-center space-x-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-medium text-slate-300 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000'>
             <Sparkles className='w-3 h-3 text-primary' />
-            <span>Introducing Morphic CMS v1.0</span>
+            <span>Introducing Morphic CMS v{APP_VERSION}</span>
           </div>
 
           <h1 className='text-4xl md:text-8xl font-black tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500 animate-in fade-in slide-in-from-bottom-6 duration-1000'>
