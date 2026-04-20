@@ -2,7 +2,16 @@
 
 Morphic CMS is a modern, lightweight, and high-performance headless CMS built with a focus on speed, developer experience, and elegant design. It leverages a powerful tech stack to provide a seamless workflow for managing dynamic content and user administration.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,RESEND_API_KEY,EMAIL_FROM)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,CLOUDINARY_API_SECRET,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,RESEND_API_KEY,EMAIL_FROM)
+
+## ✨ Key Features
+
+- **Multi-tenant Architecture**: Manage multiple isolated organizations and workspaces from a single instance.
+- **Dynamic Content Builder**: Create custom collections and global fields with a flexible field system.
+- **Media & Document Management**: Integrated Cloudinary support with automatic tenant-based folder organization.
+- **Secure API**: Tenant-scoped REST API with JWT authentication and API Key support.
+- **Internationalization (i18n)**: Built-in multi-language support for global content delivery.
+- **Premium UI**: Dark-themed, responsive dashboard built with Shadcn UI and Tailwind.
 
 ## 🚀 Tech Stack
 
@@ -53,6 +62,8 @@ Morphic CMS is a modern, lightweight, and high-performance headless CMS built wi
    DATABASE_URL=
    JWT_SECRET=
    JWT_EXPIRES_IN_DAYS=
+   CLOUDINARY_API_KEY=
+   CLOUDINARY_API_SECRET=
    CLOUDINARY_CLOUD_NAME=
    CLOUDINARY_UPLOAD_PRESET=
    # Email Service (Resend)
@@ -121,7 +132,10 @@ This project is optimized for deployment on **Vercel** using the **Hono Framewor
   - `DATABASE_URL`: Your Neon/Postgres connection string.
   - `JWT_SECRET`: A secure random string for signing tokens.
   - `JWT_EXPIRES_IN_DAYS`: Token expiration duration in days.
+  - `CLOUDINARY_API_KEY`: Your Cloudinary API key.
+  - `CLOUDINARY_API_SECRET`: Your Cloudinary API secret.
   - `CLOUDINARY_CLOUD_NAME`: Your Cloudinary cloud name for media storage.
+  - `CLOUDINARY_UPLOAD_PRESET`: Your Cloudinary upload preset.
   - `RESEND_API_KEY`: Your Resend API key for email services.
   - `EMAIL_FROM`: The sender email address.
   - `NODE_ENV`: Set to `production`.

@@ -60,9 +60,13 @@ export const inertia = (viewFile: string = 'index.html') => {
     const isInertiaRequest = getHeader('X-Inertia') === 'true'
 
     c.set('inertia', (component: string, props: any = {}) => {
+      // Merge shared props if they exist in context
+      const sharedProps = c.get('inertiaSharedProps' as any) || {}
+      const mergedProps = { ...sharedProps, ...props }
+
       const inertiaProps = {
         component,
-        props,
+        props: mergedProps,
         url: c.req.url,
         version: null,
       }

@@ -9,10 +9,32 @@ import {
   boolean,
 } from 'drizzle-orm/pg-core'
 
-export const collections = pgTable('collections', {
+export const tenants = pgTable('tenants', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const usersToTenants = pgTable('users_to_tenants', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  tenantId: integer('tenant_id')
+    .references(() => tenants.id, { onDelete: 'cascade' })
+    .notNull(),
+  role: varchar('role', { length: 50 }).notNull().default('member'), // 'owner', 'member'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const collections = pgTable('collections', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull(),
   type: varchar('type', { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
   enableTrash: boolean('enable_trash').notNull().default(false),
   localized: boolean('localized').notNull().default(false),
@@ -24,7 +46,8 @@ export const collections = pgTable('collections', {
 
 export const locales = pgTable('locales', {
   id: serial('id').primaryKey(),
-  code: varchar('code', { length: 10 }).notNull().unique(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
+  code: varchar('code', { length: 10 }).notNull(),
   name: varchar('name', { length: 100 }).notNull(),
   isDefault: boolean('is_default').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -33,6 +56,7 @@ export const locales = pgTable('locales', {
 
 export const entries = pgTable('entries', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   collectionId: integer('collection_id')
     .references(() => collections.id, { onDelete: 'cascade' })
     .notNull(),
@@ -63,6 +87,7 @@ export const roleEnum = pgEnum('role', ['super_admin', 'editor'])
 
 export const abilities = pgTable('abilities', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   name: varchar('name', { length: 255 }).notNull(),
   permissions: jsonb('permissions').notNull().default({}), // Format: { [collectionSlug]: { create: bool, read: bool, update: bool, delete: bool } }
   isSystem: varchar('is_system', { length: 1 }).default('0').notNull(), // '1' = protected (Read Access)
@@ -89,6 +114,7 @@ export const users = pgTable('users', {
 
 export const mediaFolders = pgTable('media_folders', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   name: varchar('name', { length: 255 }).notNull(),
   parentId: integer('parent_id'), // Self-referencing FK added below or handled loosely
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -97,6 +123,7 @@ export const mediaFolders = pgTable('media_folders', {
 
 export const media = pgTable('media', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   filename: varchar('filename', { length: 255 }).notNull(),
   publicId: varchar('public_id', { length: 255 }).notNull(),
   secureUrl: varchar('secure_url', { length: 1024 }).notNull(),
@@ -105,6 +132,8 @@ export const media = pgTable('media', {
   size: integer('size'), // size in bytes
   width: integer('width'),
   height: integer('height'),
+  assetId: varchar('asset_id', { length: 255 }),
+  resourceType: varchar('resource_type', { length: 50 }),
   folderId: integer('folder_id').references(() => mediaFolders.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -112,20 +141,24 @@ export const media = pgTable('media', {
 
 export const documents = pgTable('documents', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   filename: varchar('filename', { length: 255 }).notNull(),
   publicId: varchar('public_id', { length: 255 }).notNull(),
   secureUrl: varchar('secure_url', { length: 1024 }).notNull(),
   format: varchar('format', { length: 50 }),
   mimeType: varchar('mime_type', { length: 50 }),
   size: integer('size'), // size in bytes
+  assetId: varchar('asset_id', { length: 255 }),
+  resourceType: varchar('resource_type', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const forms = pgTable('forms', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   name: varchar('name', { length: 255 }).notNull(),
-  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  slug: varchar('slug', { length: 255 }).notNull(),
   fields: jsonb('fields').$type<any[]>().notNull().default([]),
   storageType: varchar('storage_type', { length: 20 })
     .notNull()
@@ -145,9 +178,11 @@ export const forms = pgTable('forms', {
 
 export const formEntries = pgTable('form_entries', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
   formId: integer('form_id')
     .references(() => forms.id, { onDelete: 'cascade' })
     .notNull(),
   data: jsonb('data').notNull().default({}),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+

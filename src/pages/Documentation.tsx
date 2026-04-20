@@ -17,6 +17,7 @@ import {
   Server,
   Shield,
   Terminal,
+  Users,
   Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -130,6 +131,7 @@ export default function Documentation({ user }: { user: any }) {
 
   const menuItems = [
     { id: 'intro', label: 'Introduction', icon: Book },
+    { id: 'multi-tenancy', label: 'Multi-tenancy', icon: Users },
     { id: 'getting-started', label: 'Quick Start', icon: Zap },
     { id: 'field-types', label: 'Field Types', icon: Layers },
     { id: 'form-builder', label: 'Form Builder', icon: FileCheck },
@@ -242,6 +244,47 @@ export default function Documentation({ user }: { user: any }) {
               immediately.
             </p>
           </div>
+        </div>
+      </Section>
+
+      <Section id='multi-tenancy' title='Multi-tenancy' icon={Users}>
+        <p>
+          Morphic CMS is built from the ground up to support multiple
+          isolated organizations (Tenants) within a single instance. This is
+          ideal for agencies managing multiple clients or companies with
+          separate business units.
+        </p>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
+          <div className='p-4 rounded-xl border bg-muted/30'>
+            <h4 className='font-bold flex items-center mb-2 text-foreground'>
+              <Shield className='w-4 h-4 mr-2' /> Complete Isolation
+            </h4>
+            <p className='text-sm'>
+              Every collection, entry, and media asset is scoped to a specific
+              Tenant ID. Users from one tenant cannot see or access data from
+              another, ensuring strict privacy and security.
+            </p>
+          </div>
+          <div className='p-4 rounded-xl border bg-muted/30'>
+            <h4 className='font-bold flex items-center mb-2 text-foreground'>
+              <Layers className='w-4 h-4 mr-2' /> Shared Architecture
+            </h4>
+            <p className='text-sm'>
+              While data is isolated, the underlying infrastructure is shared.
+              A single deployment can serve hundreds of workspaces, making
+              maintenance and updates significantly easier.
+            </p>
+          </div>
+        </div>
+        <div className='mt-8 space-y-4'>
+          <h4 className='font-bold text-foreground'>Super Admin Roles</h4>
+          <p>
+            Super Admins have platform-wide access and can switch between any
+            workspace using the <strong>Tenant Switcher</strong> in the
+            sidebar. They also have access to the{' '}
+            <strong>System Global</strong> view to see platform-wide
+            activity.
+          </p>
         </div>
       </Section>
 
@@ -358,11 +401,14 @@ export default function Documentation({ user }: { user: any }) {
               code={`POST /api/forms/:slug/submissions\nContent-Type: application/json\n\n{\n  "name": "John Doe",\n  "email": "john@example.com",\n  "message": "Hello!"\n}`}
             />
           </div>
-          <div className='bg-primary/5 border border-primary/20 p-6 rounded-2xl'>
-            <h4 className='font-bold mb-4'>Frontend Example (Fetch)</h4>
-            <div className='bg-slate-950 p-4 rounded-lg overflow-x-auto'>
-              <code className='text-xs text-slate-300'>
-                {`const handleSubmit = async (data) => {
+          <div className='bg-primary/5 border border-primary/20 p-8 rounded-2xl overflow-hidden'>
+            <h4 className='font-bold mb-4 flex items-center text-primary'>
+              <div className='w-2 h-2 rounded-full bg-primary mr-2' />
+              Frontend Example (Fetch)
+            </h4>
+            <CodeBlock
+              language="javascript"
+              code={`const handleSubmit = async (data) => {
   const response = await fetch('/api/forms/contact-us/submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -373,8 +419,7 @@ export default function Documentation({ user }: { user: any }) {
     alert('Thank you for your submission!');
   }
 };`}
-              </code>
-            </div>
+            />
           </div>
         </div>
       </Section>
@@ -481,6 +526,12 @@ export default function Documentation({ user }: { user: any }) {
             </p>
             <ul className='list-disc list-inside text-blue-700/80 dark:text-blue-500/80'>
               <li>
+                <code>CLOUDINARY_API_KEY</code>: Your Cloudinary API key.
+              </li>
+              <li>
+                <code>CLOUDINARY_API_SECRET</code>: Your Cloudinary API secret.
+              </li>
+              <li>
                 <code>CLOUDINARY_CLOUD_NAME</code>: Your unique cloud name from
                 Cloudinary dashboard.
               </li>
@@ -488,7 +539,7 @@ export default function Documentation({ user }: { user: any }) {
                 <code>CLOUDINARY_UPLOAD_PRESET</code>: An unsigned upload preset
                 configured in your Cloudinary settings.{' '}
                 <a
-                  href='https://cloudinary.com/documentation/upload_presets'
+                  href='https://cloudinary.com/documentation/upload_images#landingpage'
                   target='_blank'
                   rel='noopener noreferrer'
                   className='underline hover:text-blue-600'
@@ -512,6 +563,7 @@ export default function Documentation({ user }: { user: any }) {
           <p className='text-sm'>
             3. Set environment variables (<code>DATABASE_URL</code>,{' '}
             <code>JWT_SECRET</code>, <code>JWT_EXPIRES_IN_DAYS</code>,{' '}
+            <code>CLOUDINARY_API_KEY</code>, <code>CLOUDINARY_API_SECRET</code>,{' '}
             <code>CLOUDINARY_CLOUD_NAME</code>,{' '}
             <code>CLOUDINARY_UPLOAD_PRESET</code>, <code>RESEND_API_KEY</code>,{' '}
             <code>EMAIL_FROM</code>).

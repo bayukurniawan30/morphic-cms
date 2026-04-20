@@ -1,6 +1,6 @@
 import { serveStatic } from '@hono/node-server/serve-static'
-import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import {
   and,
   asc,
@@ -25,7 +25,9 @@ import {
   forms,
   locales,
   media,
+  tenants,
   users,
+  usersToTenants,
 } from '../db/schema.js'
 import type { FieldDefinition } from '../lib/dynamic-schema.js'
 import { buildZodSchema } from '../lib/dynamic-schema.js'
@@ -39,6 +41,8 @@ console.log('🔥 Morphic CMS: Hono Initializing on Vercel Node Runtime')
 
 type Variables = {
   user: any
+  tenantId: number | null
+  currentTenant: any | null
 }
 
 // Set up the main app without a base path so it can serve the root '/'
@@ -202,6 +206,81 @@ app.use('*', async (c, next) => {
   }
 
   c.set('user', userData)
+
+  // --- Tenant Detection ---
+  const activeTenantId = getCookie(c, 'morphic_active_tenant')
+  let currentTenant: any = null
+  let tenantId: number | null = null
+
+  if (userData && activeTenantId) {
+    try {
+      const id = Number(activeTenantId)
+      // Verify user has access to this tenant
+      const userTenantAccess = await db
+        .select()
+        .from(usersToTenants)
+        .where(
+          and(
+            eq(usersToTenants.userId, userData.id),
+            eq(usersToTenants.tenantId, id)
+          )
+        )
+        .limit(1)
+
+      if (userTenantAccess.length > 0 || userData.role === 'super_admin') {
+        const tenantResult = await db
+          .select()
+          .from(tenants)
+          .where(eq(tenants.id, id))
+          .limit(1)
+
+        if (tenantResult[0]) {
+          currentTenant = tenantResult[0]
+          tenantId = id
+        }
+      }
+    } catch (e) {
+      console.error('Failed to verify tenant access:', e)
+    }
+  }
+
+  c.set('tenantId', tenantId)
+  c.set('currentTenant', currentTenant)
+
+  await next()
+})
+
+// Inject shared Inertia props
+app.use('*', async (c, next) => {
+  const userData = c.get('user')
+  const currentTenant = c.get('currentTenant')
+
+  if (userData && !c.req.path.startsWith('/api/')) {
+    try {
+      let availableTenants = []
+      if (userData.role === 'super_admin') {
+        availableTenants = await db.select().from(tenants)
+      } else {
+        availableTenants = await db
+          .select({
+            id: tenants.id,
+            name: tenants.name,
+            slug: tenants.slug,
+          })
+          .from(tenants)
+          .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+          .where(eq(usersToTenants.userId, userData.id))
+      }
+
+      c.set('inertiaSharedProps' as any, {
+        user: userData,
+        activeTenant: currentTenant,
+        availableTenants: availableTenants,
+      })
+    } catch (e) {
+      console.error('Failed to fetch available tenants for shared props:', e)
+    }
+  }
   await next()
 })
 
@@ -211,14 +290,60 @@ const requireAuth = async (c: any, next: any) => {
   if (!userData) {
     return c.redirect('/login')
   }
+
+  const tenantId = c.get('tenantId')
+  const path = c.req.path
+
+  // If no tenant selected and not a super_admin, redirect to tenant selection
+  // Allow access to /select-tenant and /tenants (API)
+  if (
+    !tenantId &&
+    userData.role !== 'super_admin' &&
+    path !== '/select-tenant' &&
+    path !== '/logout' &&
+    !path.startsWith('/api/tenants')
+  ) {
+    return c.redirect('/select-tenant')
+  }
+
   await next()
 }
+
+// Tenant Management Routes
+app.get('/select-tenant', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const userTenants = await db
+    .select({
+      id: tenants.id,
+      name: tenants.name,
+      slug: tenants.slug,
+    })
+    .from(tenants)
+    .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+    .where(eq(usersToTenants.userId, userData.id))
+
+  return c.get('inertia')('Auth/SelectTenant', {
+    user: userData,
+    tenants: userTenants,
+    title: 'Select Organization',
+  })
+})
+
+app.get('/tenants/add', requireAuth, async (c) => {
+  const userData = c.get('user')
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+  return c.get('inertia')('Tenants/Add', { user: userData })
+})
+
+
 
 // Locales Management Pages
 app.get('/localization', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
   return c.get('inertia')('Localization/List', {
     user: userData,
+    tenantId,
     title: 'Localization',
   })
 })
@@ -234,11 +359,16 @@ app.get('/localization/add', requireAuth, async (c) => {
 
 app.get('/localization/edit/:id', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
   const id = parseInt(c.req.param('id'), 10)
+
+  const whereClause = [eq(locales.id, id)]
+  if (tenantId) whereClause.push(eq(locales.tenantId, tenantId))
+
   const localeResult = await db
     .select()
     .from(locales)
-    .where(eq(locales.id, id))
+    .where(and(...whereClause))
     .limit(1)
   const locale = localeResult[0]
   if (!locale) return c.redirect('/localization')
@@ -255,35 +385,45 @@ app.get('/localization/edit/:id', requireAuth, async (c) => {
 app.get('/dashboard', requireAuth, async (c) => {
   const userData = c.get('user')
 
+  const tenantId = c.get('tenantId')
+  const whereTenant = (table: any) =>
+    tenantId ? eq(table.tenantId, tenantId) : sql`true`
+
   // 1. Fetch Overview Stats
   const collectionCountRes = await db
     .select({ count: sql`count(*)` })
     .from(collections)
-    .where(eq(collections.type, 'collection'))
+    .where(and(eq(collections.type, 'collection'), whereTenant(collections)))
   const totalCollections = Number(collectionCountRes[0].count)
 
   const globalCountRes = await db
     .select({ count: sql`count(*)` })
     .from(collections)
-    .where(eq(collections.type, 'global'))
+    .where(and(eq(collections.type, 'global'), whereTenant(collections)))
   const totalGlobals = Number(globalCountRes[0].count)
 
   const entriesCountRes = await db
     .select({ count: sql`count(*)` })
     .from(entries)
-    .where(isNull(entries.deletedAt))
+    .where(and(isNull(entries.deletedAt), whereTenant(entries)))
   const totalEntries = Number(entriesCountRes[0].count)
 
-  const mediaCountRes = await db.select({ count: sql`count(*)` }).from(media)
+  const mediaCountRes = await db
+    .select({ count: sql`count(*)` })
+    .from(media)
+    .where(whereTenant(media))
   const totalMedia = Number(mediaCountRes[0].count)
 
-  const docCountRes = await db.select({ count: sql`count(*)` }).from(documents)
+  const docCountRes = await db
+    .select({ count: sql`count(*)` })
+    .from(documents)
+    .where(whereTenant(documents))
   const totalDocuments = Number(docCountRes[0].count)
 
   const userCountRes = await db
     .select({ count: sql`count(*)` })
     .from(users)
-    .where(isNull(users.deletedAt))
+    .where(isNull(users.deletedAt)) // Users are global for now, but we could filter by tenant if we want
   const totalUsers = Number(userCountRes[0].count)
 
   // 2. Fetch Recent Activity (Latest 5 entries across all collections)
@@ -299,7 +439,7 @@ app.get('/dashboard', requireAuth, async (c) => {
     })
     .from(entries)
     .leftJoin(collections, eq(entries.collectionId, collections.id))
-    .where(isNull(entries.deletedAt))
+    .where(and(isNull(entries.deletedAt), whereTenant(entries)))
     .orderBy(desc(entries.updatedAt))
     .limit(5)
 
@@ -316,7 +456,7 @@ app.get('/dashboard', requireAuth, async (c) => {
       entries,
       and(eq(collections.id, entries.collectionId), isNull(entries.deletedAt))
     )
-    .where(eq(collections.type, 'collection'))
+    .where(and(eq(collections.type, 'collection'), whereTenant(collections)))
     .groupBy(collections.id)
     .orderBy(desc(sql`count(${entries.id})`))
 
@@ -346,15 +486,21 @@ app.get('/email-settings', requireAuth, async (c) => {
 
 app.get('/api-key-abilities', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
   if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+
+  const whereTenant = (table: any) =>
+    tenantId ? eq(table.tenantId, tenantId) : sql`true`
 
   const allCollections = await db
     .select()
     .from(collections)
+    .where(whereTenant(collections))
     .orderBy(asc(collections.name))
   const allAbilities = await db
     .select()
     .from(abilities)
+    .where(whereTenant(abilities))
     .orderBy(desc(abilities.createdAt))
 
   return c.get('inertia')('ApiKeyAbilities', {
@@ -366,10 +512,18 @@ app.get('/api-key-abilities', requireAuth, async (c) => {
 
 app.get('/api-key-abilities/add', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+
+  const whereTenant = (table: any) =>
+    tenantId ? eq(table.tenantId, tenantId) : sql`true`
+
   const allCollections = await db
     .select()
     .from(collections)
+    .where(whereTenant(collections))
     .orderBy(asc(collections.name))
+
   return c.get('inertia')('ApiKeyAbilities/Form', {
     user: userData,
     collections: allCollections,
@@ -379,19 +533,31 @@ app.get('/api-key-abilities/add', requireAuth, async (c) => {
 
 app.get('/api-key-abilities/edit/:id', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+
   const id = parseInt(c.req.param('id'), 10)
-  const ability = await db
+  const whereTenant = (table: any) =>
+    tenantId ? eq(table.tenantId, tenantId) : sql`true`
+
+  const abilityResult = await db
     .select()
     .from(abilities)
-    .where(eq(abilities.id, id))
+    .where(and(eq(abilities.id, id), whereTenant(abilities)))
     .limit(1)
+
+  const ability = abilityResult[0]
+  if (!ability) return c.redirect('/api-key-abilities')
+
   const allCollections = await db
     .select()
     .from(collections)
+    .where(whereTenant(collections))
     .orderBy(asc(collections.name))
+
   return c.get('inertia')('ApiKeyAbilities/Form', {
     user: userData,
-    ability: ability[0],
+    ability,
     collections: allCollections,
     mode: 'edit',
   })
@@ -400,8 +566,15 @@ app.get('/api-key-abilities/edit/:id', requireAuth, async (c) => {
 // --- Form Builder Routes ---
 app.get('/forms', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+  const whereTenant = (table: any) =>
+    tenantId ? eq(table.tenantId, tenantId) : sql`true`
 
-  const allForms = await db.select().from(forms).orderBy(desc(forms.createdAt))
+  const allForms = await db
+    .select()
+    .from(forms)
+    .where(whereTenant(forms))
+    .orderBy(desc(forms.createdAt))
 
   return c.get('inertia')('Forms/List', {
     user: userData,
@@ -416,12 +589,16 @@ app.get('/forms/add', requireAuth, async (c) => {
 
 app.get('/forms/edit/:id', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const id = parseInt(c.req.param('id'), 10)
+  const whereClause = [eq(forms.id, id)]
+  if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+
   const formResult = await db
     .select()
     .from(forms)
-    .where(eq(forms.id, id))
+    .where(and(...whereClause))
     .limit(1)
   if (formResult.length === 0) return c.redirect('/forms')
 
@@ -433,12 +610,16 @@ app.get('/forms/edit/:id', requireAuth, async (c) => {
 
 app.get('/forms/:slug/entries', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const slug = c.req.param('slug')
+  const whereClause = [eq(forms.slug, slug)]
+  if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+
   const formResult = await db
     .select()
     .from(forms)
-    .where(eq(forms.slug, slug))
+    .where(and(...whereClause))
     .limit(1)
   if (formResult.length === 0) return c.redirect('/forms')
 
@@ -500,9 +681,12 @@ app.get('/users', requireAuth, async (c) => {
     .limit(limit)
     .offset(offset)
 
+  const allTenants = await db.select().from(tenants).orderBy(asc(tenants.name))
+
   return c.get('inertia')('Users/List', {
     users: allUsers,
     user: userData,
+    allTenants,
     filters: { sort, dir, role, page, limit },
     pagination: {
       currentPage: page,
@@ -572,6 +756,7 @@ app.get('/documents', requireAuth, async (c) => {
 // Collections Management Pages
 app.get('/collections', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const sort = c.req.query('sort') || 'createdAt'
   const dir = c.req.query('dir') || 'desc'
@@ -581,10 +766,14 @@ app.get('/collections', requireAuth, async (c) => {
   const offset = (page - 1) * limit
 
   // Build where clause
-  let whereClause = undefined
+  const conditions: any[] = []
   if (typeFilter !== 'all') {
-    whereClause = eq(collections.type, typeFilter as any)
+    conditions.push(eq(collections.type, typeFilter as any))
   }
+  if (tenantId) {
+    conditions.push(eq(collections.tenantId, tenantId))
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
   // Dynamic order by
   let orderClause = desc(collections.createdAt)
@@ -645,6 +834,7 @@ app.get('/collections', requireAuth, async (c) => {
 
 app.get('/entries', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const typeFilter = c.req.query('type') || 'all'
 
@@ -656,8 +846,16 @@ app.get('/entries', requireAuth, async (c) => {
     .from(collections)
     .leftJoin(users, eq(collections.createdById, users.id))
 
+  const conditions: any[] = []
   if (typeFilter !== 'all') {
-    query.where(eq(collections.type, typeFilter as any))
+    conditions.push(eq(collections.type, typeFilter as any))
+  }
+  if (tenantId) {
+    conditions.push(eq(collections.tenantId, tenantId))
+  }
+
+  if (conditions.length > 0) {
+    query.where(and(...conditions))
   }
 
   const allCollections = await query.orderBy(asc(collections.name))
@@ -673,12 +871,17 @@ app.get('/entries', requireAuth, async (c) => {
 
 app.get('/entries/:collectionId', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const collectionId = parseInt(c.req.param('collectionId'), 10)
+
+  const colWhere = [eq(collections.id, collectionId)]
+  if (tenantId) colWhere.push(eq(collections.tenantId, tenantId))
+
   const collectionResult = await db
     .select()
     .from(collections)
-    .where(eq(collections.id, collectionId))
+    .where(and(...colWhere))
     .limit(1)
   const collection = collectionResult[0]
 
@@ -690,7 +893,10 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
   const offset = (page - 1) * limit
 
   const isTrash = c.req.query('trash') === 'true'
-  let whereClause = eq(entries.collectionId, collectionId)
+  let whereClause = and(
+    eq(entries.collectionId, collectionId),
+    tenantId ? eq(entries.tenantId, tenantId) : sql`true`
+  ) as any
 
   if (collection.enableTrash) {
     if (isTrash) {
@@ -726,6 +932,8 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
     .limit(limit)
     .offset(offset)
 
+  const localesWhere = tenantId ? [eq(locales.tenantId, tenantId)] : []
+
   return c.get('inertia')('Entries/List', {
     collection,
     entries: entriesList.map((r) => ({ ...r.entry, updatedBy: r.updatedBy })),
@@ -736,7 +944,10 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
       totalCount,
       limit,
     },
-    allLocales: await db.select().from(locales),
+    allLocales: await db
+      .select()
+      .from(locales)
+      .where(and(...localesWhere)),
     filters: {
       trash: isTrash,
       locale: localeFilter || null,
@@ -746,33 +957,42 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
 
 app.get('/entries/:collectionId/add', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const collectionId = parseInt(c.req.param('collectionId'), 10)
+  const colWhere = [eq(collections.id, collectionId)]
+  if (tenantId) colWhere.push(eq(collections.tenantId, tenantId))
+
   const collectionResult = await db
     .select()
     .from(collections)
-    .where(eq(collections.id, collectionId))
+    .where(and(...colWhere))
     .limit(1)
   const collection = collectionResult[0]
 
   if (!collection) return c.redirect('/entries')
 
-  const allLocales = await db.select().from(locales)
+  const localesWhere = tenantId ? [eq(locales.tenantId, tenantId)] : []
+  const allLocales = await db
+    .select()
+    .from(locales)
+    .where(and(...localesWhere))
 
   const translationGroupId = c.req.query('translationGroupId')
   const sourceLocale = c.req.query('sourceLocale')
   let sourceEntry = null
 
   if (translationGroupId && sourceLocale) {
+    const entryConditions = [
+      eq(entries.translationGroupId, translationGroupId),
+      eq(entries.locale, sourceLocale),
+    ]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
+
     const results = await db
       .select()
       .from(entries)
-      .where(
-        and(
-          eq(entries.translationGroupId, translationGroupId),
-          eq(entries.locale, sourceLocale)
-        )
-      )
+      .where(and(...entryConditions))
       .limit(1)
     sourceEntry = results[0]
   }
@@ -789,12 +1009,16 @@ app.get('/entries/:collectionId/add', requireAuth, async (c) => {
 
 app.get('/globals/:slug', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
 
   const slug = c.req.param('slug')
+  const colWhere = [eq(collections.slug, slug)]
+  if (tenantId) colWhere.push(eq(collections.tenantId, tenantId))
+
   const collectionResult = await db
     .select()
     .from(collections)
-    .where(eq(collections.slug, slug))
+    .where(and(...colWhere))
     .limit(1)
   const collection = collectionResult[0]
 
@@ -947,26 +1171,285 @@ api.use('*', async (c, next) => {
   await next()
 })
 
+// Tenant Management API
+api.get('/tenants', async (c) => {
+  const userData = c.get('user')
+  const userTenants =
+    userData.role === 'super_admin'
+      ? await db.select().from(tenants)
+      : await db
+          .select({
+            id: tenants.id,
+            name: tenants.name,
+            slug: tenants.slug,
+          })
+          .from(tenants)
+          .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+          .where(eq(usersToTenants.userId, userData.id))
+
+  return c.json(userTenants)
+})
+
+api.post('/tenants', async (c) => {
+  const userData = c.get('user')
+  if (userData.role !== 'super_admin')
+    return c.json({ error: 'Forbidden' }, 403)
+
+  try {
+    const { name, slug } = await c.req.json()
+    if (!name || !slug)
+      return c.json({ error: 'Name and slug are required' }, 400)
+
+    const newTenant = await db.transaction(async (tx) => {
+      const t = await tx.insert(tenants).values({ name, slug }).returning()
+
+      // Add creator to tenant as owner
+      await tx.insert(usersToTenants).values({
+        userId: userData.id,
+        tenantId: t[0].id,
+        role: 'owner',
+      })
+
+      // Seed default locale for the new tenant
+      await tx.insert(locales).values({
+        tenantId: t[0].id,
+        code: 'en',
+        name: 'English',
+        isDefault: true,
+      })
+
+      // Seed default "Read Access" ability for the new tenant
+      await tx.insert(abilities).values({
+        tenantId: t[0].id,
+        name: 'Read Access',
+        isSystem: '1',
+        permissions: {},
+      })
+
+      return t[0]
+    })
+
+    // Set as active tenant immediately
+    setCookie(c, 'morphic_active_tenant', newTenant.id.toString(), {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      maxAge: 60 * 60 * 24 * 30,
+    })
+
+    return c.json({ success: true, tenant: newTenant }, 201)
+  } catch (err) {
+    console.error('Error creating tenant:', err)
+    if (
+      String(err).includes('unique constraint') ||
+      (err as any).code === '23505'
+    ) {
+      return c.json({ error: 'Slug already exists' }, 400)
+    }
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+api.post('/tenants/switch', async (c) => {
+  const userData = c.get('user')
+  const { tenantId } = await c.req.json()
+
+  // Allow Super Admins to clear active tenant (System Global)
+  if (tenantId === null) {
+    if (userData.role !== 'super_admin') {
+      return c.json({ error: 'Unauthorized' }, 403)
+    }
+    deleteCookie(c, 'morphic_active_tenant', { path: '/' })
+    return c.json({ success: true })
+  }
+
+  if (!tenantId) return c.json({ error: 'Tenant ID is required' }, 400)
+
+  // Verify access
+  const access = await db
+    .select()
+    .from(usersToTenants)
+    .where(
+      and(
+        eq(usersToTenants.userId, userData.id),
+        eq(usersToTenants.tenantId, Number(tenantId))
+      )
+    )
+    .limit(1)
+
+  if (access.length === 0 && userData.role !== 'super_admin') {
+    return c.json({ error: 'Unauthorized' }, 403)
+  }
+
+  setCookie(c, 'morphic_active_tenant', tenantId.toString(), {
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax',
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+  })
+
+  return c.json({ success: true })
+})
+
+// --- User-Tenant Management (Super Admin only) ---
+
+// GET /api/tenants/:id/users - List users in a tenant
+api.get('/tenants/:id/users', async (c) => {
+  const userData = c.get('user')
+  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
+
+  const tenantId = parseInt(c.req.param('id'), 10)
+  if (isNaN(tenantId)) return c.json({ error: 'Invalid tenant ID' }, 400)
+
+  const members = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: usersToTenants.role,
+      joinedAt: usersToTenants.createdAt,
+    })
+    .from(usersToTenants)
+    .innerJoin(users, eq(usersToTenants.userId, users.id))
+    .where(eq(usersToTenants.tenantId, tenantId))
+
+  return c.json(members)
+})
+
+// POST /api/tenants/:id/users - Add a user to a tenant
+api.post('/tenants/:id/users', async (c) => {
+  const userData = c.get('user')
+  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
+
+  const tenantId = parseInt(c.req.param('id'), 10)
+  const { userEmail, userId: directUserId, role } = await c.req.json()
+
+  let targetUserId = directUserId
+  if (!targetUserId && userEmail) {
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userEmail))
+      .limit(1)
+    if (userResult[0]) targetUserId = userResult[0].id
+  }
+
+  if (!targetUserId) return c.json({ error: 'User not found' }, 404)
+
+  // Check if already assigned
+  const existing = await db
+    .select()
+    .from(usersToTenants)
+    .where(
+      and(
+        eq(usersToTenants.tenantId, tenantId),
+        eq(usersToTenants.userId, targetUserId)
+      )
+    )
+    .limit(1)
+
+  if (existing.length > 0) {
+    // Just update role if already exists
+    await db
+      .update(usersToTenants)
+      .set({ role: role || 'member' })
+      .where(
+        and(
+          eq(usersToTenants.tenantId, tenantId),
+          eq(usersToTenants.userId, targetUserId)
+        )
+      )
+  } else {
+    await db.insert(usersToTenants).values({
+      tenantId,
+      userId: targetUserId,
+      role: role || 'member',
+    })
+  }
+
+  return c.json({ success: true })
+})
+
+// DELETE /api/tenants/:id/users/:userId - Remove a user from a tenant
+api.delete('/tenants/:id/users/:userId', async (c) => {
+  const userData = c.get('user')
+  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
+
+  const tenantId = parseInt(c.req.param('id'), 10)
+  const userId = parseInt(c.req.param('userId'), 10)
+
+  await db
+    .delete(usersToTenants)
+    .where(
+      and(
+        eq(usersToTenants.tenantId, tenantId),
+        eq(usersToTenants.userId, userId)
+      )
+    )
+
+  return c.json({ success: true })
+})
+
+// GET /api/users/:id/tenants - Get all tenants for a specific user
+api.get('/users/:id/tenants', async (c) => {
+  const userData = c.get('user')
+  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
+
+  const userId = parseInt(c.req.param('id'), 10)
+  if (isNaN(userId)) return c.json({ error: 'Invalid user ID' }, 400)
+
+  const userTenants = await db
+    .select({
+      id: tenants.id,
+      name: tenants.name,
+      slug: tenants.slug,
+      role: usersToTenants.role,
+      joinedAt: usersToTenants.createdAt,
+    })
+    .from(usersToTenants)
+    .innerJoin(tenants, eq(usersToTenants.tenantId, tenants.id))
+    .where(eq(usersToTenants.userId, userId))
+
+  return c.json(userTenants)
+})
+
 // Locales API
 api.get('/locales', async (c) => {
-  const allLocales = await db.select().from(locales).orderBy(asc(locales.name))
+  const tenantId = c.get('tenantId')
+  const whereTenant = tenantId ? eq(locales.tenantId, tenantId) : sql`true`
+  const allLocales = await db
+    .select()
+    .from(locales)
+    .where(whereTenant)
+    .orderBy(asc(locales.name))
   return c.json({ locales: allLocales })
 })
 
 api.post('/locales', async (c) => {
   try {
     const { code, name, isDefault } = await c.req.json()
+    const tenantId = c.get('tenantId')
     if (!code || !name)
       return c.json({ error: 'Code and name are required' }, 400)
 
-    // If setting as default, unset others
+    // If setting as default, unset others in the same tenant
     if (isDefault) {
-      await db.update(locales).set({ isDefault: false })
+      await db
+        .update(locales)
+        .set({ isDefault: false })
+        .where(tenantId ? eq(locales.tenantId, tenantId) : sql`true`)
     }
 
     const result = await db
       .insert(locales)
-      .values({ code, name, isDefault: !!isDefault })
+      .values({
+        code,
+        name,
+        isDefault: !!isDefault,
+        tenantId,
+      })
       .returning()
     return c.json({ locale: result[0] })
   } catch (err) {
@@ -978,14 +1461,21 @@ api.put('/locales/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
     const { code, name, isDefault } = await c.req.json()
+    const tenantId = c.get('tenantId')
 
-    // Protected en locale
+    const whereClause = [eq(locales.id, id)]
+    if (tenantId) whereClause.push(eq(locales.tenantId, tenantId))
+
+    // Protected en locale (Global or per tenant?)
     const existing = await db
       .select()
       .from(locales)
-      .where(eq(locales.id, id))
+      .where(and(...whereClause))
       .limit(1)
-    if (existing[0]?.code === 'en' && code !== 'en') {
+
+    if (!existing[0]) return c.json({ error: 'Locale not found' }, 404)
+
+    if (existing[0].code === 'en' && code !== 'en') {
       return c.json(
         { error: 'Cannot change the code of the default English locale' },
         400
@@ -993,13 +1483,16 @@ api.put('/locales/:id', async (c) => {
     }
 
     if (isDefault) {
-      await db.update(locales).set({ isDefault: false })
+      await db
+        .update(locales)
+        .set({ isDefault: false })
+        .where(tenantId ? eq(locales.tenantId, tenantId) : sql`true`)
     }
 
     const result = await db
       .update(locales)
       .set({ code, name, isDefault: !!isDefault, updatedAt: new Date() })
-      .where(eq(locales.id, id))
+      .where(and(...whereClause))
       .returning()
     return c.json({ locale: result[0] })
   } catch (err) {
@@ -1010,10 +1503,15 @@ api.put('/locales/:id', async (c) => {
 api.delete('/locales/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
+
+    const whereClause = [eq(locales.id, id)]
+    if (tenantId) whereClause.push(eq(locales.tenantId, tenantId))
+
     const localeResult = await db
       .select()
       .from(locales)
-      .where(eq(locales.id, id))
+      .where(and(...whereClause))
       .limit(1)
     const locale = localeResult[0]
 
@@ -1025,7 +1523,12 @@ api.delete('/locales/:id', async (c) => {
     const usedEntries = await db
       .select({ id: entries.id })
       .from(entries)
-      .where(eq(entries.locale, locale.code))
+      .where(
+        and(
+          eq(entries.locale, locale.code),
+          tenantId ? eq(entries.tenantId, tenantId) : sql`true`
+        )
+      )
       .limit(1)
     if (usedEntries.length > 0) {
       return c.json(
@@ -1034,7 +1537,7 @@ api.delete('/locales/:id', async (c) => {
       )
     }
 
-    await db.delete(locales).where(eq(locales.id, id))
+    await db.delete(locales).where(and(...whereClause))
     return c.json({ success: true })
   } catch (err) {
     return c.json({ error: 'Failed to delete locale' }, 500)
@@ -1099,9 +1602,13 @@ api.post('/test-email', async (c) => {
 // Abilities API
 api.get('/abilities', async (c) => {
   try {
+    const tenantId = c.get('tenantId')
+    const whereTenant = tenantId ? eq(abilities.tenantId, tenantId) : sql`true`
+
     const all = await db
       .select()
       .from(abilities)
+      .where(whereTenant)
       .orderBy(desc(abilities.createdAt))
     return c.json({ abilities: all })
   } catch (err) {
@@ -1112,6 +1619,7 @@ api.get('/abilities', async (c) => {
 api.post('/abilities', async (c) => {
   try {
     const { name, permissions } = await c.req.json()
+    const tenantId = c.get('tenantId')
     if (!name) return c.json({ error: 'Name is required' }, 400)
 
     const newAbility = await db
@@ -1120,6 +1628,7 @@ api.post('/abilities', async (c) => {
         name,
         permissions: permissions || {},
         isSystem: '0',
+        tenantId,
       })
       .returning()
 
@@ -1133,11 +1642,15 @@ api.put('/abilities/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
     const { name, permissions } = await c.req.json()
+    const tenantId = c.get('tenantId')
+
+    const whereClause = [eq(abilities.id, id)]
+    if (tenantId) whereClause.push(eq(abilities.tenantId, tenantId))
 
     const updated = await db
       .update(abilities)
       .set({ name, permissions: permissions || {}, updatedAt: new Date() })
-      .where(eq(abilities.id, id))
+      .where(and(...whereClause))
       .returning()
 
     if (updated.length === 0) return c.json({ error: 'Ability not found' }, 404)
@@ -1151,10 +1664,15 @@ api.put('/abilities/:id', async (c) => {
 api.delete('/abilities/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
+
+    const whereClause = [eq(abilities.id, id)]
+    if (tenantId) whereClause.push(eq(abilities.tenantId, tenantId))
+
     const abilityResult = await db
       .select()
       .from(abilities)
-      .where(eq(abilities.id, id))
+      .where(and(...whereClause))
       .limit(1)
     const ability = abilityResult[0]
 
@@ -1175,7 +1693,7 @@ api.delete('/abilities/:id', async (c) => {
       )
     }
 
-    await db.delete(abilities).where(eq(abilities.id, id))
+    await db.delete(abilities).where(and(...whereClause))
     return c.json({ success: true })
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500)
@@ -1369,6 +1887,11 @@ api.route('/documents', apiDocuments)
 // API Collections
 api.get('/collections', async (c) => {
   try {
+    const tenantId = c.get('tenantId')
+    const whereTenant = tenantId
+      ? eq(collections.tenantId, tenantId)
+      : sql`true`
+
     const all = await db
       .select({
         collection: collections,
@@ -1379,6 +1902,7 @@ api.get('/collections', async (c) => {
       })
       .from(collections)
       .leftJoin(users, eq(collections.createdById, users.id))
+      .where(whereTenant)
       .orderBy(desc(collections.createdAt))
 
     return c.json({
@@ -1395,10 +1919,10 @@ api.get('/collections', async (c) => {
   }
 })
 
-const generateUniqueSlug = async (name: string) => {
+const generateUniqueSlug = async (name: string, tenantId: number | null) => {
   const baseSlug = name
     .toLowerCase()
-    .replace(/[^a-z0-0]/g, '-')
+    .replace(/[^a-z0-9]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
 
@@ -1406,10 +1930,13 @@ const generateUniqueSlug = async (name: string) => {
   let counter = 1
 
   while (true) {
+    const conditions = [eq(collections.slug, slug)]
+    if (tenantId) conditions.push(eq(collections.tenantId, tenantId))
+
     const existing = await db
       .select()
       .from(collections)
-      .where(eq(collections.slug, slug))
+      .where(and(...conditions))
       .limit(1)
 
     if (existing.length === 0) return slug
@@ -1423,6 +1950,7 @@ api.post('/collections', async (c) => {
   try {
     const body = await c.req.json()
     const { name, fields } = body
+    const tenantId = c.get('tenantId')
     if (!name) return c.json({ error: 'Name is required' }, 400)
 
     const hasStatusField = fields?.some(
@@ -1432,7 +1960,7 @@ api.post('/collections', async (c) => {
       return c.json({ error: "'status' is a reserved field name" }, 400)
     }
 
-    const slug = await generateUniqueSlug(name)
+    const slug = await generateUniqueSlug(name, tenantId)
 
     const newCollection = await db
       .insert(collections)
@@ -1444,6 +1972,7 @@ api.post('/collections', async (c) => {
         localized: body.localized || false,
         fields: fields || [],
         createdById: c.get('user')?.id || null,
+        tenantId,
       })
       .returning()
 
@@ -1451,12 +1980,15 @@ api.post('/collections', async (c) => {
       `✅ Collection created: ${name} (slug: ${slug}) by user ID: ${c.get('user')?.id || 'SYSTEM'}`
     )
 
-    // Auto-expand "Read Access" ability for new collections
+    // Auto-expand "Read Access" ability for new collections in the same tenant
     try {
+      const readAccessConditions = [eq(abilities.name, 'Read Access')]
+      if (tenantId) readAccessConditions.push(eq(abilities.tenantId, tenantId))
+
       const readAccess = await db
         .select()
         .from(abilities)
-        .where(eq(abilities.name, 'Read Access'))
+        .where(and(...readAccessConditions))
         .limit(1)
       if (readAccess.length > 0) {
         const ability = readAccess[0]
@@ -1488,6 +2020,8 @@ api.put('/collections/:id', async (c) => {
     const id = parseInt(c.req.param('id'), 10)
     const body = await c.req.json()
     const { name, fields } = body
+    const tenantId = c.get('tenantId')
+
     if (!name) return c.json({ error: 'Name is required' }, 400)
 
     const hasStatusField = fields?.some(
@@ -1496,6 +2030,9 @@ api.put('/collections/:id', async (c) => {
     if (hasStatusField) {
       return c.json({ error: "'status' is a reserved field name" }, 400)
     }
+
+    const whereClause = [eq(collections.id, id)]
+    if (tenantId) whereClause.push(eq(collections.tenantId, tenantId))
 
     const updated = await db
       .update(collections)
@@ -1507,7 +2044,7 @@ api.put('/collections/:id', async (c) => {
         fields: fields || [],
         updatedAt: new Date(),
       })
-      .where(eq(collections.id, id))
+      .where(and(...whereClause))
       .returning()
 
     if (updated.length === 0)
@@ -1523,13 +2060,21 @@ api.put('/collections/:id', async (c) => {
 api.delete('/collections/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
+
     if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400)
 
+    const whereClause = [eq(collections.id, id)]
+    if (tenantId) whereClause.push(eq(collections.tenantId, tenantId))
+
     // Check if there are entries
+    const entriesConditions = [eq(entries.collectionId, id)]
+    if (tenantId) entriesConditions.push(eq(entries.tenantId, tenantId))
+
     const existingEntries = await db
       .select()
       .from(entries)
-      .where(eq(entries.collectionId, id))
+      .where(and(...entriesConditions))
       .limit(1)
     if (existingEntries.length > 0) {
       return c.json(
@@ -1540,7 +2085,7 @@ api.delete('/collections/:id', async (c) => {
 
     const deleted = await db
       .delete(collections)
-      .where(eq(collections.id, id))
+      .where(and(...whereClause))
       .returning()
     if (deleted.length === 0)
       return c.json({ error: 'Collection not found' }, 404)
@@ -1553,6 +2098,7 @@ api.delete('/collections/:id', async (c) => {
 
 api.get('/collections/:idOrSlug/entries', async (c) => {
   try {
+    const tenantId = c.get('tenantId')
     const idOrSlug = c.req.param('idOrSlug')
     let id: number | null = null
 
@@ -1621,17 +2167,19 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       for (const [colIdStr, idsSet] of Object.entries(neededIdsByCollection)) {
         const ids = Array.from(idsSet) as number[]
         if (ids.length === 0) continue
+
+        const relationConditions = [
+          eq(entries.collectionId, Number(colIdStr)),
+          inArray(entries.id, ids),
+          isNull(entries.deletedAt),
+          eq(entries.status, 'published'),
+        ]
+        if (tenantId) relationConditions.push(eq(entries.tenantId, tenantId))
+
         const rels = await db
           .select()
           .from(entries)
-          .where(
-            and(
-              eq(entries.collectionId, Number(colIdStr)),
-              inArray(entries.id, ids),
-              isNull(entries.deletedAt),
-              eq(entries.status, 'published')
-            )
-          )
+          .where(and(...relationConditions))
 
         relationData[Number(colIdStr)] = {}
         for (const rel of rels) {
@@ -1690,6 +2238,14 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
       // Fallback to default if requested locale not found
       if (result.length === 0 && requestedLocale !== 'en') {
+        const fallbackConditions = [
+          eq(entries.collectionId, id),
+          isNull(entries.deletedAt),
+          eq(entries.status, 'published'),
+          eq(entries.locale, 'en'),
+        ]
+        if (tenantId) fallbackConditions.push(eq(entries.tenantId, tenantId))
+
         result = await db
           .select({
             entry: entries,
@@ -1697,14 +2253,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
           })
           .from(entries)
           .leftJoin(users, eq(entries.updatedById, users.id))
-          .where(
-            and(
-              eq(entries.collectionId, id),
-              isNull(entries.deletedAt),
-              eq(entries.status, 'published'),
-              eq(entries.locale, 'en')
-            )
-          )
+          .where(and(...fallbackConditions))
           .orderBy(desc(entries.createdAt))
           .limit(1)
       }
@@ -1731,7 +2280,8 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
     let whereClause = and(
       eq(entries.collectionId, id),
-      eq(entries.status, 'published')
+      eq(entries.status, 'published'),
+      tenantId ? eq(entries.tenantId, tenantId) : sql`true`
     ) as any
 
     // Only filter by locale if not explicitly requesting all
@@ -1739,11 +2289,16 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       whereClause = and(whereClause, eq(entries.locale, requestedLocale)) as any
     }
 
-    // col is fetched above (line 1347-1351). It doesn't have enableTrash. We must fetch it.
+    // col is fetched above. It doesn't have enableTrash. We must fetch it.
     const colExtended = await db
       .select({ enableTrash: collections.enableTrash })
       .from(collections)
-      .where(eq(collections.id, id))
+      .where(
+        and(
+          eq(collections.id, id),
+          tenantId ? eq(collections.tenantId, tenantId) : sql`true`
+        )
+      )
       .limit(1)
 
     if (colExtended[0]?.enableTrash) {
@@ -1797,13 +2352,17 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
 api.post('/collections/:id/entries', async (c) => {
   const collectionId = parseInt(c.req.param('id'), 10)
+  const tenantId = c.get('tenantId')
   if (isNaN(collectionId))
     return c.json({ error: 'Invalid collection ID' }, 400)
+
+  const whereCol = [eq(collections.id, collectionId)]
+  if (tenantId) whereCol.push(eq(collections.tenantId, tenantId))
 
   const collectionResult = await db
     .select()
     .from(collections)
-    .where(eq(collections.id, collectionId))
+    .where(and(...whereCol))
     .limit(1)
   const collection = collectionResult[0]
   if (!collection) return c.json({ error: 'Collection not found' }, 404)
@@ -1825,7 +2384,7 @@ api.post('/collections/:id/entries', async (c) => {
       const localesData = body.locales
       const validationErrors: Record<string, any> = {}
       const validatedEntries: any[] = []
-      
+
       const translationGroupId = body.translationGroupId || crypto.randomUUID()
       const status = body.status || 'published'
 
@@ -1846,12 +2405,17 @@ api.post('/collections/:id/entries', async (c) => {
           locale: localeCode,
           translationGroupId,
           updatedById: c.get('user')?.id || null,
+          tenantId,
         })
       }
 
       if (Object.keys(validationErrors).length > 0) {
         return c.json(
-          { error: 'Validation failed', details: validationErrors, isBulk: true },
+          {
+            error: 'Validation failed',
+            details: validationErrors,
+            isBulk: true,
+          },
           400
         )
       }
@@ -1871,9 +2435,10 @@ api.post('/collections/:id/entries', async (c) => {
       })
 
       // Try to return the entry matching currentLocale or default locale or first
-      const primaryEntry = results.find(r => r.locale === body.currentLocale) || 
-                          results.find(r => r.locale === 'en') || 
-                          results[0]
+      const primaryEntry =
+        results.find((r) => r.locale === body.currentLocale) ||
+        results.find((r) => r.locale === 'en') ||
+        results[0]
 
       return c.json({ success: true, entry: primaryEntry, results }, 201)
     }
@@ -1896,6 +2461,7 @@ api.post('/collections/:id/entries', async (c) => {
         locale: body.locale || 'en',
         translationGroupId: body.translationGroupId || crypto.randomUUID(),
         updatedById: c.get('user')?.id || null,
+        tenantId,
       })
       .returning()
 
@@ -1909,7 +2475,16 @@ api.post('/collections/:id/entries', async (c) => {
 api.get('/entries/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
     const requestedLocale = c.req.query('locale')
+
+    const entryConditions = [
+      eq(entries.id, id),
+      isNull(entries.deletedAt),
+      eq(entries.status, 'published'),
+    ]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
+
     const result = await db
       .select({
         entry: entries,
@@ -1920,13 +2495,7 @@ api.get('/entries/:id', async (c) => {
       })
       .from(entries)
       .leftJoin(users, eq(entries.updatedById, users.id))
-      .where(
-        and(
-          eq(entries.id, id),
-          isNull(entries.deletedAt),
-          eq(entries.status, 'published')
-        )
-      )
+      .where(and(...entryConditions))
       .limit(1)
 
     if (result.length === 0) return c.json({ error: 'Entry not found' }, 404)
@@ -1938,6 +2507,14 @@ api.get('/entries/:id', async (c) => {
       r.entry.locale !== requestedLocale &&
       r.entry.translationGroupId
     ) {
+      const transConditions = [
+        eq(entries.translationGroupId, r.entry.translationGroupId),
+        eq(entries.locale, requestedLocale),
+        isNull(entries.deletedAt),
+        eq(entries.status, 'published'),
+      ]
+      if (tenantId) transConditions.push(eq(entries.tenantId, tenantId))
+
       const translation = await db
         .select({
           entry: entries,
@@ -1948,14 +2525,7 @@ api.get('/entries/:id', async (c) => {
         })
         .from(entries)
         .leftJoin(users, eq(entries.updatedById, users.id))
-        .where(
-          and(
-            eq(entries.translationGroupId, r.entry.translationGroupId),
-            eq(entries.locale, requestedLocale),
-            isNull(entries.deletedAt),
-            eq(entries.status, 'published')
-          )
-        )
+        .where(and(...transConditions))
         .limit(1)
 
       if (translation.length > 0) {
@@ -1977,19 +2547,27 @@ api.get('/entries/:id', async (c) => {
 api.put('/entries/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
+
+    const entryConditions = [eq(entries.id, id)]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
+
     const existingResult = await db
       .select()
       .from(entries)
-      .where(eq(entries.id, id))
+      .where(and(...entryConditions))
       .limit(1)
     if (existingResult.length === 0)
       return c.json({ error: 'Entry not found' }, 404)
     const entry = existingResult[0]
 
+    const colConditions = [eq(collections.id, entry.collectionId)]
+    if (tenantId) colConditions.push(eq(collections.tenantId, tenantId))
+
     const collectionResult = await db
       .select()
       .from(collections)
-      .where(eq(collections.id, entry.collectionId))
+      .where(and(...colConditions))
       .limit(1)
     const collection = collectionResult[0]
     if (!collection) return c.json({ error: 'Collection not found' }, 404)
@@ -2055,7 +2633,7 @@ api.put('/entries/:id', async (c) => {
         updatedById: c.get('user')?.id || null,
         updatedAt: new Date(),
       })
-      .where(eq(entries.id, id))
+      .where(and(...entryConditions))
       .returning()
 
     return c.json({ success: true, entry: updated[0] })
@@ -2067,7 +2645,11 @@ api.put('/entries/:id', async (c) => {
 api.delete('/entries/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
     if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400)
+
+    const entryConditions = [eq(entries.id, id)]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
 
     // Get collection slug to check permission
     const entryData = await db
@@ -2077,7 +2659,7 @@ api.delete('/entries/:id', async (c) => {
       })
       .from(entries)
       .innerJoin(collections, eq(entries.collectionId, collections.id))
-      .where(eq(entries.id, id))
+      .where(and(...entryConditions))
       .limit(1)
 
     if (entryData.length === 0) return c.json({ error: 'Entry not found' }, 404)
@@ -2103,14 +2685,14 @@ api.delete('/entries/:id', async (c) => {
       const updated = await db
         .update(entries)
         .set({ deletedAt: new Date() })
-        .where(eq(entries.id, id))
+        .where(and(...entryConditions))
         .returning()
       if (updated.length === 0) return c.json({ error: 'Entry not found' }, 404)
       return c.json({ success: true, message: 'Entry moved to trash' })
     } else {
       const deleted = await db
         .delete(entries)
-        .where(eq(entries.id, id))
+        .where(and(...entryConditions))
         .returning()
       if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
       return c.json({ success: true })
@@ -2123,7 +2705,11 @@ api.delete('/entries/:id', async (c) => {
 api.post('/entries/:id/restore', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
     if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400)
+
+    const entryConditions = [eq(entries.id, id)]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
 
     const entryData = await db
       .select({
@@ -2131,7 +2717,7 @@ api.post('/entries/:id/restore', async (c) => {
       })
       .from(entries)
       .innerJoin(collections, eq(entries.collectionId, collections.id))
-      .where(eq(entries.id, id))
+      .where(and(...entryConditions))
       .limit(1)
 
     if (entryData.length === 0) return c.json({ error: 'Entry not found' }, 404)
@@ -2143,7 +2729,7 @@ api.post('/entries/:id/restore', async (c) => {
     const updated = await db
       .update(entries)
       .set({ deletedAt: null })
-      .where(eq(entries.id, id))
+      .where(and(...entryConditions))
       .returning()
 
     if (updated.length === 0) return c.json({ error: 'Entry not found' }, 404)
@@ -2156,6 +2742,21 @@ api.post('/entries/:id/restore', async (c) => {
 api.get('/entries/:id/versions', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
+
+    const entryConditions = [eq(entries.id, id)]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
+
+    // Verify entry existence and ownership
+    const entryExists = await db
+      .select({ id: entries.id })
+      .from(entries)
+      .where(and(...entryConditions))
+      .limit(1)
+
+    if (entryExists.length === 0)
+      return c.json({ error: 'Entry not found' }, 404)
+
     const result = await db
       .select({
         id: entryVersions.id,
@@ -2182,6 +2783,10 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
   try {
     const entryId = parseInt(c.req.param('id'), 10)
     const versionId = parseInt(c.req.param('versionId'), 10)
+    const tenantId = c.get('tenantId')
+
+    const entryConditions = [eq(entries.id, entryId)]
+    if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
 
     const versionResult = await db
       .select()
@@ -2196,25 +2801,26 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
     const existingEntry = await db
       .select()
       .from(entries)
-      .where(eq(entries.id, entryId))
+      .where(and(...entryConditions))
       .limit(1)
     if (existingEntry.length === 0)
       return c.json({ error: 'Entry not found' }, 404)
     const entry = existingEntry[0]
 
+    const colConditions = [eq(collections.id, entry.collectionId)]
+    if (tenantId) colConditions.push(eq(collections.tenantId, tenantId))
+
     const collectionResult = await db
       .select()
       .from(collections)
-      .where(eq(collections.id, entry.collectionId))
+      .where(and(...colConditions))
       .limit(1)
     const collection = collectionResult[0]
     if (!checkPermission(c, collection.slug, 'update')) {
       return c.json({ error: 'Forbidden' }, 403)
     }
 
-    // Save CURRENT state as a new version before reverting?
-    // Usually revert is like a normal save.
-    // Let's just update the entry with version content.
+    // Save CURRENT state as a new version before reverting
     const lastVersionResult = await db
       .select({ max: sql`max(${entryVersions.versionNumber})` })
       .from(entryVersions)
@@ -2222,7 +2828,6 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
 
     const nextVersion = (Number(lastVersionResult[0]?.max) || 0) + 1
 
-    // Save current content as version before overwriting
     await db.insert(entryVersions).values({
       entryId: entryId,
       content: entry.content,
@@ -2240,7 +2845,7 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
         updatedById: c.get('user')?.id || null,
         updatedAt: new Date(),
       })
-      .where(eq(entries.id, entryId))
+      .where(and(...entryConditions))
       .returning()
 
     // Clean up versions (keep 5)
@@ -2268,7 +2873,13 @@ api.post('/entries/:id/versions/:versionId/revert', async (c) => {
 
 api.get('/forms', async (c) => {
   try {
-    const result = await db.select().from(forms).orderBy(desc(forms.createdAt))
+    const tenantId = c.get('tenantId')
+    const whereTenant = tenantId ? eq(forms.tenantId, tenantId) : sql`true`
+    const result = await db
+      .select()
+      .from(forms)
+      .where(whereTenant)
+      .orderBy(desc(forms.createdAt))
     return c.json({ forms: result })
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500)
@@ -2278,18 +2889,25 @@ api.get('/forms', async (c) => {
 api.get('/forms/:idOrSlug', async (c) => {
   try {
     const idOrSlug = c.req.param('idOrSlug')
+    const tenantId = c.get('tenantId')
     let result
+
+    const conditions: any[] = []
+    if (tenantId) conditions.push(eq(forms.tenantId, tenantId))
+
     if (/^\d+$/.test(idOrSlug)) {
+      conditions.push(eq(forms.id, parseInt(idOrSlug, 10)))
       result = await db
         .select()
         .from(forms)
-        .where(eq(forms.id, parseInt(idOrSlug, 10)))
+        .where(and(...conditions))
         .limit(1)
     } else {
+      conditions.push(eq(forms.slug, idOrSlug))
       result = await db
         .select()
         .from(forms)
-        .where(eq(forms.slug, idOrSlug))
+        .where(and(...conditions))
         .limit(1)
     }
     if (result.length === 0) return c.json({ error: 'Form not found' }, 404)
@@ -2302,6 +2920,7 @@ api.get('/forms/:idOrSlug', async (c) => {
 api.post('/forms', async (c) => {
   try {
     const body = await c.req.json()
+    const tenantId = c.get('tenantId')
     const {
       name,
       slug,
@@ -2336,6 +2955,7 @@ api.post('/forms', async (c) => {
         apiEntriesPath: apiEntriesPath || null,
         allowedOrigins: allowedOrigins || null,
         honeypotField: honeypotField || null,
+        tenantId,
       })
       .returning()
 
@@ -2352,6 +2972,7 @@ api.post('/forms', async (c) => {
 api.put('/forms/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
     const body = await c.req.json()
     const {
       name,
@@ -2364,6 +2985,9 @@ api.put('/forms/:id', async (c) => {
       allowedOrigins,
       honeypotField,
     } = body
+
+    const whereClause = [eq(forms.id, id)]
+    if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
 
     const updated = await db
       .update(forms)
@@ -2379,7 +3003,7 @@ api.put('/forms/:id', async (c) => {
         honeypotField: honeypotField || null,
         updatedAt: new Date(),
       })
-      .where(eq(forms.id, id))
+      .where(and(...whereClause))
       .returning()
 
     if (updated.length === 0) return c.json({ error: 'Form not found' }, 404)
@@ -2392,7 +3016,15 @@ api.put('/forms/:id', async (c) => {
 api.delete('/forms/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'), 10)
-    const deleted = await db.delete(forms).where(eq(forms.id, id)).returning()
+    const tenantId = c.get('tenantId')
+
+    const whereClause = [eq(forms.id, id)]
+    if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+
+    const deleted = await db
+      .delete(forms)
+      .where(and(...whereClause))
+      .returning()
     if (deleted.length === 0) return c.json({ error: 'Form not found' }, 404)
     return c.json({ success: true })
   } catch (err) {
@@ -2404,10 +3036,15 @@ api.delete('/forms/:id', async (c) => {
 api.get('/forms/:slug/entries', async (c) => {
   try {
     const slug = c.req.param('slug')
+    const tenantId = c.get('tenantId')
+
+    const whereClause = [eq(forms.slug, slug)]
+    if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+
     const formResult = await db
       .select()
       .from(forms)
-      .where(eq(forms.slug, slug))
+      .where(and(...whereClause))
       .limit(1)
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 
@@ -2443,10 +3080,15 @@ api.get('/forms/:slug/entries', async (c) => {
 api.post('/forms/:slug/submit', async (c) => {
   try {
     const slug = c.req.param('slug')
+    const tenantId = c.get('tenantId') // Public submit might not have tenant context unless via headers
+
+    const whereClause = [eq(forms.slug, slug)]
+    if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+
     const formResult = await db
       .select()
       .from(forms)
-      .where(eq(forms.slug, slug))
+      .where(and(...whereClause))
       .limit(1)
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 
@@ -2486,6 +3128,7 @@ api.post('/forms/:slug/submit', async (c) => {
       await db.insert(formEntries).values({
         formId: form.id,
         data: body,
+        tenantId: form.tenantId, // Ensure entry gets the same tenant as the form
       })
       return c.json({
         success: true,
@@ -2518,6 +3161,11 @@ api.post('/forms/:slug/submit', async (c) => {
     console.error('Submission error:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
+})
+
+// Handle 404
+app.notFound(async (c) => {
+  return c.get('inertia')('Errors/NotFound', { title: '404 - Not Found' })
 })
 
 // Mount the api router under /api

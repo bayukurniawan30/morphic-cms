@@ -15,20 +15,16 @@ import {
 } from '@/components/ui/tooltip'
 import { Head, Link, router } from '@inertiajs/react'
 import {
-  PlusIcon,
-  LayersIcon,
-  DatabaseIcon,
-  CalendarIcon,
-  TrashIcon,
-  EditIcon,
-  ArrowUp,
   ArrowDown,
+  ArrowUp,
+  CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  FileTextIcon,
+  DatabaseIcon,
+  LayersIcon,
+  PlusIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React from 'react'
 
 interface Collection {
   id: number
@@ -230,7 +226,7 @@ export default function CollectionsList({
                 {collections.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={7}
                       className='px-6 py-12 text-center text-muted-foreground'
                     >
                       <LayersIcon className='w-12 h-12 mx-auto mb-4 opacity-20' />

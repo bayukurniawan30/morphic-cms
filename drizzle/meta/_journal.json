@@ -8,6 +8,20 @@
       "when": 1776067978844,
       "tag": "0000_furry_rage",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776642604479,
+      "tag": "0001_stiff_zodiak",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776656952013,
+      "tag": "0002_futuristic_midnight",
+      "breakpoints": true
     }
   ]
 }

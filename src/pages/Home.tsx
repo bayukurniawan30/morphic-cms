@@ -20,11 +20,11 @@ import {
   ShoppingBag,
   Smartphone,
   Sparkles,
-  Trash2,
+  Users,
   X,
   Zap,
 } from 'lucide-react'
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -234,8 +234,8 @@ export default function Home() {
                 </div>
                 <h3 className='text-xl font-bold mb-4'>Localization</h3>
                 <p className='text-slate-400 text-sm leading-relaxed'>
-                  Built-in multi-language support. Manage translations for every entry 
-                  and deliver localized content to your global audience.
+                  Built-in multi-language support. Manage translations for every
+                  entry and deliver localized content to your global audience.
                 </p>
               </div>
 
@@ -245,19 +245,8 @@ export default function Home() {
                 </div>
                 <h3 className='text-xl font-bold mb-4'>Content Versioning</h3>
                 <p className='text-slate-400 text-sm leading-relaxed'>
-                  Automatic history tracking. View past versions, compare changes, 
-                  and revert to any previous state with a single click.
-                </p>
-              </div>
-
-              <div className='p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all hover:translate-y-[-4px] group text-left'>
-                <div className='w-12 h-12 bg-red-500/20 rounded-2xl flex items-center justify-center text-red-400 mb-6 group-hover:scale-110 transition-transform'>
-                  <Trash2 className='w-6 h-6' />
-                </div>
-                <h3 className='text-xl font-bold mb-4'>Soft Delete (Trash)</h3>
-                <p className='text-slate-400 text-sm leading-relaxed'>
-                  Safety first. Accidentally deleted content goes to the trash where 
-                  it can be restored or permanently removed when you're sure.
+                  Automatic history tracking. View past versions, compare
+                  changes, and revert to any previous state with a single click.
                 </p>
               </div>
 
@@ -267,8 +256,20 @@ export default function Home() {
                 </div>
                 <h3 className='text-xl font-bold mb-4'>Form Builder</h3>
                 <p className='text-slate-400 text-sm leading-relaxed'>
-                  Create custom forms, capture submissions internally or via 
+                  Create custom forms, capture submissions internally or via
                   webhooks, and manage your leads directly within the CMS.
+                </p>
+              </div>
+
+              <div className='p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all hover:translate-y-[-4px] group text-left'>
+                <div className='w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <Users className='w-6 h-6' />
+                </div>
+                <h3 className='text-xl font-bold mb-4'>Multi-tenant Support</h3>
+                <p className='text-slate-400 text-sm leading-relaxed'>
+                  Scale your platform with ease. Manage multiple organizations,
+                  workspaces, and isolated data environments from a single
+                  instance.
                 </p>
               </div>
             </div>
@@ -465,92 +466,131 @@ export default function Home() {
         </section>
 
         {/* Deployment Section */}
-        <section id="deployment" className="py-32 px-6 border-t border-white/5 relative overflow-hidden bg-slate-950">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-          
-          <div className="max-w-7xl mx-auto relative z-10">
-             <div className="text-center mb-20">
-              <div className="inline-flex items-center space-x-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-xs font-medium text-green-400 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                <Rocket className="w-4 h-4" />
+        <section
+          id='deployment'
+          className='py-32 px-6 border-t border-white/5 relative overflow-hidden bg-slate-950'
+        >
+          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none' />
+
+          <div className='max-w-7xl mx-auto relative z-10'>
+            <div className='text-center mb-20'>
+              <div className='inline-flex items-center space-x-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-xs font-medium text-green-400 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-1000'>
+                <Rocket className='w-4 h-4' />
                 <span>Zero Cost Setup</span>
               </div>
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-1000">
-                Production Ready, <span className="text-primary">Completely Free.</span>
+              <h2 className='text-3xl md:text-5xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-1000'>
+                Production Ready,{' '}
+                <span className='text-primary'>Completely Free.</span>
               </h2>
-              <p className="text-slate-400 max-w-2xl mx-auto text-lg animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                Morphic CMS is designed to run perfectly on modern free-tier infrastructures. You can host your entire CMS backend, database, and media storage without spending a dime.
+              <p className='text-slate-400 max-w-2xl mx-auto text-lg animate-in fade-in slide-in-from-bottom-8 duration-1000'>
+                Morphic CMS is designed to run perfectly on modern free-tier
+                infrastructures. You can host your entire CMS backend, database,
+                and media storage without spending a dime.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className='grid md:grid-cols-3 gap-8'>
               {/* Vercel */}
-              <div className="group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-white/30 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-[50px] group-hover:bg-white/10 transition-colors" />
-                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor"/></svg>
+              <div className='group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-white/30 transition-all duration-300 relative overflow-hidden'>
+                <div className='absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-[50px] group-hover:bg-white/10 transition-colors' />
+                <div className='w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform'>
+                  <svg
+                    className='w-7 h-7'
+                    viewBox='0 0 76 65'
+                    fill='none'
+                    xmlns='http://www.w3.org/2000/svg'
+                  >
+                    <path
+                      d='M37.5274 0L75.0548 65H0L37.5274 0Z'
+                      fill='currentColor'
+                    />
+                  </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-2 text-white">Vercel</h3>
-                <div className="text-sm text-primary mb-4 font-medium hover:text-primary/80 transition-colors">Hosting & Compute</div>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors">
-                  Deploy Morphic instantly to Vercel. Leverage their generous free tier for lightning-fast Edge & Serverless functions globally.
+                <h3 className='text-2xl font-bold mb-2 text-white'>Vercel</h3>
+                <div className='text-sm text-primary mb-4 font-medium hover:text-primary/80 transition-colors'>
+                  Hosting & Compute
+                </div>
+                <p className='text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors'>
+                  Deploy Morphic instantly to Vercel. Leverage their generous
+                  free tier for lightning-fast Edge & Serverless functions
+                  globally.
                 </p>
-                <ul className="space-y-3">
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Global Edge CDN
+                <ul className='space-y-3'>
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Global Edge CDN
                   </li>
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Serverless API Functions
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Serverless API Functions
                   </li>
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Automatic SSL & CI/CD
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Automatic SSL & CI/CD
                   </li>
                 </ul>
               </div>
 
               {/* Neon DB */}
-              <div className="group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-green-500/50 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-[50px] group-hover:bg-green-500/20 transition-colors" />
-                <div className="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center text-green-400 mb-6 group-hover:scale-110 transition-transform">
-                  <Database className="w-7 h-7" />
+              <div className='group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-green-500/50 transition-all duration-300 relative overflow-hidden'>
+                <div className='absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-[50px] group-hover:bg-green-500/20 transition-colors' />
+                <div className='w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center text-green-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <Database className='w-7 h-7' />
                 </div>
-                <h3 className="text-2xl font-bold mb-2 text-white">Neon PostgreSQL</h3>
-                <div className="text-sm text-green-400 mb-4 font-medium hover:text-green-300 transition-colors">Database Storage</div>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors">
-                  Power your content with modern, serverless PostgreSQL. Enjoy a robust free tier with auto-scaling and branching.
+                <h3 className='text-2xl font-bold mb-2 text-white'>
+                  Neon PostgreSQL
+                </h3>
+                <div className='text-sm text-green-400 mb-4 font-medium hover:text-green-300 transition-colors'>
+                  Database Storage
+                </div>
+                <p className='text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors'>
+                  Power your content with modern, serverless PostgreSQL. Enjoy a
+                  robust free tier with auto-scaling and branching.
                 </p>
-                <ul className="space-y-3">
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Serverless Architecture
+                <ul className='space-y-3'>
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Serverless Architecture
                   </li>
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Database Branching
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Database Branching
                   </li>
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Generous Compute & Storage
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Generous Compute & Storage
                   </li>
                 </ul>
               </div>
 
               {/* Cloudinary */}
-              <div className="group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[50px] group-hover:bg-blue-500/20 transition-colors" />
-                <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                  <Cloud className="w-7 h-7" />
+              <div className='group p-8 rounded-3xl bg-slate-900 border border-white/10 hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden'>
+                <div className='absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[50px] group-hover:bg-blue-500/20 transition-colors' />
+                <div className='w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform'>
+                  <Cloud className='w-7 h-7' />
                 </div>
-                <h3 className="text-2xl font-bold mb-2 text-white">Cloudinary</h3>
-                <div className="text-sm text-blue-400 mb-4 font-medium hover:text-blue-300 transition-colors">Asset & Media CDN</div>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors">
-                  Store and serve your images and media automatically optimized and transformed using their robust free plan.
+                <h3 className='text-2xl font-bold mb-2 text-white'>
+                  Cloudinary
+                </h3>
+                <div className='text-sm text-blue-400 mb-4 font-medium hover:text-blue-300 transition-colors'>
+                  Asset & Media CDN
+                </div>
+                <p className='text-slate-400 text-sm leading-relaxed mb-6 group-hover:text-slate-300 transition-colors'>
+                  Store and serve your images and media automatically optimized
+                  and transformed using their robust free plan.
                 </p>
-                <ul className="space-y-3">
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Auto Format & Optimization
+                <ul className='space-y-3'>
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Auto Format & Optimization
                   </li>
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Powerful Transformation API
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Powerful Transformation API
                   </li>
-                  <li className="flex items-center text-sm text-slate-300 group-hover:text-white transition-colors">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mr-3" /> Global Media Delivery
+                  <li className='flex items-center text-sm text-slate-300 group-hover:text-white transition-colors'>
+                    <CheckCircle2 className='w-4 h-4 text-green-500 mr-3' />{' '}
+                    Global Media Delivery
                   </li>
                 </ul>
               </div>

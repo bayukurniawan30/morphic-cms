@@ -1,6 +1,13 @@
 import Layout from '@/components/Layout'
-import { ThemeProvider } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -10,14 +17,18 @@ import {
 } from '@/components/ui/select'
 import { Head, Link, router } from '@inertiajs/react'
 import {
-  ArrowUp,
   ArrowDown,
+  ArrowUp,
+  Building2,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  Plus,
+  Trash2,
   UsersIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React from 'react'
+import { useState } from 'react'
 
 interface User {
   id: number
@@ -30,9 +41,24 @@ interface User {
   createdAt: string
 }
 
+interface Tenant {
+  id: number
+  name: string
+  slug: string
+}
+
+interface UserTenant {
+  id: number
+  name: string
+  slug: string
+  role: string
+  joinedAt: string
+}
+
 interface ListProps {
   users: User[]
   user?: any
+  allTenants: Tenant[]
   filters?: {
     sort: string
     dir: string
@@ -55,10 +81,75 @@ interface ListProps {
 export default function List({
   users,
   user,
+  allTenants = [],
   filters,
   pagination,
   flash,
 }: ListProps) {
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [userTenants, setUserTenants] = useState<UserTenant[]>([])
+  const [loadingTenants, setLoadingTenants] = useState(false)
+  const [addingTenant, setAddingTenant] = useState(false)
+  const [newTenantId, setNewTenantId] = useState<string>('')
+  const [newTenantRole, setNewTenantRole] = useState<string>('member')
+
+  const fetchUserTenants = async (userId: number) => {
+    setLoadingTenants(true)
+    try {
+      const res = await fetch(`/api/users/${userId}/tenants`)
+      if (res.ok) {
+        const data = await res.json()
+        setUserTenants(data)
+      }
+    } catch (e) {
+      toast.error('Failed to load workspaces')
+    } finally {
+      setLoadingTenants(false)
+    }
+  }
+
+  const handleAddTenant = async () => {
+    if (!selectedUser || !newTenantId) return
+    setAddingTenant(true)
+    try {
+      const res = await fetch(`/api/tenants/${newTenantId}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: selectedUser.id, role: newTenantRole }),
+      })
+      if (res.ok) {
+        toast.success('Workspace assigned successfully')
+        fetchUserTenants(selectedUser.id)
+        setNewTenantId('')
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Failed to assign workspace')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setAddingTenant(false)
+    }
+  }
+
+  const handleRemoveTenant = async (tenantId: number) => {
+    if (!selectedUser || !confirm('Remove user from this workspace?')) return
+    try {
+      const res = await fetch(
+        `/api/tenants/${tenantId}/users/${selectedUser.id}`,
+        {
+          method: 'DELETE',
+        }
+      )
+      if (res.ok) {
+        toast.success('User removed from workspace')
+        fetchUserTenants(selectedUser.id)
+      }
+    } catch (e) {
+      toast.error('Failed to remove user')
+    }
+  }
+
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this user?')) return
 
@@ -177,17 +268,17 @@ export default function List({
                     </div>
                   </th>
                   <th className='px-6 py-4 font-medium'>Email / Username</th>
-                  <th className='px-6 py-4 font-medium'>CMS Role</th>
-                  <th className='px-6 py-4 font-medium'>API Key Ability</th>
+                  <th className='px-6 py-4 font-medium'>Role</th>
                   <th
-                    className='px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors'
+                    className="px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors"
                     onClick={() => toggleSort('createdAt')}
                   >
-                    <div className='flex items-center'>
-                      Created At
+                    <div className="flex items-center">
+                      Joined
                       {renderSortIcon('createdAt')}
                     </div>
                   </th>
+                  <th className="px-6 py-4 font-medium">Workspaces</th>
                   <th className='px-6 py-4 font-medium text-right'>Actions</th>
                 </tr>
               </thead>
@@ -195,7 +286,7 @@ export default function List({
                 {users?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className='px-6 py-8 text-center text-muted-foreground'
                     >
                       No users found.
@@ -208,7 +299,7 @@ export default function List({
                       className='hover:bg-muted/50 transition-colors'
                     >
                       <td className='px-6 py-4 font-medium text-foreground'>
-                        {u.name || '-'}
+                        {u.name || u.username}
                       </td>
                       <td className='px-6 py-4'>
                         <div className='flex flex-col'>
@@ -220,22 +311,150 @@ export default function List({
                       </td>
                       <td className='px-6 py-4'>
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                          ${u.role === 'super_admin' ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border
+                          ${
+                            u.role === 'super_admin'
+                              ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
+                              : 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400'
+                          }
                         `}
                         >
                           {u.role.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className='px-6 py-4'>
-                        <span className='text-xs text-muted-foreground'>
-                          {u.abilityName || 'Role Default'}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4 text-muted-foreground whitespace-nowrap'>
+                      <td className="px-6 py-4 text-muted-foreground whitespace-nowrap text-sm">
                         {u.createdAt
                           ? new Date(u.createdAt).toLocaleDateString()
                           : '-'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs gap-1"
+                              onClick={() => {
+                                setSelectedUser(u)
+                                fetchUserTenants(u.id)
+                              }}
+                            >
+                              <Building2 className="w-3.5 h-3.5" />
+                              Manage
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                              <DialogTitle>Workspace Access</DialogTitle>
+                              <DialogDescription>
+                                Manage workspaces for {u.email}
+                              </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="py-4 space-y-4">
+                              {loadingTenants ? (
+                                <div className="flex justify-center py-4">
+                                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {userTenants.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground text-center py-2">
+                                      No workspaces assigned.
+                                    </p>
+                                  ) : (
+                                    userTenants.map((ut) => (
+                                      <div
+                                        key={ut.id}
+                                        className="flex items-center justify-between p-2 rounded-lg border bg-muted/30"
+                                      >
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-medium">
+                                            {ut.name}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground capitalize">
+                                            {ut.role}
+                                          </span>
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive"
+                                          onClick={() =>
+                                            handleRemoveTenant(ut.id)
+                                          }
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="pt-4 border-t space-y-3">
+                                <h4 className="text-sm font-medium">
+                                  Assign New Workspace
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Select
+                                    value={newTenantId}
+                                    onValueChange={setNewTenantId}
+                                  >
+                                    <SelectTrigger className="text-xs h-9">
+                                      <SelectValue placeholder="Select..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {allTenants
+                                        .filter(
+                                          (t) =>
+                                            !userTenants.some(
+                                              (ut) => ut.id === t.id
+                                            )
+                                        )
+                                        .map((t) => (
+                                          <SelectItem
+                                            key={t.id}
+                                            value={t.id.toString()}
+                                          >
+                                            {t.name}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Select
+                                    value={newTenantRole}
+                                    onValueChange={setNewTenantRole}
+                                  >
+                                    <SelectTrigger className="text-xs h-9">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="owner">
+                                        Owner
+                                      </SelectItem>
+                                      <SelectItem value="member">
+                                        Member
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <Button
+                                  className="w-full h-9 gap-1.5"
+                                  disabled={!newTenantId || addingTenant}
+                                  onClick={handleAddTenant}
+                                >
+                                  {addingTenant ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Plus className="w-4 h-4" />
+                                  )}
+                                  Add to Workspace
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </td>
                       <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
                         <Button variant='outline' size='sm' asChild>

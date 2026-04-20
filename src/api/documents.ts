@@ -1,13 +1,18 @@
-import { eq, desc, sql, ilike } from 'drizzle-orm'
+import { and, desc, eq, ilike, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { verify } from 'hono/jwt'
 import { db } from '../db/index.js'
-import { documents } from '../db/schema.js'
-import { uploadBufferToCloudinary } from '../lib/cloudinary.js'
+import { documents, tenants } from '../db/schema.js'
+import {
+  deleteFromCloudinary,
+  uploadBufferToCloudinary,
+  createCloudinaryFolder,
+} from '../lib/cloudinary.js'
 
 type Variables = {
   userId: number
+  tenantId: number | null
 }
 
 const apiDocuments = new Hono<{ Variables: Variables }>()
@@ -38,6 +43,13 @@ apiDocuments.use('*', async (c, next) => {
     const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
     const decoded = await verify(token, secret, 'HS256')
     c.set('userId', Number(decoded.id))
+
+    // Detect tenantId from cookie or header
+    const cookieTenant = getCookie(c, 'morphic_active_tenant')
+    const headerTenant = c.req.header('morphic-tenant-id')
+    const tenantId = cookieTenant || headerTenant
+    c.set('tenantId', tenantId ? parseInt(tenantId, 10) : null)
+
     await next()
   } catch (err) {
     return c.json({ error: 'Invalid token' }, 401)
@@ -47,15 +59,20 @@ apiDocuments.use('*', async (c, next) => {
 // GET /api/documents
 apiDocuments.get('/', async (c) => {
   try {
+    const tenantId = c.get('tenantId')
     const page = parseInt(c.req.query('page') || '1', 10)
     const limit = parseInt(c.req.query('limit') || '10', 10)
     const search = c.req.query('search') || ''
     const offset = (page - 1) * limit
 
-    let whereClause = undefined
+    const conditions: any[] = []
     if (search) {
-      whereClause = ilike(documents.filename, `%${search}%`)
+      conditions.push(ilike(documents.filename, `%${search}%`))
     }
+    if (tenantId) {
+      conditions.push(eq(documents.tenantId, tenantId))
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
     const countResult = await db
       .select({ count: sql`count(*)` })
@@ -93,7 +110,6 @@ apiDocuments.post('/upload', async (c) => {
   try {
     const formData = await c.req.formData()
     const file = formData.get('file') as File
-    const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'morphic-cms'
 
     if (!file) {
       return c.json({ error: 'No file provided' }, 400)
@@ -121,12 +137,26 @@ apiDocuments.post('/upload', async (c) => {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
+    const tenantId = c.get('tenantId')
+    const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'morphic-cms'
+    let folderPath = uploadPreset
+
+    if (tenantId) {
+      const tenantData = await db
+        .select()
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1)
+      if (tenantData.length > 0) {
+        // Nest the tenant folder inside the preset folder
+        folderPath = `${uploadPreset}/${tenantData[0].slug}`
+        // Ensure the nested folder exists via Admin API
+        await createCloudinaryFolder(folderPath)
+      }
+    }
+
     // Upload to Cloudinary
-    const result = await uploadBufferToCloudinary(
-      buffer,
-      uploadPreset,
-      file.name
-    )
+    const result = await uploadBufferToCloudinary(buffer, file.name, folderPath)
 
     const newDoc = await db
       .insert(documents)
@@ -134,9 +164,12 @@ apiDocuments.post('/upload', async (c) => {
         filename: file.name,
         secureUrl: result.secure_url,
         publicId: result.public_id,
+        assetId: result.asset_id,
+        resourceType: result.resource_type,
         format: result.format,
         mimeType: file.type,
         size: result.bytes,
+        tenantId,
       })
       .returning()
 
@@ -151,16 +184,35 @@ apiDocuments.post('/upload', async (c) => {
 apiDocuments.delete('/:id', async (c) => {
   try {
     const docId = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
     if (isNaN(docId)) return c.json({ error: 'Invalid doc ID' }, 400)
 
-    const deleted = await db
-      .delete(documents)
-      .where(eq(documents.id, docId))
-      .returning()
+    const whereClause = [eq(documents.id, docId)]
+    if (tenantId) whereClause.push(eq(documents.tenantId, tenantId))
 
-    if (deleted.length === 0) {
+    // 1. Fetch from DB first
+    const item = await db
+      .select()
+      .from(documents)
+      .where(and(...whereClause))
+      .limit(1)
+
+    if (item.length === 0) {
       return c.json({ error: 'Document not found' }, 404)
     }
+
+    const docItem = item[0]
+
+    // 2. Delete from Cloudinary
+    if (docItem.publicId) {
+      await deleteFromCloudinary(
+        docItem.publicId,
+        docItem.resourceType || 'raw'
+      )
+    }
+
+    // 3. Delete from database
+    await db.delete(documents).where(eq(documents.id, docId))
 
     return c.json({ success: true })
   } catch (err) {

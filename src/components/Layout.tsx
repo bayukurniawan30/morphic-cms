@@ -21,6 +21,9 @@ import { getAppVersion } from '@/lib/version'
 import { Link, usePage } from '@inertiajs/react'
 import {
   Book,
+  Building2,
+  Check,
+  ChevronDown,
   Database,
   FileCheckIcon,
   FileImageIcon,
@@ -31,6 +34,7 @@ import {
   LayoutGrid,
   Mail,
   Menu,
+  Plus,
   ShieldCheck,
   Users,
   X,
@@ -43,6 +47,12 @@ interface UserProps {
   name?: string
   email?: string
   role?: 'super_admin' | 'editor'
+}
+
+interface TenantProps {
+  id: number
+  name: string
+  slug: string
 }
 
 interface LayoutProps {
@@ -106,7 +116,11 @@ export default function Layout({ user, children }: LayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(false) // Closed by default
 
   const { theme, setTheme, resolvedTheme } = useTheme()
-  const { url } = usePage()
+  const { url, props } = usePage()
+  const { activeTenant, availableTenants } = props as any as {
+    activeTenant: TenantProps | null
+    availableTenants: TenantProps[]
+  }
   const [globals, setGlobals] = React.useState<any[]>([])
 
   React.useEffect(() => {
@@ -128,6 +142,18 @@ export default function Layout({ user, children }: LayoutProps) {
   const toggleSidebar = () => setSidebarOpen(!isSidebarOpen)
   const toggleTheme = () =>
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+
+  const handleTenantSwitch = (tenantId: number | null) => {
+    fetch('/api/tenants/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId }),
+    }).then((res) => {
+      if (res.ok) {
+        window.location.reload()
+      }
+    })
+  }
 
   const getInitials = (name: string) => {
     return name
@@ -389,11 +415,79 @@ export default function Layout({ user, children }: LayoutProps) {
                 <Menu className='h-5 w-5' />
               </Button>
               <h2 className='text-lg font-semibold hidden sm:block'>
-                Dashboard
+                {activeTenant ? activeTenant.name : 'System Global'}
               </h2>
             </div>
 
             <div className='flex items-center space-x-2'>
+              {/* Tenant Switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-9 hidden md:flex items-center gap-2 border-dashed bg-muted/50 hover:bg-muted transition-colors'
+                  >
+                    <Building2 className='h-4 w-4 text-muted-foreground' />
+                    <span className='max-w-[120px] truncate font-medium'>
+                      {activeTenant ? activeTenant.name : 'System Global'}
+                    </span>
+                    <ChevronDown className='h-3 w-3 text-muted-foreground' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end' className='w-64 p-1'>
+                  <DropdownMenuLabel className='text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5'>
+                    Switch Workspace
+                  </DropdownMenuLabel>
+                  <div className='max-h-[300px] overflow-y-auto custom-scrollbar'>
+                    {user.role === 'super_admin' && (
+                      <DropdownMenuItem
+                        onClick={() => handleTenantSwitch(null)}
+                        className='flex items-center justify-between'
+                      >
+                        <div className='flex items-center gap-2'>
+                          <ShieldCheck className='h-4 w-4 text-primary' />
+                          <span>System Global</span>
+                        </div>
+                        {!activeTenant && (
+                          <Check className='h-3 w-3 text-primary' />
+                        )}
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    {availableTenants?.map((tenant) => (
+                      <DropdownMenuItem
+                        key={tenant.id}
+                        onClick={() => handleTenantSwitch(tenant.id)}
+                        className='flex items-center justify-between'
+                      >
+                        <div className='flex items-center gap-2'>
+                          <Building2 className='h-4 w-4 text-muted-foreground' />
+                          <span className='truncate'>{tenant.name}</span>
+                        </div>
+                        {activeTenant?.id === tenant.id && (
+                          <Check className='h-3 w-3 text-primary' />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                  {user.role === 'super_admin' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href='/tenants/add'
+                          className='flex items-center gap-2 text-primary font-medium'
+                        >
+                          <Plus className='h-4 w-4' />
+                          <span>Create New Tenant</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button variant='ghost' size='icon' onClick={toggleTheme}>
                 {resolvedTheme === 'dark' ? (
                   <SunIcon className='h-5 w-5' />
