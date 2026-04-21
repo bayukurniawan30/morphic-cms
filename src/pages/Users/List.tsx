@@ -35,10 +35,16 @@ interface User {
   name: string | null
   email: string
   username: string
-  role: string
+  globalRole: string
+  workspaceRole: string | null
+  ownedCount: number
+  memberCount: number
+  firstOwnedName: string | null
+  firstMemberName: string | null
   abilityName?: string | null
   lastLogin: string | null
   createdAt: string
+  canManage: boolean
 }
 
 interface Tenant {
@@ -58,6 +64,7 @@ interface UserTenant {
 interface ListProps {
   users: User[]
   user?: any
+  activeTenantRole?: string | null
   allTenants: Tenant[]
   filters?: {
     sort: string
@@ -81,6 +88,7 @@ interface ListProps {
 export default function List({
   users,
   user,
+  activeTenantRole,
   allTenants = [],
   filters,
   pagination,
@@ -211,6 +219,11 @@ export default function List({
     )
   }
 
+  const canManageAny =
+    user?.role === 'super_admin' ||
+    activeTenantRole === 'owner' ||
+    users.some((u) => u.canManage)
+
   return (
     <Layout user={user}>
       <Head title='Users Management' />
@@ -229,18 +242,6 @@ export default function List({
             </p>
           </div>
           <div className='flex flex-wrap gap-2 items-center'>
-            <div className='w-40'>
-              <Select value={currentRole} onValueChange={handleRoleChange}>
-                <SelectTrigger className='h-10 bg-card border-muted-foreground/20'>
-                  <SelectValue placeholder='All Roles' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>All Roles</SelectItem>
-                  <SelectItem value='editor'>Editor</SelectItem>
-                  <SelectItem value='super_admin'>Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <Button asChild>
               <Link href='/users/add'>Add User</Link>
             </Button>
@@ -268,25 +269,31 @@ export default function List({
                     </div>
                   </th>
                   <th className='px-6 py-4 font-medium'>Email / Username</th>
-                  <th className='px-6 py-4 font-medium'>Role</th>
+                  <th className='px-6 py-4 font-medium'>Workspace Role</th>
                   <th
-                    className="px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors"
+                    className='px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors'
                     onClick={() => toggleSort('createdAt')}
                   >
-                    <div className="flex items-center">
+                    <div className='flex items-center'>
                       Joined
                       {renderSortIcon('createdAt')}
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-medium">Workspaces</th>
-                  <th className='px-6 py-4 font-medium text-right'>Actions</th>
+                  {user?.role === 'super_admin' && (
+                    <th className='px-6 py-4 font-medium'>Workspaces</th>
+                  )}
+                  {canManageAny && (
+                    <th className='px-6 py-4 font-medium text-right'>
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className='divide-y'>
                 {users?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={canManageAny ? 6 : 4}
                       className='px-6 py-8 text-center text-muted-foreground'
                     >
                       No users found.
@@ -313,163 +320,200 @@ export default function List({
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border
                           ${
-                            u.role === 'super_admin'
+                            u.globalRole === 'super_admin'
                               ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
-                              : 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400'
+                              : u.workspaceRole === 'owner' || u.ownedCount > 0
+                                ? 'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:text-purple-400'
+                                : 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400'
                           }
                         `}
                         >
-                          {u.role.replace('_', ' ')}
+                          {u.globalRole === 'super_admin' ? (
+                            'Super Admin'
+                          ) : u.workspaceRole ? (
+                            u.workspaceRole.charAt(0).toUpperCase() +
+                            u.workspaceRole.slice(1)
+                          ) : (
+                            <div className='flex flex-col items-start'>
+                              {u.ownedCount > 0 && (
+                                <span className='text-purple-600 dark:text-purple-400'>
+                                  Owner of {u.firstOwnedName}
+                                  {u.ownedCount > 1 &&
+                                    ` +${u.ownedCount - 1} more`}
+                                </span>
+                              )}
+                              {u.memberCount > 0 && (
+                                <span className='text-orange-600 dark:text-orange-400'>
+                                  Member of {u.firstMemberName}
+                                  {u.memberCount > 1 &&
+                                    ` +${u.memberCount - 1} more`}
+                                </span>
+                              )}
+                              {u.ownedCount === 0 && u.memberCount === 0 && (
+                                <span className='text-muted-foreground'>
+                                  No Workspace
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground whitespace-nowrap text-sm">
+                      <td className='px-6 py-4 text-muted-foreground whitespace-nowrap text-sm'>
                         {u.createdAt
                           ? new Date(u.createdAt).toLocaleDateString()
                           : '-'}
                       </td>
-                      <td className="px-6 py-4">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs gap-1"
-                              onClick={() => {
-                                setSelectedUser(u)
-                                fetchUserTenants(u.id)
-                              }}
-                            >
-                              <Building2 className="w-3.5 h-3.5" />
-                              Manage
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px]">
-                            <DialogHeader>
-                              <DialogTitle>Workspace Access</DialogTitle>
-                              <DialogDescription>
-                                Manage workspaces for {u.email}
-                              </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="py-4 space-y-4">
-                              {loadingTenants ? (
-                                <div className="flex justify-center py-4">
-                                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                                </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  {userTenants.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-2">
-                                      No workspaces assigned.
-                                    </p>
-                                  ) : (
-                                    userTenants.map((ut) => (
-                                      <div
-                                        key={ut.id}
-                                        className="flex items-center justify-between p-2 rounded-lg border bg-muted/30"
-                                      >
-                                        <div className="flex flex-col">
-                                          <span className="text-sm font-medium">
-                                            {ut.name}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground capitalize">
-                                            {ut.role}
-                                          </span>
-                                        </div>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-destructive"
-                                          onClick={() =>
-                                            handleRemoveTenant(ut.id)
-                                          }
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="pt-4 border-t space-y-3">
-                                <h4 className="text-sm font-medium">
-                                  Assign New Workspace
-                                </h4>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <Select
-                                    value={newTenantId}
-                                    onValueChange={setNewTenantId}
-                                  >
-                                    <SelectTrigger className="text-xs h-9">
-                                      <SelectValue placeholder="Select..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {allTenants
-                                        .filter(
-                                          (t) =>
-                                            !userTenants.some(
-                                              (ut) => ut.id === t.id
-                                            )
-                                        )
-                                        .map((t) => (
-                                          <SelectItem
-                                            key={t.id}
-                                            value={t.id.toString()}
-                                          >
-                                            {t.name}
-                                          </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <Select
-                                    value={newTenantRole}
-                                    onValueChange={setNewTenantRole}
-                                  >
-                                    <SelectTrigger className="text-xs h-9">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="owner">
-                                        Owner
-                                      </SelectItem>
-                                      <SelectItem value="member">
-                                        Member
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                      {user?.role === 'super_admin' && (
+                        <td className='px-6 py-4'>
+                          {u.canManage && (
+                            <Dialog>
+                              <DialogTrigger asChild>
                                 <Button
-                                  className="w-full h-9 gap-1.5"
-                                  disabled={!newTenantId || addingTenant}
-                                  onClick={handleAddTenant}
+                                  variant='ghost'
+                                  size='sm'
+                                  className='h-8 text-xs gap-1'
+                                  onClick={() => {
+                                    setSelectedUser(u)
+                                    fetchUserTenants(u.id)
+                                  }}
                                 >
-                                  {addingTenant ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Plus className="w-4 h-4" />
-                                  )}
-                                  Add to Workspace
+                                  <Building2 className='w-3.5 h-3.5' />
+                                  Manage
                                 </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </td>
-                      <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
-                        <Button variant='outline' size='sm' asChild>
-                          <Link href={`/users/edit/${u.id}`}>Edit</Link>
-                        </Button>
-                        {user?.id !== u.id && (
-                          <Button
-                            variant='destructive'
-                            size='sm'
-                            onClick={() => handleDelete(u.id)}
-                          >
-                            Delete
-                          </Button>
-                        )}
-                      </td>
+                              </DialogTrigger>
+                              <DialogContent className='sm:max-w-[425px]'>
+                                <DialogHeader>
+                                  <DialogTitle>Workspace Access</DialogTitle>
+                                  <DialogDescription>
+                                    Manage workspaces for {u.email}
+                                  </DialogDescription>
+                                </DialogHeader>
+
+                                <div className='py-4 space-y-4'>
+                                  {loadingTenants ? (
+                                    <div className='flex justify-center py-4'>
+                                      <Loader2 className='w-6 h-6 animate-spin text-muted-foreground' />
+                                    </div>
+                                  ) : (
+                                    <div className='space-y-2'>
+                                      {userTenants.length === 0 ? (
+                                        <p className='text-sm text-muted-foreground text-center py-2'>
+                                          No workspaces assigned.
+                                        </p>
+                                      ) : (
+                                        userTenants.map((ut) => (
+                                          <div
+                                            key={ut.id}
+                                            className='flex items-center justify-between p-2 rounded-lg border bg-muted/30'
+                                          >
+                                            <div className='flex flex-col'>
+                                              <span className='text-sm font-medium'>
+                                                {ut.name}
+                                              </span>
+                                              <span className='text-xs text-muted-foreground capitalize'>
+                                                {ut.role}
+                                              </span>
+                                            </div>
+                                            <Button
+                                              variant='ghost'
+                                              size='icon'
+                                              className='h-8 w-8 text-destructive'
+                                              onClick={() =>
+                                                handleRemoveTenant(ut.id)
+                                              }
+                                            >
+                                              <Trash2 className='w-4 h-4' />
+                                            </Button>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className='pt-4 border-t space-y-3'>
+                                    <h4 className='text-sm font-medium'>
+                                      Assign New Workspace
+                                    </h4>
+                                    <div className='grid grid-cols-2 gap-2'>
+                                      <Select
+                                        value={newTenantId}
+                                        onValueChange={setNewTenantId}
+                                      >
+                                        <SelectTrigger className='text-xs h-9'>
+                                          <SelectValue placeholder='Select...' />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {allTenants
+                                            .filter(
+                                              (t) =>
+                                                !userTenants.some(
+                                                  (ut) => ut.id === t.id
+                                                )
+                                            )
+                                            .map((t) => (
+                                              <SelectItem
+                                                key={t.id}
+                                                value={t.id.toString()}
+                                              >
+                                                {t.name}
+                                              </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Select
+                                        value={newTenantRole}
+                                        onValueChange={setNewTenantRole}
+                                      >
+                                        <SelectTrigger className='text-xs h-9'>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value='owner'>
+                                            Owner
+                                          </SelectItem>
+                                          <SelectItem value='member'>
+                                            Member
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Button
+                                      className='w-full h-9 gap-1.5'
+                                      disabled={!newTenantId || addingTenant}
+                                      onClick={handleAddTenant}
+                                    >
+                                      {addingTenant ? (
+                                        <Loader2 className='w-4 h-4 animate-spin' />
+                                      ) : (
+                                        <Plus className='w-4 h-4' />
+                                      )}
+                                      Add to Workspace
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        </td>
+                      )}
+                      {canManageAny && (
+                        <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
+                          <>
+                            <Button variant='outline' size='sm' asChild>
+                              <Link href={`/users/edit/${u.id}`}>Edit</Link>
+                            </Button>
+                            {u.id !== user.id && (
+                              <Button
+                                variant='destructive'
+                                size='sm'
+                                onClick={() => handleDelete(u.id)}
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          </>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

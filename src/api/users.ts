@@ -1,74 +1,27 @@
 import bcrypt from 'bcryptjs'
-import { eq, isNull, desc, asc } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { getCookie } from 'hono/cookie'
-import { verify } from 'hono/jwt'
 import { db } from '../db/index.js'
-import { users, abilities } from '../db/schema.js'
+import { abilities, users } from '../db/schema.js'
 import { sendEmail } from '../lib/email.js'
 
 type Variables = {
-  userId: number
+  user: any
+  tenantId: number | null
+  tenantRole: string | null
 }
 
 const apiUsers = new Hono<{ Variables: Variables }>()
 
-// Middleware to check super_admin role
-apiUsers.use('*', async (c, next) => {
-  const getAuthToken = () => {
-    try {
-      return getCookie(c, 'morphic_token')
-    } catch (e) {
-      const cookieHeader =
-        (c.req.raw as any)?.headers?.['cookie'] ||
-        (c.req.raw as any)?.headers?.get?.('cookie')
-      if (typeof cookieHeader === 'string') {
-        const match = cookieHeader.match(/morphic_token=([^;]+)/)
-        return match ? match[1] : undefined
-      }
-      return undefined
-    }
-  }
-
-  const token = getAuthToken()
-  if (!token) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
-
-  try {
-    const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
-    const decoded = await verify(token, secret, 'HS256')
-    const currentUserId = Number(decoded.id)
-    const currentUserRole = decoded.role
-
-    c.set('userId', currentUserId)
-
-    const path = c.req.path
-    const method = c.req.method
-
-    // Allow GET /api/users/:id and PUT /api/users/:id if it's the same user
-    const selfEditMatch = path.match(/^\/api\/users\/(\d+)$/)
-    if (selfEditMatch && (method === 'GET' || method === 'PUT')) {
-      const targetUserId = parseInt(selfEditMatch[1], 10)
-      if (currentUserRole === 'super_admin' || targetUserId === currentUserId) {
-        return await next()
-      }
-    }
-
-    if (currentUserRole !== 'super_admin') {
-      return c.json({ error: 'Forbidden' }, 403)
-    }
-
-    await next()
-  } catch (err) {
-    return c.json({ error: 'Invalid token' }, 401)
-  }
-})
+// Middleware is now handled by index.ts, which provides c.get('user'), c.get('tenantId'), and c.get('tenantRole')
 
 // GET /api/users - List active users
 apiUsers.get('/', async (c) => {
+  const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+
   try {
-    const allUsers = await db
+    let usersQuery = db
       .select({
         id: users.id,
         name: users.name,
@@ -83,7 +36,31 @@ apiUsers.get('/', async (c) => {
       .from(users)
       .leftJoin(abilities, eq(users.abilityId, abilities.id))
       .where(isNull(users.deletedAt))
-      .orderBy(desc(users.createdAt))
+
+    if (userData.role !== 'super_admin' && tenantId) {
+      // Import usersToTenants if not already available
+      const { usersToTenants } = await import('../db/schema.js')
+      usersQuery = db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          username: users.username,
+          role: users.role,
+          abilityId: users.abilityId,
+          abilityName: abilities.name,
+          lastLogin: users.lastLogin,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .leftJoin(abilities, eq(users.abilityId, abilities.id))
+        .innerJoin(usersToTenants, eq(users.id, usersToTenants.userId))
+        .where(
+          and(isNull(users.deletedAt), eq(usersToTenants.tenantId, tenantId))
+        ) as any
+    }
+
+    const allUsers = await usersQuery.orderBy(desc(users.createdAt))
 
     return c.json({ users: allUsers })
   } catch (error) {
@@ -94,6 +71,10 @@ apiUsers.get('/', async (c) => {
 
 // POST /api/users - Create a new user
 apiUsers.post('/', async (c) => {
+  const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+  const tenantRole = c.get('tenantRole')
+
   try {
     const body = await c.req.json()
     const { name, email, username, password, role } = body
@@ -107,21 +88,38 @@ apiUsers.post('/', async (c) => {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const newUser = await db
-      .insert(users)
-      .values({
-        name,
-        email,
-        username,
-        password: hashedPassword,
-        role: role || 'editor',
-        abilityId: body.abilityId || null,
-      })
-      .returning({
-        id: users.id,
-        email: users.email,
-        username: users.username,
-      })
+    const newUser = await db.transaction(async (tx) => {
+      const u = await tx
+        .insert(users)
+        .values({
+          name,
+          email,
+          username,
+          password: hashedPassword,
+          role: userData.role === 'super_admin' ? (role || 'editor') : 'editor',
+          abilityId: body.abilityId || null,
+        })
+        .returning({
+          id: users.id,
+          email: users.email,
+          username: users.username,
+        })
+
+      // Auto-assign to current tenant if creator is an owner
+      if (
+        tenantId &&
+        (userData.role === 'super_admin' || tenantRole === 'owner')
+      ) {
+        const { usersToTenants } = await import('../db/schema.js')
+        await tx.insert(usersToTenants).values({
+          userId: u[0].id,
+          tenantId: tenantId,
+          role: 'member', // New users start as members
+        })
+      }
+
+      return u[0]
+    })
 
     if (process.env.RESEND_API_KEY) {
       try {
@@ -146,14 +144,14 @@ apiUsers.post('/', async (c) => {
                 We recommend changing your password after your first login.
               </p>
             </div>
-          `
+          `,
         })
       } catch (err) {
         console.error('Failed to send welcome email:', err)
       }
     }
 
-    return c.json({ success: true, user: newUser[0] }, 201)
+    return c.json({ success: true, user: newUser }, 201)
   } catch (error: any) {
     console.error('Error creating user:', error)
     if (error.code === '23505') {
@@ -166,6 +164,7 @@ apiUsers.post('/', async (c) => {
 
 // PUT /api/users/:id - Update user
 apiUsers.put('/:id', async (c) => {
+  const userData = c.get('user')
   try {
     const userId = parseInt(c.req.param('id'), 10)
     if (isNaN(userId)) return c.json({ error: 'Invalid ID' }, 400)
@@ -179,16 +178,24 @@ apiUsers.put('/:id', async (c) => {
     if (username !== undefined) updateData.username = username
 
     // Security: Only super_admin can change roles or abilities
-    const currentUserToken = getCookie(c, 'morphic_token') // We already verified this in middleware
-    const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
-    const decoded: any = await verify(currentUserToken!, secret, 'HS256')
+    const currentUserRole = userData.role
 
-    if (decoded.role === 'super_admin') {
+    // --- Hierarchy Check ---
+    const targetUserResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+    const targetUser = targetUserResult[0]
+
+    if (currentUserRole !== 'super_admin') {
+      if (targetUser?.role === 'super_admin') {
+        return c.json({ error: 'Forbidden: Cannot edit a Super Admin' }, 403)
+      }
+      // Non-admins cannot change roles or abilities
+    } else {
       if (role !== undefined) updateData.role = role
       if (body.abilityId !== undefined) updateData.abilityId = body.abilityId
-    } else {
-      // Editors editing themselves cannot change these
-      // We don't set them in updateData so they stay as they are
     }
 
     if (password) {
@@ -224,14 +231,31 @@ apiUsers.put('/:id', async (c) => {
 
 // DELETE /api/users/:id - Soft Delete User
 apiUsers.delete('/:id', async (c) => {
+  const userData = c.get('user')
   try {
     const userId = parseInt(c.req.param('id'), 10)
     if (isNaN(userId)) return c.json({ error: 'Invalid ID' }, 400)
 
     // Prevent deleting self (Optional: depends on requirements)
-    const currentUserId = c.get('userId')
+    const currentUserId = userData.id
+    const currentUserRole = userData.role
+
     if (currentUserId === userId) {
       return c.json({ error: 'Cannot delete your own account' }, 400)
+    }
+
+    // --- Hierarchy Check ---
+    const targetUserResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+    const targetUser = targetUserResult[0]
+
+    if (currentUserRole !== 'super_admin') {
+      if (targetUser?.role === 'super_admin') {
+        return c.json({ error: 'Forbidden: Cannot delete a Super Admin' }, 403)
+      }
     }
 
     const deletedUser = await db

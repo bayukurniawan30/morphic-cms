@@ -2,16 +2,15 @@ import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Head, Link, router } from '@inertiajs/react'
 import {
-  ShieldCheckIcon,
-  PlusIcon,
-  TrashIcon,
+  CheckCircle2Icon,
   EditIcon,
   LockIcon,
-  CheckCircle2Icon,
+  PlusIcon,
   SearchIcon,
+  ShieldCheckIcon,
+  TrashIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React from 'react'
 
 interface Ability {
   id: number
@@ -151,7 +150,7 @@ export default function ApiKeyAbilities({
                       {new Date(ability.createdAt).toLocaleDateString()}
                     </td>
                     <td className='px-6 py-4 text-right'>
-                      <div className='flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                      <div className='flex justify-end space-x-1'>
                         <Button
                           variant='ghost'
                           size='icon'

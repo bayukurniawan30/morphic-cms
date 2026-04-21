@@ -132,7 +132,7 @@ export default function Edit({
               Edit User
             </h1>
             <p className='text-muted-foreground mt-1'>
-              Update platform member details.
+              Update workspace user details.
             </p>
           </div>
           <Button variant='outline' asChild>
@@ -199,21 +199,6 @@ export default function Edit({
               />
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='role'>CMS Role</Label>
-              <Select
-                value={data.role}
-                onValueChange={(value) => setData('role', value)}
-              >
-                <SelectTrigger id='role' className='w-full'>
-                  <SelectValue placeholder='Select a role' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='editor'>Editor</SelectItem>
-                  <SelectItem value='super_admin'>Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             <div className='space-y-2'>
               <Label htmlFor='ability'>API Ability</Label>

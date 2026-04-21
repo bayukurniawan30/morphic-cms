@@ -9,6 +9,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
   sql,
 } from 'drizzle-orm'
 import { Hono } from 'hono'
@@ -43,6 +44,7 @@ type Variables = {
   user: any
   tenantId: number | null
   currentTenant: any | null
+  tenantRole: string | null
 }
 
 // Set up the main app without a base path so it can serve the root '/'
@@ -211,6 +213,7 @@ app.use('*', async (c, next) => {
   const activeTenantId = getCookie(c, 'morphic_active_tenant')
   let currentTenant: any = null
   let tenantId: number | null = null
+  let tenantRole: string | null = null
 
   if (userData && activeTenantId) {
     try {
@@ -237,6 +240,9 @@ app.use('*', async (c, next) => {
         if (tenantResult[0]) {
           currentTenant = tenantResult[0]
           tenantId = id
+          tenantRole =
+            userTenantAccess[0]?.role ||
+            (userData?.role === 'super_admin' ? 'owner' : 'member')
         }
       }
     } catch (e) {
@@ -246,6 +252,7 @@ app.use('*', async (c, next) => {
 
   c.set('tenantId', tenantId)
   c.set('currentTenant', currentTenant)
+  c.set('tenantRole', tenantRole)
 
   await next()
 })
@@ -275,6 +282,7 @@ app.use('*', async (c, next) => {
       c.set('inertiaSharedProps' as any, {
         user: userData,
         activeTenant: currentTenant,
+        activeTenantRole: c.get('tenantRole'),
         availableTenants: availableTenants,
       })
     } catch (e) {
@@ -487,7 +495,11 @@ app.get('/email-settings', requireAuth, async (c) => {
 app.get('/api-key-abilities', requireAuth, async (c) => {
   const userData = c.get('user')
   const tenantId = c.get('tenantId')
-  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/dashboard')
+  }
 
   const whereTenant = (table: any) =>
     tenantId ? eq(table.tenantId, tenantId) : sql`true`
@@ -513,7 +525,11 @@ app.get('/api-key-abilities', requireAuth, async (c) => {
 app.get('/api-key-abilities/add', requireAuth, async (c) => {
   const userData = c.get('user')
   const tenantId = c.get('tenantId')
-  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/dashboard')
+  }
 
   const whereTenant = (table: any) =>
     tenantId ? eq(table.tenantId, tenantId) : sql`true`
@@ -534,7 +550,11 @@ app.get('/api-key-abilities/add', requireAuth, async (c) => {
 app.get('/api-key-abilities/edit/:id', requireAuth, async (c) => {
   const userData = c.get('user')
   const tenantId = c.get('tenantId')
-  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/dashboard')
+  }
 
   const id = parseInt(c.req.param('id'), 10)
   const whereTenant = (table: any) =>
@@ -637,7 +657,13 @@ app.get('/settings', requireAuth, async (c) => {
 // User Management Pages
 app.get('/users', requireAuth, async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
+  const tenantId = c.get('tenantId')
+  const tenantRole = c.get('tenantRole')
+
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/dashboard')
+  }
 
   const sort = c.req.query('sort') || 'createdAt'
   const dir = c.req.query('dir') || 'desc'
@@ -665,27 +691,101 @@ app.get('/users', requireAuth, async (c) => {
     orderClause = desc(column)
   }
 
-  // Get total count for pagination
-  const countResult = await db
-    .select({ count: sql`count(*)` })
-    .from(users)
-    .where(whereClause)
+  // Handle Multi-tenant scoping
+  let usersQuery: any
+  let totalCountQuery: any
+
+  if (tenantId) {
+    // Show only users in the selected tenant
+    usersQuery = db
+      .select({
+        id: users.id,
+        name: users.name,
+        username: users.username,
+        email: users.email,
+        globalRole: users.role,
+        workspaceRole: usersToTenants.role, // Fetch the specific role in this workspace
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .innerJoin(usersToTenants, eq(users.id, usersToTenants.userId))
+      .where(and(whereClause, eq(usersToTenants.tenantId, tenantId), ne(users.role, 'super_admin')))
+
+    totalCountQuery = db
+      .select({ count: sql`count(*)` })
+      .from(users)
+      .innerJoin(usersToTenants, eq(users.id, usersToTenants.userId))
+      .where(and(whereClause, eq(usersToTenants.tenantId, tenantId), ne(users.role, 'super_admin')))
+  } else {
+    // System Global mode: Rich summaries for administrators
+    usersQuery = db
+      .select({
+        id: users.id,
+        name: users.name,
+        username: users.username,
+        email: users.email,
+        globalRole: users.role,
+        ownedCount: sql<number>`count(CASE WHEN ${usersToTenants.role} = 'owner' THEN 1 END)`.mapWith(Number),
+        memberCount: sql<number>`count(CASE WHEN ${usersToTenants.role} = 'member' THEN 1 END)`.mapWith(Number),
+        firstOwnedName: sql<string>`MAX(CASE WHEN ${usersToTenants.role} = 'owner' THEN ${tenants.name} END)`,
+        firstMemberName: sql<string>`MAX(CASE WHEN ${usersToTenants.role} = 'member' THEN ${tenants.name} END)`,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .leftJoin(usersToTenants, eq(users.id, usersToTenants.userId))
+      .leftJoin(tenants, eq(usersToTenants.tenantId, tenants.id))
+      .where(whereClause)
+      .groupBy(users.id)
+
+    totalCountQuery = db.select({ count: sql`count(*)` }).from(users).where(whereClause)
+  }
+
+  const [allUsers, countResult] = await Promise.all([
+    usersQuery.orderBy(orderClause).limit(limit).offset(offset),
+    totalCountQuery,
+  ])
+
   const totalCount = Number(countResult[0].count)
   const totalPages = Math.ceil(totalCount / limit)
 
-  const allUsers = await db
-    .select()
-    .from(users)
-    .where(whereClause)
-    .orderBy(orderClause)
-    .limit(limit)
-    .offset(offset)
+  const processedUsers = allUsers.map((u: any) => {
+    const isTargetSuperAdmin = u.globalRole === 'super_admin'
+    const isSelf = u.id === userData.id
 
-  const allTenants = await db.select().from(tenants).orderBy(asc(tenants.name))
+    let canManage = false
+    if (userData.role === 'super_admin') {
+      canManage = true
+    } else if (tenantRole === 'owner') {
+      // Owners can manage anyone who isn't a Super Admin or themselves
+      canManage = !isTargetSuperAdmin && !isSelf
+    }
+
+    return {
+      ...u,
+      canManage,
+      workspaceRole: u.workspaceRole || null,
+      ownedCount: u.ownedCount || 0,
+      memberCount: u.memberCount || 0,
+      firstOwnedName: u.firstOwnedName || null,
+      firstMemberName: u.firstMemberName || null,
+    }
+  })
+
+
+  let allTenants: any[] = []
+  const currentTenant = c.get('currentTenant')
+  if (userData.role === 'super_admin') {
+    allTenants = await db.select().from(tenants).orderBy(asc(tenants.name))
+  } else if (currentTenant) {
+    allTenants = [currentTenant]
+  }
 
   return c.get('inertia')('Users/List', {
-    users: allUsers,
+    users: processedUsers,
     user: userData,
+    activeTenantRole: tenantRole,
     allTenants,
     filters: { sort, dir, role, page, limit },
     pagination: {
@@ -699,24 +799,37 @@ app.get('/users', requireAuth, async (c) => {
 
 app.get('/users/add', requireAuth, async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
-  const allAbilities = await db
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/users')
+  }
+  const tenantId = c.get('tenantId')
+  const whereClause = tenantId ? eq(abilities.tenantId, tenantId) : isNull(abilities.tenantId)
+
+  const filteredAbilities = await db
     .select()
     .from(abilities)
+    .where(whereClause)
     .orderBy(asc(abilities.name))
+
   return c.get('inertia')('Users/Add', {
     user: userData,
-    abilities: allAbilities,
+    abilities: filteredAbilities,
   })
 })
 
 app.get('/users/edit/:id', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantRole = c.get('tenantRole')
   const id = parseInt(c.req.param('id'), 10)
 
-  // Allow if super_admin OR if the user is editing themselves
-  if (userData.role !== 'super_admin' && userData.id !== id) {
-    return c.redirect('/dashboard')
+  const isSuperAdmin = userData.role === 'super_admin'
+  const isOwner = tenantRole === 'owner'
+
+  // Allow if super_admin OR if the user is editing themselves OR if they are an owner
+  if (!isSuperAdmin && !isOwner && userData.id !== id) {
+    return c.redirect('/users')
   }
 
   const userResult = await db
@@ -724,17 +837,28 @@ app.get('/users/edit/:id', requireAuth, async (c) => {
     .from(users)
     .where(eq(users.id, id))
     .limit(1)
-  if (userResult.length === 0) return c.redirect('/users')
 
-  const allAbilities = await db
+  if (userResult.length === 0) return c.redirect('/users')
+  const userToEdit = userResult[0]
+
+  // Hierarchy Check for Owners
+  if (!isSuperAdmin && userToEdit.role === 'super_admin' && userData.id !== id) {
+    return c.redirect('/users')
+  }
+
+  const tenantId = c.get('tenantId')
+  const abilityWhereClause = tenantId ? eq(abilities.tenantId, tenantId) : isNull(abilities.tenantId)
+
+  const filteredAbilities = await db
     .select()
     .from(abilities)
+    .where(abilityWhereClause)
     .orderBy(asc(abilities.name))
 
   return c.get('inertia')('Users/Edit', {
     userToEdit: userResult[0],
     user: userData,
-    abilities: allAbilities,
+    abilities: filteredAbilities,
   })
 })
 
@@ -1298,9 +1422,15 @@ api.post('/tenants/switch', async (c) => {
 // GET /api/tenants/:id/users - List users in a tenant
 api.get('/tenants/:id/users', async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
-
+  const activeTenantId = c.get('tenantId')
+  const tenantRole = c.get('tenantRole')
   const tenantId = parseInt(c.req.param('id'), 10)
+
+  const isAuthorized =
+    userData.role === 'super_admin' ||
+    (tenantId === activeTenantId && tenantRole === 'owner')
+
+  if (!isAuthorized) return c.json({ error: 'Forbidden' }, 403)
   if (isNaN(tenantId)) return c.json({ error: 'Invalid tenant ID' }, 400)
 
   const members = await db
@@ -1321,10 +1451,17 @@ api.get('/tenants/:id/users', async (c) => {
 // POST /api/tenants/:id/users - Add a user to a tenant
 api.post('/tenants/:id/users', async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
-
+  const activeTenantId = c.get('tenantId')
+  const tenantRole = c.get('tenantRole')
   const tenantId = parseInt(c.req.param('id'), 10)
-  const { userEmail, userId: directUserId, role } = await c.req.json()
+
+  const isAuthorized =
+    userData.role === 'super_admin' ||
+    (tenantId === activeTenantId && tenantRole === 'owner')
+
+  if (!isAuthorized) return c.json({ error: 'Forbidden' }, 403)
+
+  const { userEmail, userId: directUserId, role: newRole } = await c.req.json()
 
   let targetUserId = directUserId
   if (!targetUserId && userEmail) {
@@ -1337,6 +1474,19 @@ api.post('/tenants/:id/users', async (c) => {
   }
 
   if (!targetUserId) return c.json({ error: 'User not found' }, 404)
+
+  // --- Hierarchy Check ---
+  const targetUserResult = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1)
+  const targetUser = targetUserResult[0]
+
+  if (userData.role !== 'super_admin') {
+    if (targetUser?.role === 'super_admin') {
+      return c.json({ error: 'Cannot manage a Super Admin' }, 403)
+    }
+    if (targetUserId === userData.id) {
+      return c.json({ error: 'Cannot manage yourself here' }, 403)
+    }
+  }
 
   // Check if already assigned
   const existing = await db
@@ -1354,7 +1504,7 @@ api.post('/tenants/:id/users', async (c) => {
     // Just update role if already exists
     await db
       .update(usersToTenants)
-      .set({ role: role || 'member' })
+      .set({ role: newRole || 'member' })
       .where(
         and(
           eq(usersToTenants.tenantId, tenantId),
@@ -1365,7 +1515,7 @@ api.post('/tenants/:id/users', async (c) => {
     await db.insert(usersToTenants).values({
       tenantId,
       userId: targetUserId,
-      role: role || 'member',
+      role: newRole || 'member',
     })
   }
 
@@ -1375,10 +1525,29 @@ api.post('/tenants/:id/users', async (c) => {
 // DELETE /api/tenants/:id/users/:userId - Remove a user from a tenant
 api.delete('/tenants/:id/users/:userId', async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
-
+  const activeTenantId = c.get('tenantId')
+  const tenantRole = c.get('tenantRole')
   const tenantId = parseInt(c.req.param('id'), 10)
   const userId = parseInt(c.req.param('userId'), 10)
+
+  const isAuthorized =
+    userData.role === 'super_admin' ||
+    (tenantId === activeTenantId && tenantRole === 'owner')
+
+  if (!isAuthorized) return c.json({ error: 'Forbidden' }, 403)
+
+  // --- Hierarchy Check ---
+  const targetUserResult = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+  const targetUser = targetUserResult[0]
+
+  if (userData.role !== 'super_admin') {
+    if (targetUser?.role === 'super_admin') {
+      return c.json({ error: 'Cannot delete a Super Admin' }, 403)
+    }
+    if (userId === userData.id) {
+      return c.json({ error: 'Cannot remove yourself from your own tenant' }, 403)
+    }
+  }
 
   await db
     .delete(usersToTenants)

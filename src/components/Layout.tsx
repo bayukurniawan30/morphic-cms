@@ -117,8 +117,9 @@ export default function Layout({ user, children }: LayoutProps) {
 
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { url, props } = usePage()
-  const { activeTenant, availableTenants } = props as any as {
+  const { activeTenant, activeTenantRole, availableTenants } = props as any as {
     activeTenant: TenantProps | null
+    activeTenantRole: string | null
     availableTenants: TenantProps[]
   }
   const [globals, setGlobals] = React.useState<any[]>([])
@@ -142,6 +143,8 @@ export default function Layout({ user, children }: LayoutProps) {
   const toggleSidebar = () => setSidebarOpen(!isSidebarOpen)
   const toggleTheme = () =>
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+
+  const isAdmin = user.role === 'super_admin' || activeTenantRole === 'owner'
 
   const handleTenantSwitch = (tenantId: number | null) => {
     fetch('/api/tenants/switch', {
@@ -306,7 +309,7 @@ export default function Layout({ user, children }: LayoutProps) {
               </div>
             )}
 
-            {user.role === 'super_admin' && (
+            {isAdmin && (
               <div className='pt-2 pb-2'>
                 <h3
                   className={cn(
@@ -342,7 +345,7 @@ export default function Layout({ user, children }: LayoutProps) {
               </div>
             )}
 
-            {user.role === 'super_admin' && (
+            {isAdmin && (
               <NavItem
                 href='/users'
                 icon={Users}
