@@ -57,7 +57,7 @@ export default function List({ user }: ListProps) {
   return (
     <Layout user={user}>
       <Head title='Localization Management' />
-      <div className='max-w-6xl mx-auto space-y-6'>
+      <div className='space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between items-end gap-4'>
           <div>
             <div className='flex items-center space-x-2 mb-1'>

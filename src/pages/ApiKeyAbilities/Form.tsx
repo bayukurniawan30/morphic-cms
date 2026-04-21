@@ -9,15 +9,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Head, Link, useForm } from '@inertiajs/react'
-import {
-  ArrowLeftIcon,
-  SaveIcon,
-  LockIcon,
-  ShieldCheckIcon,
-  HelpCircleIcon,
-} from 'lucide-react'
+import { ArrowLeftIcon, HelpCircleIcon, LockIcon, SaveIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import React, { useState } from 'react'
+import React from 'react'
 
 interface Collection {
   id: number
@@ -150,8 +144,8 @@ export default function AbilityForm({
         </div>
 
         <form onSubmit={handleSubmit} className='space-y-6'>
-          <div className='bg-card rounded-xl border p-6 shadow-sm space-y-4'>
-            <div className='space-y-2 max-w-md'>
+          <div className='max-w-md bg-card rounded-xl border p-6 shadow-sm space-y-4'>
+            <div className='space-y-2 w-full'>
               <Label htmlFor='name'>Ability Name</Label>
               <Input
                 id='name'

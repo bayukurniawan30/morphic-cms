@@ -113,7 +113,14 @@ const NavItem = ({
 }
 
 export default function Layout({ user, children }: LayoutProps) {
-  const [isSidebarOpen, setSidebarOpen] = useState(false) // Closed by default
+  const [isSidebarOpen, setSidebarOpen] = useState(false)
+
+  React.useEffect(() => {
+    // Open sidebar by default on large screens
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setSidebarOpen(true)
+    }
+  }, [])
 
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { url, props } = usePage()
@@ -417,9 +424,11 @@ export default function Layout({ user, children }: LayoutProps) {
               >
                 <Menu className='h-5 w-5' />
               </Button>
-              <h2 className='text-lg font-semibold hidden sm:block'>
-                {activeTenant ? activeTenant.name : 'System Global'}
-              </h2>
+              {url.includes('/dashboard') && (
+                <h2 className='text-lg font-semibold hidden sm:block text-foreground'>
+                  Dashboard
+                </h2>
+              )}
             </div>
 
             <div className='flex items-center space-x-2'>
@@ -429,7 +438,7 @@ export default function Layout({ user, children }: LayoutProps) {
                   <Button
                     variant='outline'
                     size='sm'
-                    className='h-9 hidden md:flex items-center gap-2 border-dashed bg-muted/50 hover:bg-muted transition-colors'
+                    className='h-9 md:flex items-center gap-2 border-dashed bg-muted/50 hover:bg-muted transition-colors'
                   >
                     <Building2 className='h-4 w-4 text-muted-foreground' />
                     <span className='max-w-[120px] truncate font-medium'>

@@ -53,7 +53,7 @@ export default function ApiKeyAbilities({
     <Layout user={user}>
       <Head title='API Key Abilities | Morphic' />
 
-      <div className='max-w-6xl mx-auto space-y-6 flex flex-col'>
+      <div className='space-y-6 flex flex-col'>
         <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>
           <div>
             <div className='flex items-center space-x-2 mb-1'>

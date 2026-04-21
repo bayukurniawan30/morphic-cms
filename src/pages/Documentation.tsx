@@ -219,7 +219,7 @@ export default function Documentation({ user }: { user: any }) {
         </p>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-8'>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold flex items-center mb-2'>
+            <h4 className='font-bold flex items-center mb-2 text-foreground'>
               <Database className='w-4 h-4 mr-2' /> Database First
             </h4>
             <p className='text-sm'>
@@ -236,7 +236,7 @@ export default function Documentation({ user }: { user: any }) {
             </p>
           </div>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold flex items-center mb-2'>
+            <h4 className='font-bold flex items-center mb-2 text-foreground'>
               <Zap className='w-4 h-4 mr-2' /> Instant APIs
             </h4>
             <p className='text-sm'>
@@ -249,10 +249,10 @@ export default function Documentation({ user }: { user: any }) {
 
       <Section id='multi-tenancy' title='Multi-tenancy' icon={Users}>
         <p>
-          Morphic CMS is built from the ground up to support multiple
-          isolated organizations (Tenants) within a single instance. This is
-          ideal for agencies managing multiple clients or companies with
-          separate business units.
+          Morphic CMS is built from the ground up to support multiple isolated
+          organizations (Tenants) within a single instance. This is ideal for
+          agencies managing multiple clients or companies with separate business
+          units.
         </p>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
           <div className='p-4 rounded-xl border bg-muted/30'>
@@ -270,8 +270,8 @@ export default function Documentation({ user }: { user: any }) {
               <Layers className='w-4 h-4 mr-2' /> Shared Architecture
             </h4>
             <p className='text-sm'>
-              While data is isolated, the underlying infrastructure is shared.
-              A single deployment can serve hundreds of workspaces, making
+              While data is isolated, the underlying infrastructure is shared. A
+              single deployment can serve hundreds of workspaces, making
               maintenance and updates significantly easier.
             </p>
           </div>
@@ -280,10 +280,9 @@ export default function Documentation({ user }: { user: any }) {
           <h4 className='font-bold text-foreground'>Super Admin Roles</h4>
           <p>
             Super Admins have platform-wide access and can switch between any
-            workspace using the <strong>Tenant Switcher</strong> in the
-            sidebar. They also have access to the{' '}
-            <strong>System Global</strong> view to see platform-wide
-            activity.
+            workspace using the <strong>Tenant Switcher</strong> in the sidebar.
+            They also have access to the <strong>System Global</strong> view to
+            see platform-wide activity.
           </p>
         </div>
       </Section>
@@ -407,7 +406,7 @@ export default function Documentation({ user }: { user: any }) {
               Frontend Example (Fetch)
             </h4>
             <CodeBlock
-              language="javascript"
+              language='javascript'
               code={`const handleSubmit = async (data) => {
   const response = await fetch('/api/forms/contact-us/submissions', {
     method: 'POST',
