@@ -2,26 +2,25 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { LoadingState } from '@/components/ui/loader'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  FolderIcon,
-  FileImageIcon,
-  UploadIcon,
-  ChevronRightIcon,
-  SearchIcon,
   CheckIcon,
-  XIcon,
+  ChevronRightIcon,
+  FileImageIcon,
+  FolderIcon,
+  SearchIcon,
+  UploadIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 interface MediaFolder {
   id: number
@@ -37,6 +36,7 @@ interface MediaFile {
   size: number | null
   width: number | null
   height: number | null
+  resourceType?: string
 }
 
 interface MediaPickerProps {
@@ -161,7 +161,7 @@ export default function MediaPicker({
         <DialogHeader className='p-6 pb-0'>
           <DialogTitle>Insert Media</DialogTitle>
           <DialogDescription>
-            Choose an image from your library or upload a new one.
+            Choose an image or video from your library or upload a new one.
           </DialogDescription>
         </DialogHeader>
 
@@ -265,7 +265,11 @@ export default function MediaPicker({
                       >
                         {file.secureUrl ? (
                           <img
-                            src={file.secureUrl}
+                            src={
+                              file.resourceType === 'video'
+                                ? file.secureUrl.replace(/\.[^/.]+$/, '.jpg')
+                                : file.secureUrl
+                            }
                             alt={file.filename}
                             className='w-full h-full object-cover'
                           />
@@ -312,7 +316,7 @@ export default function MediaPicker({
                     : 'Click to upload or drag and drop'}
                 </p>
                 <p className='text-sm text-muted-foreground mt-1'>
-                  Images up to 10MB
+                  Image or video up to 10MB
                 </p>
               </div>
               <Button type='button' disabled={isUploading}>
@@ -323,7 +327,7 @@ export default function MediaPicker({
               type='file'
               ref={fileInputRef}
               className='hidden'
-              accept='image/*'
+              accept='image/*,video/*'
               onChange={handleUpload}
             />
           </TabsContent>
@@ -351,7 +355,7 @@ export default function MediaPicker({
               disabled={selectedFiles.length === 0}
               onClick={handleConfirm}
             >
-              {multiple ? 'Insert Media' : 'Insert Image'}
+              {multiple ? 'Insert Media' : 'Insert File'}
             </Button>
           </div>
         </DialogFooter>

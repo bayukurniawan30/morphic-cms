@@ -265,7 +265,7 @@ export default function CollectionsList({
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className='inline-flex min-w-20 justify-center items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-secondary text-secondary-foreground cursor-help'>
+                              <span className='inline-flex min-w-20 justify-center items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20 dark:text-blue-400 cursor-help transition-colors hover:bg-blue-500/20'>
                                 {collection.fields?.length || 0} Fields
                               </span>
                             </TooltipTrigger>

@@ -14,12 +14,11 @@ import { Switch } from '@/components/ui/switch'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
 import { Head, Link, useForm } from '@inertiajs/react'
 import {
-  PlusIcon,
-  TrashIcon,
-  GripVerticalIcon,
-  ChevronUpIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
+  PlusIcon,
   Settings2Icon,
+  TrashIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
@@ -298,22 +297,11 @@ export default function AddCollection({ user }: AddProps) {
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl'>
                 <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border'>
                   <div className='space-y-0.5'>
-                    <Label>Enable Trash</Label>
-                    <p className='text-xs text-muted-foreground'>
-                      Deleted entries will be moved to a trash bin.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={data.enableTrash}
-                    onCheckedChange={(val) => setData('enableTrash', val)}
-                  />
-                </div>
-
-                <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border'>
-                  <div className='space-y-0.5'>
                     <Label className='flex items-center gap-2'>
                       Localization
-                      <span className='px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-bold uppercase'>NEW</span>
+                      <span className='px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-bold uppercase'>
+                        NEW
+                      </span>
                     </Label>
                     <p className='text-xs text-muted-foreground'>
                       Support multiple languages for this collection.
@@ -322,6 +310,19 @@ export default function AddCollection({ user }: AddProps) {
                   <Switch
                     checked={data.localized}
                     onCheckedChange={(val) => setData('localized', val)}
+                  />
+                </div>
+
+                <div className='flex items-center justify-between p-4 bg-muted/30 rounded-lg border'>
+                  <div className='space-y-0.5'>
+                    <Label>Enable Trash</Label>
+                    <p className='text-xs text-muted-foreground'>
+                      Deleted entries will be moved to a trash bin.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={data.enableTrash}
+                    onCheckedChange={(val) => setData('enableTrash', val)}
                   />
                 </div>
               </div>
@@ -807,7 +808,10 @@ export default function AddCollection({ user }: AddProps) {
                             <SelectContent>
                               {data.fields
                                 .filter(
-                                  (f) => f.type === 'text' && f.id !== field.id && f.name.trim() !== ''
+                                  (f) =>
+                                    f.type === 'text' &&
+                                    f.id !== field.id &&
+                                    f.name.trim() !== ''
                                 )
                                 .map((f) => (
                                   <SelectItem key={f.id} value={f.name}>
@@ -815,7 +819,10 @@ export default function AddCollection({ user }: AddProps) {
                                   </SelectItem>
                                 ))}
                               {data.fields.filter(
-                                (f) => f.type === 'text' && f.id !== field.id && f.name.trim() !== ''
+                                (f) =>
+                                  f.type === 'text' &&
+                                  f.id !== field.id &&
+                                  f.name.trim() !== ''
                               ).length === 0 && (
                                 <p className='text-[10px] p-2 text-muted-foreground italic text-center'>
                                   No text fields available

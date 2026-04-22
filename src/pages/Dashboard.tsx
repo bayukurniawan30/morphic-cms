@@ -2,18 +2,17 @@ import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
 import {
-  LayoutGrid,
-  Database,
-  Image,
-  Users,
-  FileText,
   ArrowUpRight,
-  Plus,
-  Clock,
-  ExternalLink,
   ChevronRight,
+  Clock,
+  Database,
+  ExternalLink,
+  FileText,
+  Image,
+  LayoutGrid,
+  Plus,
+  Users,
 } from 'lucide-react'
-import React from 'react'
 import { format } from 'date-fns'
 
 interface Stats {
@@ -153,9 +152,9 @@ export default function Dashboard({
                       key={`${activity.id}-${activity.updatedAt}`}
                       className='p-5 hover:bg-muted/30 transition-colors group flex items-start space-x-4'
                     >
-                      <div className='bg-muted px-2 py-1 rounded-md mt-1 shrink-0'>
-                        <span className='text-[10px] font-mono font-bold text-muted-foreground'>
-                          ID #{activity.id}
+                      <div className='bg-primary/5 dark:bg-primary/10 px-2 py-1 rounded-md mt-1 shrink-0 border border-primary/10'>
+                        <span className='text-[11px] font-mono font-bold text-primary'>
+                          #{activity.id}
                         </span>
                       </div>
                       <div className='flex-1 min-w-0'>

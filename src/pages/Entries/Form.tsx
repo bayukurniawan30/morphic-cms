@@ -22,10 +22,12 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { FieldDefinition } from '@/lib/dynamic-schema'
 import { cn } from '@/lib/utils'
-import { Head, Link } from '@inertiajs/react'
+import { Head, Link, router } from '@inertiajs/react'
 import {
   ArrowLeft,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   FileText,
   History,
@@ -250,7 +252,11 @@ const FieldInput = ({
                 className='group relative aspect-square rounded-lg border overflow-hidden bg-muted transition-all hover:ring-2 hover:ring-primary/50'
               >
                 <img
-                  src={m.secureUrl}
+                  src={
+                    m.resourceType === 'video'
+                      ? m.secureUrl.replace(/\.[^/.]+$/, '.jpg')
+                      : m.secureUrl
+                  }
                   alt={m.filename}
                   className='w-full h-full object-cover'
                 />
@@ -260,10 +266,44 @@ const FieldInput = ({
                     const next = mediaArray.filter((_, i) => i !== idx)
                     handleMediaUpdate(next)
                   }}
-                  className='absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm'
+                  className='absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-20 hover:scale-110 active:scale-95'
+                  title='Remove'
                 >
                   <XIcon className='w-3 h-3' />
                 </button>
+
+                {field.multiple && mediaArray.length > 1 && (
+                  <div className='absolute inset-x-0 bottom-1 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20'>
+                    <button
+                      type='button'
+                      disabled={idx === 0}
+                      onClick={() => {
+                        if (idx === 0) return
+                        const next = [...mediaArray]
+                        ;[next[idx], next[idx - 1]] = [next[idx - 1], next[idx]]
+                        handleMediaUpdate(next)
+                      }}
+                      className='bg-background/90 text-foreground border rounded-sm p-1 shadow-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-0 disabled:pointer-events-none transition-all'
+                      title='Move Left'
+                    >
+                      <ChevronLeft className='w-3 h-3' />
+                    </button>
+                    <button
+                      type='button'
+                      disabled={idx === mediaArray.length - 1}
+                      onClick={() => {
+                        if (idx === mediaArray.length - 1) return
+                        const next = [...mediaArray]
+                        ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+                        handleMediaUpdate(next)
+                      }}
+                      className='bg-background/90 text-foreground border rounded-sm p-1 shadow-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-0 disabled:pointer-events-none transition-all'
+                      title='Move Right'
+                    >
+                      <ChevronRight className='w-3 h-3' />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {(field.multiple || mediaArray.length === 0) && (
@@ -457,12 +497,15 @@ export default function EntriesForm({
   const [formData, setFormData] = useState<Record<string, any>>(
     entry?.content || sourceEntry?.content || {}
   )
-  const initialLocale = entry?.locale ||
+  const initialLocale =
+    entry?.locale ||
     new URLSearchParams(window.location.search).get('locale') ||
     locales.find((l) => l.isDefault)?.code ||
     'en'
-  const [allDrafts, setAllDrafts] = useState<Record<string, Record<string, any>>>({
-    [initialLocale]: entry?.content || sourceEntry?.content || {}
+  const [allDrafts, setAllDrafts] = useState<
+    Record<string, Record<string, any>>
+  >({
+    [initialLocale]: entry?.content || sourceEntry?.content || {},
   })
   const [currentLocale, setCurrentLocale] = useState<string>(initialLocale)
   const [translationGroupId, setTranslationGroupId] = useState<string | null>(
@@ -480,6 +523,38 @@ export default function EntriesForm({
   const [versions, setVersions] = useState<any[]>([])
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [isPreviewingVersion, setPreviewingVersion] = useState<any | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
+
+  // Block navigation if there are unsaved changes
+  useEffect(() => {
+    if (!isDirty) return
+
+    const handleBefore = (event: any) => {
+      if (isSubmitting) return
+
+      if (
+        !confirm(
+          'You have unsaved changes. Are you sure you want to leave this page?'
+        )
+      ) {
+        event.preventDefault()
+      }
+    }
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSubmitting) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    const unbind = router.on('before', handleBefore)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      unbind()
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [isDirty])
 
   const fetchVersions = useCallback(async () => {
     if (mode === 'edit' && entry?.id) {
@@ -522,6 +597,7 @@ export default function EntriesForm({
       )
 
       if (res.ok) {
+        setIsDirty(false)
         const result = await res.json()
         setFormData(result.entry.content)
         setPreviewingVersion(null)
@@ -549,6 +625,7 @@ export default function EntriesForm({
   }
 
   const handleFieldChange = (name: string, value: any) => {
+    setIsDirty(true)
     setFormData((prev) => {
       const next = { ...prev, [name]: value }
 
@@ -560,9 +637,9 @@ export default function EntriesForm({
       })
 
       // Update drafts as well
-      setAllDrafts(prevDrafts => ({
+      setAllDrafts((prevDrafts) => ({
         ...prevDrafts,
-        [currentLocale]: next
+        [currentLocale]: next,
       }))
 
       return next
@@ -591,7 +668,7 @@ export default function EntriesForm({
         : `/api/entries/${entry?.id}`
 
     const method = mode === 'create' ? 'POST' : 'PUT'
-    
+
     // Prepare payload
     const payload: any = {
       status: finalStatus,
@@ -646,7 +723,8 @@ export default function EntriesForm({
           ? 'Entry created successfully'
           : 'Entry updated successfully'
       )
-      
+
+      setIsDirty(false)
       if (mode === 'create' && result.entry) {
         window.location.href = `/entries/${collection.id}/edit/${result.entry.id}`
       } else {
@@ -839,7 +917,8 @@ export default function EntriesForm({
               const hasTranslation =
                 existingTranslations[l.code] || entry?.locale === l.code
               const isActive = currentLocale === l.code
-              const hasError = errors[l.code] && Object.keys(errors[l.code]).length > 0
+              const hasError =
+                errors[l.code] && Object.keys(errors[l.code]).length > 0
 
               return (
                 <Button
@@ -868,21 +947,25 @@ export default function EntriesForm({
                       window.location.href = `/entries/${collection.id}/add?translationGroupId=${translationGroupId}&sourceLocale=${currentLocale}&locale=${l.code}`
                     } else {
                       // Just switch locale for new entry
-                      
+
                       // Save current to draft before switching
-                      setAllDrafts(prev => ({ ...prev, [currentLocale]: formData }))
-                      
+                      setAllDrafts((prev) => ({
+                        ...prev,
+                        [currentLocale]: formData,
+                      }))
+
                       const targetLocale = l.code
                       setCurrentLocale(targetLocale)
-                      
+
                       // Load or initialize target draft
                       const targetDraft = allDrafts[targetLocale] || {}
                       setFormData(targetDraft)
-                      
+
                       toast(`Entry language set to ${l.name}`, {
-                        description: targetDraft && Object.keys(targetDraft).length > 0
-                          ? 'Resumed your draft for ' + l.name
-                          : 'You are now creating this entry in ' + l.name
+                        description:
+                          targetDraft && Object.keys(targetDraft).length > 0
+                            ? 'Resumed your draft for ' + l.name
+                            : 'You are now creating this entry in ' + l.name,
                       })
                     }
                   }}

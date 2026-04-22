@@ -9,6 +9,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -16,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { Head, Link, router } from '@inertiajs/react'
 import {
@@ -334,7 +334,7 @@ export default function EntriesList({
                 <h1 className='text-3xl font-bold tracking-tight'>
                   {collection.name}
                 </h1>
-                <span className='text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full'>
+                <span className='inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider'>
                   Entries
                 </span>
               </div>
@@ -662,7 +662,7 @@ export default function EntriesList({
               <thead className='text-xs text-muted-foreground uppercase bg-muted/50 border-b'>
                 <tr>
                   <th className='px-6 py-4 font-medium uppercase tracking-wider'>
-                    ID
+                    #
                   </th>
                   {visibleFields.map((field) => (
                     <th
@@ -713,107 +713,112 @@ export default function EntriesList({
                     </td>
                   </tr>
                 ) : (
-                  entries.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className='hover:bg-muted/30 transition-colors group'
-                    >
-                      <td className='px-6 py-4 font-mono text-xs opacity-50'>
-                        #{entry.id}
-                      </td>
-                      {visibleFields.map((field) => (
-                        <td
-                          key={field.name}
-                          className='px-6 py-4 font-medium whitespace-nowrap'
-                        >
-                          {renderCellValue(field, entry.content[field.name])}
+                  entries.map((entry, index) => {
+                    const currentPage = pagination?.currentPage || 1
+                    const limit = pagination?.limit || 10
+                    const rowNumber = (currentPage - 1) * limit + index + 1
+                    return (
+                      <tr
+                        key={entry.id}
+                        className='hover:bg-muted/30 transition-colors group'
+                      >
+                        <td className='px-6 py-4 font-mono text-xs opacity-50'>
+                          {rowNumber}
                         </td>
-                      ))}
-                      <td className='px-6 py-4 text-muted-foreground whitespace-nowrap'>
-                        <span className='text-xs flex items-center'>
-                          <CalendarIcon className='w-3 h-3 mr-1.5 opacity-40' />
-                          {format(new Date(entry.createdAt), 'MMM d, yyyy')}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        {entry.updatedBy ? (
-                          <div className='flex items-center space-x-2'>
-                            <span className='text-xs font-medium'>
-                              {entry.updatedBy.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className='text-xs text-muted-foreground italic'>
-                            System
+                        {visibleFields.map((field) => (
+                          <td
+                            key={field.name}
+                            className='px-6 py-4 font-medium whitespace-nowrap'
+                          >
+                            {renderCellValue(field, entry.content[field.name])}
+                          </td>
+                        ))}
+                        <td className='px-6 py-4 text-muted-foreground whitespace-nowrap'>
+                          <span className='text-xs flex items-center'>
+                            <CalendarIcon className='w-3 h-3 mr-1.5 opacity-40' />
+                            {format(new Date(entry.createdAt), 'MMM d, yyyy')}
                           </span>
-                        )}
-                      </td>
-                      {collection.localized && (
+                        </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
-                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-mono text-[10px] uppercase font-bold'>
-                            {entry.locale || 'en'}
-                          </span>
-                        </td>
-                      )}
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <span
-                          className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
-                            entry.status === 'published'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                          {entry.updatedBy ? (
+                            <div className='flex items-center space-x-2'>
+                              <span className='text-xs font-medium'>
+                                {entry.updatedBy.name}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className='text-xs text-muted-foreground italic'>
+                              System
+                            </span>
                           )}
-                        >
+                        </td>
+                        {collection.localized && (
+                          <td className='px-6 py-4 whitespace-nowrap'>
+                            <span className='inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-mono text-[10px] uppercase font-bold'>
+                              {entry.locale || 'en'}
+                            </span>
+                          </td>
+                        )}
+                        <td className='px-6 py-4 whitespace-nowrap'>
                           <span
                             className={cn(
-                              'w-1.5 h-1.5 rounded-full mr-1.5',
+                              'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
                               entry.status === 'published'
-                                ? 'bg-green-500'
-                                : 'bg-zinc-400'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
                             )}
-                          />
-                          {entry.status || 'published'}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
-                        {!isTrash ? (
-                          <>
-                            <Button variant='outline' size='sm' asChild>
-                              <Link
-                                href={`/entries/${collection.id}/edit/${entry.id}`}
+                          >
+                            <span
+                              className={cn(
+                                'w-1.5 h-1.5 rounded-full mr-1.5',
+                                entry.status === 'published'
+                                  ? 'bg-green-500'
+                                  : 'bg-zinc-400'
+                              )}
+                            />
+                            {entry.status || 'published'}
+                          </span>
+                        </td>
+                        <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
+                          {!isTrash ? (
+                            <>
+                              <Button variant='outline' size='sm' asChild>
+                                <Link
+                                  href={`/entries/${collection.id}/edit/${entry.id}`}
+                                >
+                                  Edit
+                                </Link>
+                              </Button>
+                              <Button
+                                variant='destructive'
+                                size='sm'
+                                onClick={() => handleDelete(entry.id)}
                               >
-                                Edit
-                              </Link>
-                            </Button>
-                            <Button
-                              variant='destructive'
-                              size='sm'
-                              onClick={() => handleDelete(entry.id)}
-                            >
-                              Delete
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              onClick={() => handleRestore(entry.id)}
-                            >
-                              Restore
-                            </Button>
-                            <Button
-                              variant='destructive'
-                              size='sm'
-                              onClick={() => handleDelete(entry.id, true)}
-                            >
-                              Delete Permanently
-                            </Button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                                Delete
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => handleRestore(entry.id)}
+                              >
+                                Restore
+                              </Button>
+                              <Button
+                                variant='destructive'
+                                size='sm'
+                                onClick={() => handleDelete(entry.id, true)}
+                              >
+                                Delete Permanently
+                              </Button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>

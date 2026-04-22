@@ -138,7 +138,9 @@ export default function Home() {
 
           <h1 className='text-4xl md:text-8xl font-black tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500 animate-in fade-in slide-in-from-bottom-6 duration-1000'>
             Content Management <br className='hidden md:block' />
-            <span className='text-primary'>Without the Friction.</span>
+            <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary to-deep-mocha-300'>
+              Without the Friction.
+            </span>
           </h1>
 
           <p className='text-xl text-slate-400 max-w-2xl mx-auto mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000'>
@@ -147,17 +149,20 @@ export default function Home() {
             digital assets.
           </p>
 
-          <div className='flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 animate-in fade-in slide-in-from-bottom-10 duration-1000'>
-            <Button
-              asChild
-              size='lg'
-              className='rounded-full px-8 h-14 text-lg font-bold shadow-2xl shadow-primary/20 group'
-            >
-              <Link href='/docs'>
-                Get Started
-                <ArrowRight className='ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform' />
-              </Link>
-            </Button>
+          <div className='flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4'>
+            <div className='relative p-[1.5px] inline-flex items-center justify-center overflow-hidden rounded-full animate-in fade-in slide-in-from-bottom-10 duration-1000'>
+              <div className='absolute inset-[-1000%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#514849_0%,#cfc9ca_50%,#514849_100%)]' />
+              <Button
+                asChild
+                size='lg'
+                className='relative inline-flex h-14 items-center justify-center rounded-full bg-primary px-8 text-lg font-bold text-primary-foreground hover:bg-primary/90 transition-all duration-300 border-none shadow-2xl shadow-primary/20'
+              >
+                <Link href='/docs'>
+                  Get Started
+                  <ArrowRight className='ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform' />
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Dashboard Preview */}
@@ -376,7 +381,9 @@ export default function Home() {
             <div className='text-center mb-20'>
               <h2 className='text-3xl md:text-5xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-1000'>
                 One CMS,{' '}
-                <span className='text-primary'>Limitless Possibilities.</span>
+                <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary to-deep-mocha-300'>
+                  Limitless Possibilities.
+                </span>
               </h2>
               <p className='text-slate-400 max-w-2xl mx-auto text-lg animate-in fade-in slide-in-from-bottom-6 duration-1000'>
                 Morphic CMS fits perfectly into any tech stack, delivering
@@ -481,7 +488,9 @@ export default function Home() {
               </div>
               <h2 className='text-3xl md:text-5xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-1000'>
                 Production Ready,{' '}
-                <span className='text-primary'>Completely Free.</span>
+                <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary to-deep-mocha-300'>
+                  Completely Free.
+                </span>
               </h2>
               <p className='text-slate-400 max-w-2xl mx-auto text-lg animate-in fade-in slide-in-from-bottom-8 duration-1000'>
                 Morphic CMS is designed to run perfectly on modern free-tier
@@ -605,7 +614,10 @@ export default function Home() {
           <div className='max-w-4xl mx-auto text-center relative z-10'>
             <h2 className='text-4xl md:text-6xl font-black mb-8 leading-tight tracking-tight'>
               Ready to Build Your <br />
-              Next <span className='text-primary'>Big Idea?</span>
+              Next{' '}
+              <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary to-deep-mocha-300'>
+                Big Idea?
+              </span>
             </h2>
             <p className='text-xl text-slate-400 mb-12 max-w-2xl mx-auto'>
               Join modern teams building high-performance digital experiences

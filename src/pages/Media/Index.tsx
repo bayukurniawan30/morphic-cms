@@ -53,6 +53,7 @@ interface MediaFile {
   size: number | null
   width: number | null
   height: number | null
+  resourceType?: string
   createdAt: string
 }
 
@@ -259,7 +260,7 @@ export default function MediaIndex({ user }: { user: any }) {
               </h1>
             </div>
             <p className='text-sm text-muted-foreground mt-1'>
-              Manage your images and assets.
+              Manage your images, videos, and assets.
             </p>
           </div>
           <div className='flex space-x-2'>
@@ -391,7 +392,11 @@ export default function MediaIndex({ user }: { user: any }) {
 
                 {file.secureUrl ? (
                   <img
-                    src={file.secureUrl}
+                    src={
+                      file.resourceType === 'video'
+                        ? file.secureUrl.replace(/\.[^/.]+$/, '.jpg')
+                        : file.secureUrl
+                    }
                     alt={file.filename}
                     className='w-full h-full object-cover rounded-md'
                   />
@@ -443,11 +448,22 @@ export default function MediaIndex({ user }: { user: any }) {
 
           <div className='flex-1 min-h-0 p-4 flex items-center justify-center bg-accent/5'>
             {selectedFile?.secureUrl && (
-              <img
-                src={selectedFile.secureUrl}
-                alt={selectedFile.filename}
-                className='max-w-full max-h-full object-contain rounded-sm'
-              />
+              <>
+                {selectedFile.resourceType === 'video' ? (
+                  <video
+                    src={selectedFile.secureUrl}
+                    controls
+                    className='max-w-full max-h-full rounded-sm'
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    src={selectedFile.secureUrl}
+                    alt={selectedFile.filename}
+                    className='max-w-full max-h-full object-contain rounded-sm'
+                  />
+                )}
+              </>
             )}
           </div>
 
@@ -528,7 +544,7 @@ export default function MediaIndex({ user }: { user: any }) {
         ref={fileInputRef}
         onChange={handleFileChange}
         className='hidden'
-        accept='image/*'
+        accept='image/*,video/*'
       />
     </Layout>
   )

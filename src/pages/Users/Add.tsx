@@ -10,7 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Head, Link, useForm } from '@inertiajs/react'
-import React from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import React, { useState } from 'react'
 
 export default function Add({
   user,
@@ -28,7 +29,8 @@ export default function Add({
     abilityId: 'none',
   })
 
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -128,13 +130,27 @@ export default function Add({
             <Label htmlFor='password'>
               Initial Password <span className='text-destructive ml-1'>*</span>
             </Label>
-            <Input
-              id='password'
-              type='password'
-              value={data.password}
-              onChange={(e) => setData('password', e.target.value)}
-              required
-            />
+            <div className='relative'>
+              <Input
+                id='password'
+                type={showPassword ? 'text' : 'password'}
+                value={data.password}
+                onChange={(e) => setData('password', e.target.value)}
+                required
+                className='pr-10'
+              />
+              <button
+                type='button'
+                onClick={() => setShowPassword(!showPassword)}
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors'
+              >
+                {showPassword ? (
+                  <EyeOff className='h-4 w-4' />
+                ) : (
+                  <Eye className='h-4 w-4' />
+                )}
+              </button>
+            </div>
           </div>
 
 

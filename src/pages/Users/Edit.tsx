@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Head, Link, useForm, router } from '@inertiajs/react'
+import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
 
@@ -35,6 +36,7 @@ export default function Edit({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isKeyActioning, setIsKeyActioning] = useState(false)
   const [currentKey, setCurrentKey] = useState(userToEdit?.apiKey)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -190,13 +192,27 @@ export default function Edit({
 
             <div className='space-y-2'>
               <Label htmlFor='password'>Reset Password</Label>
-              <Input
-                id='password'
-                type='password'
-                value={data.password}
-                onChange={(e) => setData('password', e.target.value)}
-                placeholder='Leave blank to keep current password'
-              />
+              <div className='relative'>
+                <Input
+                  id='password'
+                  type={showPassword ? 'text' : 'password'}
+                  value={data.password}
+                  onChange={(e) => setData('password', e.target.value)}
+                  placeholder='Leave blank to keep current password'
+                  className='pr-10'
+                />
+                <button
+                  type='button'
+                  onClick={() => setShowPassword(!showPassword)}
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors'
+                >
+                  {showPassword ? (
+                    <EyeOff className='h-4 w-4' />
+                  ) : (
+                    <Eye className='h-4 w-4' />
+                  )}
+                </button>
+              </div>
             </div>
 
 
