@@ -1335,9 +1335,18 @@ api.use('*', async (c, next) => {
   const ip =
     c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || '127.0.0.1'
   const isInertia = c.req.header('x-inertia')
+  const hasApiKey = c.req.header('x-api-key')
+  const hasAuth = c.req.header('Authorization')
 
   // Skip localhost or internal CMS requests
-  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || isInertia) {
+  // External API requests MUST have either x-api-key or Authorization header
+  if (
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip === 'localhost' ||
+    isInertia ||
+    (!hasApiKey && !hasAuth)
+  ) {
     return await next()
   }
 
