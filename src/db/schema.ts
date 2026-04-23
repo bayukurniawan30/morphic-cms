@@ -1,12 +1,14 @@
+import { relations } from 'drizzle-orm'
 import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
   pgTable,
   serial,
-  varchar,
-  jsonb,
   timestamp,
-  pgEnum,
-  integer,
-  boolean,
+  varchar,
 } from 'drizzle-orm/pg-core'
 
 export const tenants = pgTable('tenants', {
@@ -40,9 +42,25 @@ export const collections = pgTable('collections', {
   localized: boolean('localized').notNull().default(false),
   fields: jsonb('fields').$type<any[]>().notNull().default([]),
   createdById: integer('created_by_id').references(() => users.id),
+  updatedById: integer('updated_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (table) => ({
+  nameIdx: index('collections_name_idx').on(table.name),
+}))
+
+export const collectionsRelations = relations(collections, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [collections.createdById],
+    references: [users.id],
+    relationName: 'collection_creator',
+  }),
+  updatedBy: one(users, {
+    fields: [collections.updatedById],
+    references: [users.id],
+    relationName: 'collection_updater',
+  }),
+}))
 
 export const locales = pgTable('locales', {
   id: serial('id').primaryKey(),
@@ -110,7 +128,9 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at'),
-})
+}, (table) => ({
+  nameIdx: index('users_name_idx').on(table.name),
+}))
 
 export const mediaFolders = pgTable('media_folders', {
   id: serial('id').primaryKey(),
@@ -186,3 +206,24 @@ export const formEntries = pgTable('form_entries', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+export const apiLogs = pgTable(
+  'api_logs',
+  {
+    id: serial('id').primaryKey(),
+    tenantId: integer('tenant_id').references(() => tenants.id),
+    userId: integer('user_id').references(() => users.id),
+    method: varchar('method', { length: 10 }).notNull(),
+    path: varchar('path', { length: 1024 }).notNull(),
+    ip: varchar('ip', { length: 45 }).notNull(),
+    userAgent: varchar('user_agent', { length: 1024 }),
+    statusCode: integer('status_code'),
+    responseTime: integer('response_time'), // in milliseconds
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      createdAtIdx: index('api_logs_created_at_idx').on(table.createdAt),
+      pathIdx: index('api_logs_path_idx').on(table.path),
+    }
+  }
+)

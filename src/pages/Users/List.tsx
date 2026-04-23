@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Head, Link, router } from '@inertiajs/react'
 import {
   ArrowDown,
@@ -24,11 +25,12 @@ import {
   ChevronRight,
   Loader2,
   Plus,
+  Search,
   Trash2,
   UsersIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface User {
   id: number
@@ -72,6 +74,7 @@ interface ListProps {
     role?: string
     page?: number
     limit?: number
+    q?: string
   }
   pagination?: {
     currentPage: number
@@ -100,6 +103,7 @@ export default function List({
   const [addingTenant, setAddingTenant] = useState(false)
   const [newTenantId, setNewTenantId] = useState<string>('')
   const [newTenantRole, setNewTenantRole] = useState<string>('member')
+  const [searchQuery, setSearchQuery] = useState(filters?.q || '')
 
   const fetchUserTenants = async (userId: number) => {
     setLoadingTenants(true)
@@ -183,18 +187,32 @@ export default function List({
   const currentPage = pagination?.currentPage || 1
 
   const updateFilters = (newFilters: any) => {
-    router.get(
-      '/users',
-      {
-        sort: currentSort,
-        dir: currentDir,
-        role: currentRole,
-        page: currentPage,
-        ...newFilters,
-      },
-      { preserveState: true }
-    )
+    const finalFilters = {
+      sort: currentSort,
+      dir: currentDir,
+      role: currentRole,
+      page: currentPage,
+      q: searchQuery,
+      ...newFilters,
+    }
+
+    router.get('/users', finalFilters, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true, // Use replace to avoid polluting history with every keystroke
+    })
   }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only trigger if the search query has actually changed from what's in the filters
+      if (searchQuery !== (filters?.q || '')) {
+        updateFilters({ q: searchQuery, page: 1 })
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const toggleSort = (field: string) => {
     const newDir =
@@ -255,6 +273,25 @@ export default function List({
         )}
 
         <div className='bg-card rounded-xl shadow-sm border overflow-hidden'>
+          <div className='p-4 border-b bg-muted/20 flex flex-col md:flex-row gap-4 items-center justify-between'>
+            <div className='relative w-full md:w-72'>
+              <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
+              <Input
+                placeholder='Search users...'
+                className='pl-9 bg-background'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateFilters({ q: searchQuery, page: 1 })
+                  }
+                }}
+              />
+            </div>
+            <div className='text-xs text-muted-foreground'>
+              Showing {users.length} of {pagination?.totalCount || 0} users
+            </div>
+          </div>
           <div className='overflow-x-auto'>
             <table className='w-full text-sm text-left'>
               <thead className='text-xs text-muted-foreground uppercase bg-muted/50 border-b'>

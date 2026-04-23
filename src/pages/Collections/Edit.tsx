@@ -32,6 +32,7 @@ import {
   Settings2Icon,
   TerminalIcon,
   TrashIcon,
+  User,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useEffect, useState } from 'react'
@@ -44,14 +45,20 @@ interface Collection {
   enableTrash?: boolean
   localized?: boolean
   fields: FieldDefinition[]
+  createdBy?: { id: number; name: string }
 }
 
 interface EditProps {
   collection: Collection
+  updatedBy?: { id: number; name: string }
   user?: any
 }
 
-export default function EditCollection({ collection, user }: EditProps) {
+export default function EditCollection({
+  collection,
+  updatedBy,
+  user,
+}: EditProps) {
   const { data, setData, processing, errors } = useForm({
     name: collection.name,
     type: collection.type || 'collection',
@@ -306,12 +313,37 @@ export default function EditCollection({ collection, user }: EditProps) {
               <h1 className='text-3xl font-bold tracking-tight'>
                 Edit Collection
               </h1>
-              <p className='text-muted-foreground mt-1'>
-                Updating:{' '}
-                <span className='font-semibold text-foreground'>
-                  {collection.name}
-                </span>
-              </p>
+              <div className='flex items-center space-x-3 mt-1'>
+                <p className='text-muted-foreground text-sm'>
+                  Updating:{' '}
+                  <span className='font-semibold text-foreground text-sm'>
+                    {collection.name}
+                  </span>
+                </p>
+                {updatedBy ? (
+                  <>
+                    <span className='text-muted-foreground/30 text-xs'>•</span>
+                    <div className='flex items-center text-sm text-muted-foreground'>
+                      <User className='w-3 h-3 mr-1' />
+                      Last updated by{' '}
+                      <span className='text-sm font-semibold text-foreground ml-1'>
+                        {updatedBy.name}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className='text-muted-foreground/30 text-xs'>•</span>
+                    <div className='flex items-center text-sm text-muted-foreground'>
+                      <User className='w-3 h-3 mr-1' />
+                      Created by{' '}
+                      <span className='text-sm font-semibold text-foreground ml-1'>
+                        {collection.createdBy?.name}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

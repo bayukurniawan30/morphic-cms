@@ -273,7 +273,17 @@ export default function EntriesList({
       case 'datetime':
         return format(new Date(value), field.type === 'date' ? 'PPP' : 'PPP p')
       case 'checkbox':
-        return Array.isArray(value) ? value.join(', ') : String(value)
+      case 'select': {
+        const strValue = Array.isArray(value) ? value.join(', ') : String(value)
+        return (
+          <span
+            className='truncate max-w-[150px] inline-block'
+            title={strValue}
+          >
+            {strValue}
+          </span>
+        )
+      }
       case 'relation': {
         const targetCollectionId = (field as any).relationCollectionId
         const labelField = (field as any).relationLabelField
@@ -307,8 +317,17 @@ export default function EntriesList({
           </span>
         )
       }
-      default:
-        return String(value)
+      default: {
+        const strValue = String(value)
+        return (
+          <span
+            className='truncate max-w-[150px] inline-block'
+            title={strValue}
+          >
+            {strValue}
+          </span>
+        )
+      }
     }
   }
 
@@ -675,9 +694,6 @@ export default function EntriesList({
                   <th className='px-6 py-4 font-medium uppercase tracking-wider'>
                     Created
                   </th>
-                  <th className='px-6 py-4 font-medium uppercase tracking-wider'>
-                    Last Updated By
-                  </th>
                   {collection.localized && (
                     <th className='px-6 py-4 font-medium uppercase tracking-wider'>
                       Locale
@@ -738,19 +754,6 @@ export default function EntriesList({
                             <CalendarIcon className='w-3 h-3 mr-1.5 opacity-40' />
                             {format(new Date(entry.createdAt), 'MMM d, yyyy')}
                           </span>
-                        </td>
-                        <td className='px-6 py-4 whitespace-nowrap'>
-                          {entry.updatedBy ? (
-                            <div className='flex items-center space-x-2'>
-                              <span className='text-xs font-medium'>
-                                {entry.updatedBy.name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className='text-xs text-muted-foreground italic'>
-                              System
-                            </span>
-                          )}
                         </td>
                         {collection.localized && (
                           <td className='px-6 py-4 whitespace-nowrap'>

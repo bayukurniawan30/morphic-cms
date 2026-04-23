@@ -13,6 +13,17 @@ import {
   Plus,
   Users,
 } from 'lucide-react'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { format } from 'date-fns'
 
 interface Stats {
@@ -46,6 +57,8 @@ interface DashboardProps {
   stats: Stats
   recentActivity: Activity[]
   collectionBreakdown: CollectionStat[]
+  trafficData: { date: string; count: number }[]
+  performanceData: { date: string; avgResponseTime: number }[]
 }
 
 export default function Dashboard({
@@ -53,6 +66,8 @@ export default function Dashboard({
   stats,
   recentActivity,
   collectionBreakdown,
+  trafficData = [],
+  performanceData = [],
 }: DashboardProps) {
   const overviewItems = [
     {
@@ -61,6 +76,7 @@ export default function Dashboard({
       icon: LayoutGrid,
       color: 'text-blue-500',
       bg: 'bg-blue-50',
+      glow: 'bg-blue-600/30',
     },
     {
       label: 'Globals',
@@ -68,6 +84,7 @@ export default function Dashboard({
       icon: Database,
       color: 'text-purple-500',
       bg: 'bg-purple-50',
+      glow: 'bg-purple-600/30',
     },
     {
       label: 'Media Assets',
@@ -75,6 +92,7 @@ export default function Dashboard({
       icon: Image,
       color: 'text-orange-500',
       bg: 'bg-orange-50',
+      glow: 'bg-orange-600/30',
     },
     {
       label: 'Documents',
@@ -82,6 +100,7 @@ export default function Dashboard({
       icon: FileText,
       color: 'text-green-500',
       bg: 'bg-green-50',
+      glow: 'bg-green-600/30',
     },
   ]
 
@@ -105,28 +124,186 @@ export default function Dashboard({
           {overviewItems.map((item) => (
             <div
               key={item.label}
-              className='bg-card p-6 rounded-2xl border shadow-sm transition-all hover:shadow-md group'
+              className='bg-card p-6 rounded-2xl border shadow-sm transition-all hover:shadow-md group relative overflow-hidden'
             >
-              <div className='flex items-center justify-between mb-4'>
-                <div
-                  className={`${item.bg} p-2.5 rounded-xl transition-colors group-hover:scale-110 duration-200`}
-                >
-                  <item.icon className={`w-5 h-5 ${item.color}`} />
+              {/* Decorative Glow */}
+              <div
+                className={`absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] ${item.glow} rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500`}
+              />
+
+              <div className='relative z-10'>
+                <div className='flex items-center justify-between mb-4'>
+                  <div
+                    className={`${item.bg} p-2.5 rounded-xl transition-colors group-hover:scale-110 duration-200`}
+                  >
+                    <item.icon className={`w-5 h-5 ${item.color}`} />
+                  </div>
+                  <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity'>
+                    Real-time
+                  </span>
                 </div>
-                <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity'>
-                  Real-time
-                </span>
-              </div>
-              <div className='space-y-1'>
-                <h3 className='text-sm font-medium text-muted-foreground uppercase tracking-tight'>
-                  {item.label}
-                </h3>
-                <p className='text-3xl font-bold tracking-tight leading-none'>
-                  {item.value.toLocaleString()}
-                </p>
+                <div className='space-y-1'>
+                  <h3 className='text-sm font-medium text-muted-foreground uppercase tracking-tight'>
+                    {item.label}
+                  </h3>
+                  <p className='text-3xl font-bold tracking-tight leading-none'>
+                    {item.value.toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Analytics Section */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+          <section className='bg-card rounded-2xl border shadow-sm overflow-hidden p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <div>
+                <h3 className='text-lg font-semibold flex items-center'>
+                  <ArrowUpRight className='w-4 h-4 mr-2 text-blue-500' />
+                  API Traffic
+                </h3>
+                <p className='text-xs text-muted-foreground'>
+                  Total requests over the last 7 days
+                </p>
+              </div>
+              <div className='text-right'>
+                <span className='text-2xl font-bold'>
+                  {trafficData.reduce((acc, curr) => acc + curr.count, 0)}
+                </span>
+                <p className='text-[10px] text-muted-foreground uppercase'>
+                  Total Hits
+                </p>
+              </div>
+            </div>
+            <div className='h-[250px] w-full'>
+              <ResponsiveContainer width='100%' height='100%'>
+                <LineChart data={trafficData}>
+                  <CartesianGrid
+                    strokeDasharray='3 3'
+                    vertical={false}
+                    stroke='currentColor'
+                    opacity={0.1}
+                  />
+                  <XAxis
+                    dataKey='date'
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, opacity: 0.5 }}
+                    tickFormatter={(str) => format(new Date(str), 'MMM d')}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, opacity: 0.5 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border))',
+                    }}
+                    labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                    labelFormatter={(str) => format(new Date(str), 'PPPP')}
+                  />
+                  <Line
+                    type='monotone'
+                    dataKey='count'
+                    stroke='hsl(var(--primary))'
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section className='bg-card rounded-2xl border shadow-sm overflow-hidden p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <div>
+                <h3 className='text-lg font-semibold flex items-center'>
+                  <Clock className='w-4 h-4 mr-2 text-purple-500' />
+                  Average Response Time
+                </h3>
+                <p className='text-xs text-muted-foreground'>
+                  Latency trends (ms)
+                </p>
+              </div>
+              <div className='text-right'>
+                <span className='text-2xl font-bold'>
+                  {performanceData.length > 0
+                    ? Math.round(
+                        performanceData.reduce(
+                          (acc, curr) => acc + curr.avgResponseTime,
+                          0
+                        ) / performanceData.length
+                      )
+                    : 0}
+                  ms
+                </span>
+                <p className='text-[10px] text-muted-foreground uppercase'>
+                  Avg Latency
+                </p>
+              </div>
+            </div>
+            <div className='h-[250px] w-full'>
+              <ResponsiveContainer width='100%' height='100%'>
+                <AreaChart data={performanceData}>
+                  <defs>
+                    <linearGradient id='colorAvg' x1='0' y1='0' x2='0' y2='1'>
+                      <stop
+                        offset='5%'
+                        stopColor='rgb(168, 85, 247)'
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset='95%'
+                        stopColor='rgb(168, 85, 247)'
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray='3 3'
+                    vertical={false}
+                    stroke='currentColor'
+                    opacity={0.1}
+                  />
+                  <XAxis
+                    dataKey='date'
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, opacity: 0.5 }}
+                    tickFormatter={(str) => format(new Date(str), 'MMM d')}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, opacity: 0.5 }}
+                    unit='ms'
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border))',
+                    }}
+                    labelFormatter={(str) => format(new Date(str), 'PPPP')}
+                  />
+                  <Area
+                    type='monotone'
+                    dataKey='avgResponseTime'
+                    stroke='rgb(168, 85, 247)'
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill='url(#colorAvg)'
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
         </div>
 
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>

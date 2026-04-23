@@ -26,22 +26,33 @@ CREATE TABLE IF NOT EXISTS "users_to_tenants" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "collections" DROP CONSTRAINT "collections_slug_unique";--> statement-breakpoint
-ALTER TABLE "forms" DROP CONSTRAINT "forms_slug_unique";--> statement-breakpoint
-ALTER TABLE "abilities" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "collections" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "collections" ADD COLUMN "localized" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "documents" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "entries" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "entries" ADD COLUMN "status" varchar(20) DEFAULT 'published' NOT NULL;--> statement-breakpoint
-ALTER TABLE "entries" ADD COLUMN "locale" varchar(10) DEFAULT 'en' NOT NULL;--> statement-breakpoint
-ALTER TABLE "entries" ADD COLUMN "translation_group_id" varchar(255);--> statement-breakpoint
-ALTER TABLE "entry_versions" ADD COLUMN "status" varchar(20);--> statement-breakpoint
-ALTER TABLE "entry_versions" ADD COLUMN "locale" varchar(10);--> statement-breakpoint
-ALTER TABLE "form_entries" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "forms" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "media" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
-ALTER TABLE "media_folders" ADD COLUMN "tenant_id" integer;--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "collections" DROP CONSTRAINT "collections_slug_unique";
+EXCEPTION
+ WHEN undefined_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "forms" DROP CONSTRAINT "forms_slug_unique";
+EXCEPTION
+ WHEN undefined_object THEN null;
+END $$;
+--> statement-breakpoint
+ALTER TABLE "abilities" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "collections" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "collections" ADD COLUMN IF NOT EXISTS "localized" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "entries" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "entries" ADD COLUMN IF NOT EXISTS "status" varchar(20) DEFAULT 'published' NOT NULL;--> statement-breakpoint
+ALTER TABLE "entries" ADD COLUMN IF NOT EXISTS "locale" varchar(10) DEFAULT 'en' NOT NULL;--> statement-breakpoint
+ALTER TABLE "entries" ADD COLUMN IF NOT EXISTS "translation_group_id" varchar(255);--> statement-breakpoint
+ALTER TABLE "entry_versions" ADD COLUMN IF NOT EXISTS "status" varchar(20);--> statement-breakpoint
+ALTER TABLE "entry_versions" ADD COLUMN IF NOT EXISTS "locale" varchar(10);--> statement-breakpoint
+ALTER TABLE "form_entries" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "forms" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "media_folders" ADD COLUMN IF NOT EXISTS "tenant_id" integer;
+--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "locales" ADD CONSTRAINT "locales_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION

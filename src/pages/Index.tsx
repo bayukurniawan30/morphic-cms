@@ -48,9 +48,9 @@ export default function Index({ title }: { title: string }) {
       <Head title={`Login | ${title}`} />
 
       {/* Animated Background Elements */}
-      <div className='absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/15 rounded-full blur-[120px] animate-[pulse_8s_cubic-bezier(0.4,0,0.6,1)_infinite]' />
-      <div className='absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] animate-[pulse_12s_cubic-bezier(0.4,0,0.6,1)_infinite]' />
-      <div className='absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-blue-500/5 rounded-full blur-[100px] animate-[pulse_10s_cubic-bezier(0.4,0,0.6,1)_infinite]' />
+      <div className='absolute top-[-15%] left-[-15%] w-[60%] h-[60%] bg-cyan-600/30 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]' />
+      <div className='absolute bottom-[-15%] right-[-15%] w-[60%] h-[60%] bg-blue-600/20 rounded-full blur-[120px] animate-[pulse_15s_ease-in-out_infinite]' />
+      <div className='absolute top-[10%] right-[-5%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[100px] animate-[pulse_12s_ease-in-out_infinite]' />
 
       <div className='w-full max-w-md z-10 animate-in fade-in zoom-in-95 duration-700'>
         <div className='text-center mb-4 space-y-4'>

@@ -6,9 +6,11 @@ import {
   asc,
   desc,
   eq,
+  gt,
   inArray,
   isNotNull,
   isNull,
+  lt,
   ne,
   sql,
 } from 'drizzle-orm'
@@ -18,6 +20,7 @@ import { sign, verify } from 'hono/jwt'
 import { db } from '../db/index.js'
 import {
   abilities,
+  apiLogs,
   collections,
   documents,
   entries,
@@ -343,8 +346,6 @@ app.get('/tenants/add', requireAuth, async (c) => {
   return c.get('inertia')('Tenants/Add', { user: userData })
 })
 
-
-
 // Locales Management Pages
 app.get('/localization', requireAuth, async (c) => {
   const userData = c.get('user')
@@ -468,6 +469,32 @@ app.get('/dashboard', requireAuth, async (c) => {
     .groupBy(collections.id)
     .orderBy(desc(sql`count(${entries.id})`))
 
+  // 4. Fetch Analytics for the last 7 days
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+  const trafficData = await db
+    .select({
+      date: sql<string>`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`,
+      count: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(apiLogs)
+    .where(and(gt(apiLogs.createdAt, sevenDaysAgo), whereTenant(apiLogs)))
+    .groupBy(sql`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`)
+    .orderBy(asc(sql`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`))
+
+  const performanceData = await db
+    .select({
+      date: sql<string>`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`,
+      avgResponseTime: sql<number>`avg(${apiLogs.responseTime})`.mapWith(
+        Number
+      ),
+    })
+    .from(apiLogs)
+    .where(and(gt(apiLogs.createdAt, sevenDaysAgo), whereTenant(apiLogs)))
+    .groupBy(sql`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`)
+    .orderBy(asc(sql`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`))
+
   return c.get('inertia')('Dashboard', {
     user: userData,
     stats: {
@@ -483,6 +510,8 @@ app.get('/dashboard', requireAuth, async (c) => {
       ...c,
       count: Number(c.count),
     })),
+    trafficData,
+    performanceData,
   })
 })
 
@@ -660,7 +689,6 @@ app.get('/users', requireAuth, async (c) => {
   const tenantId = c.get('tenantId')
   const tenantRole = c.get('tenantRole')
 
-
   if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
     return c.redirect('/dashboard')
   }
@@ -668,6 +696,7 @@ app.get('/users', requireAuth, async (c) => {
   const sort = c.req.query('sort') || 'createdAt'
   const dir = c.req.query('dir') || 'desc'
   const role = c.req.query('role')
+  const q = c.req.query('q')
   const page = parseInt(c.req.query('page') || '1', 10)
   const limit = parseInt(c.req.query('limit') || '10', 10)
   const offset = (page - 1) * limit
@@ -676,6 +705,11 @@ app.get('/users', requireAuth, async (c) => {
   const conditions = [isNull(users.deletedAt)]
   if (role && role !== 'all') {
     conditions.push(eq(users.role, role as any))
+  }
+  if (q) {
+    conditions.push(
+      sql`(${users.name} ILIKE ${`%${q}%`} OR ${users.email} ILIKE ${`%${q}%`} OR ${users.username} ILIKE ${`%${q}%`})`
+    )
   }
   const whereClause = and(...conditions)
 
@@ -710,13 +744,25 @@ app.get('/users', requireAuth, async (c) => {
       })
       .from(users)
       .innerJoin(usersToTenants, eq(users.id, usersToTenants.userId))
-      .where(and(whereClause, eq(usersToTenants.tenantId, tenantId), ne(users.role, 'super_admin')))
+      .where(
+        and(
+          whereClause,
+          eq(usersToTenants.tenantId, tenantId),
+          ne(users.role, 'super_admin')
+        )
+      )
 
     totalCountQuery = db
       .select({ count: sql`count(*)` })
       .from(users)
       .innerJoin(usersToTenants, eq(users.id, usersToTenants.userId))
-      .where(and(whereClause, eq(usersToTenants.tenantId, tenantId), ne(users.role, 'super_admin')))
+      .where(
+        and(
+          whereClause,
+          eq(usersToTenants.tenantId, tenantId),
+          ne(users.role, 'super_admin')
+        )
+      )
   } else {
     // System Global mode: Rich summaries for administrators
     usersQuery = db
@@ -726,8 +772,14 @@ app.get('/users', requireAuth, async (c) => {
         username: users.username,
         email: users.email,
         globalRole: users.role,
-        ownedCount: sql<number>`count(CASE WHEN ${usersToTenants.role} = 'owner' THEN 1 END)`.mapWith(Number),
-        memberCount: sql<number>`count(CASE WHEN ${usersToTenants.role} = 'member' THEN 1 END)`.mapWith(Number),
+        ownedCount:
+          sql<number>`count(CASE WHEN ${usersToTenants.role} = 'owner' THEN 1 END)`.mapWith(
+            Number
+          ),
+        memberCount:
+          sql<number>`count(CASE WHEN ${usersToTenants.role} = 'member' THEN 1 END)`.mapWith(
+            Number
+          ),
         firstOwnedName: sql<string>`MAX(CASE WHEN ${usersToTenants.role} = 'owner' THEN ${tenants.name} END)`,
         firstMemberName: sql<string>`MAX(CASE WHEN ${usersToTenants.role} = 'member' THEN ${tenants.name} END)`,
         createdAt: users.createdAt,
@@ -739,7 +791,10 @@ app.get('/users', requireAuth, async (c) => {
       .where(whereClause)
       .groupBy(users.id)
 
-    totalCountQuery = db.select({ count: sql`count(*)` }).from(users).where(whereClause)
+    totalCountQuery = db
+      .select({ count: sql`count(*)` })
+      .from(users)
+      .where(whereClause)
   }
 
   const [allUsers, countResult] = await Promise.all([
@@ -773,7 +828,6 @@ app.get('/users', requireAuth, async (c) => {
     }
   })
 
-
   let allTenants: any[] = []
   const currentTenant = c.get('currentTenant')
   if (userData.role === 'super_admin') {
@@ -787,7 +841,7 @@ app.get('/users', requireAuth, async (c) => {
     user: userData,
     activeTenantRole: tenantRole,
     allTenants,
-    filters: { sort, dir, role, page, limit },
+    filters: { sort, dir, role, page, limit, q },
     pagination: {
       currentPage: page,
       totalPages,
@@ -805,7 +859,9 @@ app.get('/users/add', requireAuth, async (c) => {
     return c.redirect('/users')
   }
   const tenantId = c.get('tenantId')
-  const whereClause = tenantId ? eq(abilities.tenantId, tenantId) : isNull(abilities.tenantId)
+  const whereClause = tenantId
+    ? eq(abilities.tenantId, tenantId)
+    : isNull(abilities.tenantId)
 
   const filteredAbilities = await db
     .select()
@@ -842,12 +898,18 @@ app.get('/users/edit/:id', requireAuth, async (c) => {
   const userToEdit = userResult[0]
 
   // Hierarchy Check for Owners
-  if (!isSuperAdmin && userToEdit.role === 'super_admin' && userData.id !== id) {
+  if (
+    !isSuperAdmin &&
+    userToEdit.role === 'super_admin' &&
+    userData.id !== id
+  ) {
     return c.redirect('/users')
   }
 
   const tenantId = c.get('tenantId')
-  const abilityWhereClause = tenantId ? eq(abilities.tenantId, tenantId) : isNull(abilities.tenantId)
+  const abilityWhereClause = tenantId
+    ? eq(abilities.tenantId, tenantId)
+    : isNull(abilities.tenantId)
 
   const filteredAbilities = await db
     .select()
@@ -885,6 +947,7 @@ app.get('/collections', requireAuth, async (c) => {
   const sort = c.req.query('sort') || 'createdAt'
   const dir = c.req.query('dir') || 'desc'
   const typeFilter = c.req.query('type') || 'all'
+  const q = c.req.query('q')
   const page = parseInt(c.req.query('page') || '1', 10)
   const limit = parseInt(c.req.query('limit') || '10', 10)
   const offset = (page - 1) * limit
@@ -896,6 +959,9 @@ app.get('/collections', requireAuth, async (c) => {
   }
   if (tenantId) {
     conditions.push(eq(collections.tenantId, tenantId))
+  }
+  if (q) {
+    conditions.push(sql`${collections.name} ILIKE ${`%${q}%`}`)
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
@@ -946,7 +1012,7 @@ app.get('/collections', requireAuth, async (c) => {
       createdBy: r.createdBy?.id ? r.createdBy : null,
     })),
     user: userData,
-    filters: { sort, dir, type: typeFilter, page, limit },
+    filters: { sort, dir, type: typeFilter, page, limit, q },
     pagination: {
       currentPage: page,
       totalPages,
@@ -1221,14 +1287,31 @@ app.get('/entries/:collectionId/edit/:entryId', requireAuth, async (c) => {
 app.get('/collections/edit/:id', requireAuth, async (c) => {
   const userData = c.get('user')
   const id = parseInt(c.req.param('id'), 10)
-  const collection = await db
-    .select()
-    .from(collections)
-    .where(eq(collections.id, id))
-    .limit(1)
-  if (collection.length === 0) return c.redirect('/collections')
+  const collectionWithRelations = await db.query.collections.findFirst({
+    where: eq(collections.id, id),
+    with: {
+      createdBy: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+      updatedBy: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  })
+
+  if (!collectionWithRelations) return c.redirect('/collections')
+
   return c.get('inertia')('Collections/Edit', {
-    collection: collection[0],
+    collection: collectionWithRelations,
+    updatedBy: collectionWithRelations.updatedBy?.id
+      ? collectionWithRelations.updatedBy
+      : null,
     user: userData,
   })
 })
@@ -1245,6 +1328,51 @@ app.get('/api-docs', requireAuth, async (c) => {
 
 // Set up the API routes
 const api = new Hono<{ Variables: Variables }>()
+
+// API Logging Middleware
+api.use('*', async (c, next) => {
+  const start = Date.now()
+  const ip =
+    c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || '127.0.0.1'
+  const isInertia = c.req.header('x-inertia')
+
+  // Skip localhost or internal CMS requests
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || isInertia) {
+    return await next()
+  }
+
+  await next()
+
+  const ms = Date.now() - start
+  const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+
+  // Log in background to not block response
+  db.insert(apiLogs)
+    .values({
+      method: c.req.method,
+      path: c.req.path,
+      ip: ip.split(',')[0].trim(), // Handle potential comma-separated list from x-forwarded-for
+      userAgent: c.req.header('user-agent'),
+      statusCode: c.res.status,
+      responseTime: ms,
+      userId: userData?.id,
+      tenantId: tenantId,
+    })
+    .execute()
+    .catch((err) => console.error('Failed to log API request:', err))
+
+  // 1% chance to cleanup old logs (older than 7 days)
+  // This avoids using a Cron Job while keeping the DB light
+  if (Math.random() < 0.01) {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    db.delete(apiLogs)
+      .where(lt(apiLogs.createdAt, sevenDaysAgo))
+      .execute()
+      .catch((err) => console.error('Failed to auto-cleanup logs:', err))
+  }
+})
 
 // API Auth Middleware
 api.use('*', async (c, next) => {
@@ -1476,7 +1604,11 @@ api.post('/tenants/:id/users', async (c) => {
   if (!targetUserId) return c.json({ error: 'User not found' }, 404)
 
   // --- Hierarchy Check ---
-  const targetUserResult = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1)
+  const targetUserResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, targetUserId))
+    .limit(1)
   const targetUser = targetUserResult[0]
 
   if (userData.role !== 'super_admin') {
@@ -1537,7 +1669,11 @@ api.delete('/tenants/:id/users/:userId', async (c) => {
   if (!isAuthorized) return c.json({ error: 'Forbidden' }, 403)
 
   // --- Hierarchy Check ---
-  const targetUserResult = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+  const targetUserResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
   const targetUser = targetUserResult[0]
 
   if (userData.role !== 'super_admin') {
@@ -1545,7 +1681,10 @@ api.delete('/tenants/:id/users/:userId', async (c) => {
       return c.json({ error: 'Cannot delete a Super Admin' }, 403)
     }
     if (userId === userData.id) {
-      return c.json({ error: 'Cannot remove yourself from your own tenant' }, 403)
+      return c.json(
+        { error: 'Cannot remove yourself from your own tenant' },
+        403
+      )
     }
   }
 
@@ -1564,7 +1703,8 @@ api.delete('/tenants/:id/users/:userId', async (c) => {
 // GET /api/users/:id/tenants - Get all tenants for a specific user
 api.get('/users/:id/tenants', async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.json({ error: 'Forbidden' }, 403)
+  if (userData.role !== 'super_admin')
+    return c.json({ error: 'Forbidden' }, 403)
 
   const userId = parseInt(c.req.param('id'), 10)
   if (isNaN(userId)) return c.json({ error: 'Invalid user ID' }, 400)
@@ -2211,6 +2351,7 @@ api.put('/collections/:id', async (c) => {
         enableTrash: body.enableTrash || false,
         localized: body.localized || false,
         fields: fields || [],
+        updatedById: c.get('user')?.id,
         updatedAt: new Date(),
       })
       .where(and(...whereClause))

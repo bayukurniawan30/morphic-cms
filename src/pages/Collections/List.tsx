@@ -1,5 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -20,11 +21,12 @@ import {
   CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  DatabaseIcon,
   LayersIcon,
   PlusIcon,
+  SearchIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useEffect, useState } from 'react'
 
 interface Collection {
   id: number
@@ -47,6 +49,7 @@ interface ListProps {
     type?: 'all' | 'collection' | 'global'
     page?: number
     limit?: number
+    q?: string
   }
   pagination?: {
     currentPage: number
@@ -62,6 +65,8 @@ export default function CollectionsList({
   filters,
   pagination,
 }: ListProps) {
+  const [searchQuery, setSearchQuery] = useState(filters?.q || '')
+
   const handleDelete = async (id: number) => {
     if (
       !confirm(
@@ -92,18 +97,31 @@ export default function CollectionsList({
   const currentPage = pagination?.currentPage || 1
 
   const updateFilters = (newFilters: any) => {
-    router.get(
-      '/collections',
-      {
-        sort: currentSort,
-        dir: currentDir,
-        type: currentType,
-        page: currentPage,
-        ...newFilters,
-      },
-      { preserveState: true }
-    )
+    const finalFilters = {
+      sort: currentSort,
+      dir: currentDir,
+      type: currentType,
+      page: currentPage,
+      q: searchQuery,
+      ...newFilters,
+    }
+
+    router.get('/collections', finalFilters, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+    })
   }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== (filters?.q || '')) {
+        updateFilters({ q: searchQuery, page: 1 })
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const toggleSort = (field: string) => {
     const newDir =
@@ -183,6 +201,26 @@ export default function CollectionsList({
         </div>
 
         <div className='bg-card rounded-xl shadow-sm border overflow-hidden'>
+          <div className='p-4 border-b bg-muted/20 flex flex-col md:flex-row gap-4 items-center justify-between'>
+            <div className='relative w-full md:w-72'>
+              <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
+              <Input
+                placeholder='Search collections...'
+                className='pl-9 bg-background'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateFilters({ q: searchQuery, page: 1 })
+                  }
+                }}
+              />
+            </div>
+            <div className='text-xs text-muted-foreground'>
+              Showing {collections.length} of {pagination?.totalCount || 0}{' '}
+              collections
+            </div>
+          </div>
           <div className='overflow-x-auto'>
             <table className='w-full text-sm text-left'>
               <thead className='text-xs text-muted-foreground uppercase bg-muted/50 border-b'>
@@ -249,9 +287,6 @@ export default function CollectionsList({
                     >
                       <td className='px-6 py-4'>
                         <div className='flex items-center lg:space-x-3'>
-                          <div className='w-10 h-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary hidden lg:flex'>
-                            <DatabaseIcon className='w-5 h-5' />
-                          </div>
                           <span className='font-semibold text-foreground text-base'>
                             {collection.name}
                           </span>

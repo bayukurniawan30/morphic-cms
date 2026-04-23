@@ -29,11 +29,10 @@ export default function SelectTenant({ user, tenants }: SelectTenantProps) {
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-background text-foreground p-6 overflow-hidden relative'>
-      {/* Background Decorations */}
-      <div className='absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none'>
-        <div className='absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]' />
-        <div className='absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px]' />
-      </div>
+      {/* Animated Background Elements */}
+      <div className='absolute top-[-15%] left-[-15%] w-[60%] h-[60%] bg-cyan-600/30 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]' />
+      <div className='absolute bottom-[-15%] right-[-15%] w-[60%] h-[60%] bg-blue-600/20 rounded-full blur-[120px] animate-[pulse_15s_ease-in-out_infinite]' />
+      <div className='absolute top-[10%] right-[-5%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[100px] animate-[pulse_12s_ease-in-out_infinite]' />
 
       <Head title='Select Organization | Morphic CMS' />
 

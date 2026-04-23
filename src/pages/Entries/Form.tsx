@@ -24,18 +24,34 @@ import { FieldDefinition } from '@/lib/dynamic-schema'
 import { cn } from '@/lib/utils'
 import { Head, Link, router } from '@inertiajs/react'
 import {
+  AlignLeft,
   ArrowLeft,
+  Calendar,
+  CheckCircle2,
+  CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleDot,
   Clock,
+  FileJson,
   FileText,
+  Fingerprint,
+  Hash,
   History,
+  Image as ImageIcon,
   ImagePlus,
+  Layers,
+  Link as LinkIcon,
+  List,
   Loader2Icon,
+  Mail,
+  PanelRight,
+  PanelRightClose,
   RotateCcw,
   Save,
   Send,
+  Type,
   User,
   XIcon,
 } from 'lucide-react'
@@ -54,6 +70,9 @@ interface Entry {
   id: number
   content: Record<string, any>
   status: 'published' | 'draft'
+  createdAt: string
+  updatedAt: string
+  createdBy?: { id: number; name: string }
 }
 
 interface FormProps {
@@ -522,6 +541,7 @@ export default function EntriesForm({
   >(null)
   const [versions, setVersions] = useState<any[]>([])
   const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [isDetailsVisible, setIsDetailsVisible] = useState(true)
   const [isPreviewingVersion, setPreviewingVersion] = useState<any | null>(null)
   const [isDirty, setIsDirty] = useState(false)
 
@@ -554,7 +574,7 @@ export default function EntriesForm({
       unbind()
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [isDirty])
+  }, [isDirty, isSubmitting])
 
   const fetchVersions = useCallback(async () => {
     if (mode === 'edit' && entry?.id) {
@@ -856,21 +876,38 @@ export default function EntriesForm({
           </div>
 
           {mode === 'edit' && (
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              onClick={() => setSidebarOpen(true)}
-              className='relative'
-            >
-              <History className='w-4 h-4 mr-2' />
-              History
-              {versions.length > 0 && (
-                <span className='absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold border-2 border-background'>
-                  {versions.length}
-                </span>
-              )}
-            </Button>
+            <div className='flex items-center space-x-2'>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setSidebarOpen(true)}
+                className='relative'
+              >
+                <History className='w-4 h-4 mr-2' />
+                History
+                {versions.length > 0 && (
+                  <span className='absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold border-2 border-background'>
+                    {versions.length}
+                  </span>
+                )}
+              </Button>
+
+              <Button
+                type='button'
+                variant={isDetailsVisible ? 'secondary' : 'outline'}
+                size='sm'
+                onClick={() => setIsDetailsVisible(!isDetailsVisible)}
+                title={isDetailsVisible ? 'Hide Details' : 'Show Details'}
+              >
+                {isDetailsVisible ? (
+                  <PanelRightClose className='w-4 h-4' />
+                ) : (
+                  <PanelRight className='w-4 h-4 mr-2' />
+                )}
+                {isDetailsVisible ? '' : 'Details'}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -986,101 +1023,212 @@ export default function EntriesForm({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className='space-y-6'>
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-8 w-full',
+            mode === 'edit' && isDetailsVisible
+              ? 'lg:grid-cols-3'
+              : 'grid-cols-1'
+          )}
+        >
+          {/* Main Form Content */}
           <div
-            className={`bg-card p-8 rounded-xl border shadow-sm space-y-8 ${isPreviewingVersion ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}
+            className={cn(
+              'space-y-6',
+              mode === 'edit' && isDetailsVisible ? 'lg:col-span-2' : ''
+            )}
           >
-            {collection.fields.map((field) => (
-              <div key={field.id} className='space-y-2'>
-                <div className='flex items-center justify-between border-b border-border/30 pb-1'>
-                  <Label className='text-xs font-bold uppercase tracking-widest text-muted-foreground/80'>
-                    {field.label || field.name}{' '}
-                    {field.required && (
-                      <span className='text-destructive'>*</span>
+            <form onSubmit={handleSubmit} className='space-y-6'>
+              <div
+                className={`bg-card p-8 rounded-xl border shadow-sm space-y-8 ${isPreviewingVersion ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}
+              >
+                {collection.fields.map((field) => (
+                  <div key={field.id} className='space-y-2'>
+                    <div className='flex items-center justify-between border-b border-border/30 pb-1'>
+                      <Label className='text-xs font-bold uppercase tracking-widest text-muted-foreground/80'>
+                        {field.label || field.name}{' '}
+                        {field.required && (
+                          <span className='text-destructive'>*</span>
+                        )}
+                      </Label>
+                      <div className='flex items-center gap-1.5 opacity-40'>
+                        {(() => {
+                          const icons: Record<string, any> = {
+                            text: Type,
+                            textarea: AlignLeft,
+                            email: Mail,
+                            number: Hash,
+                            select: List,
+                            checkbox: CheckSquare,
+                            radio: CircleDot,
+                            boolean: CheckCircle2,
+                            date: Calendar,
+                            datetime: Clock,
+                            time: Clock,
+                            media: ImageIcon,
+                            documents: FileText,
+                            'rich-text': FileJson,
+                            relation: LinkIcon,
+                            slug: Fingerprint,
+                            array: Layers,
+                          }
+                          const Icon = icons[field.type] || Type
+                          return <Icon className='w-3 h-3' />
+                        })()}
+                        <span className='text-[10px] font-mono'>
+                          {field.type}
+                        </span>
+                      </div>
+                    </div>
+                    <FieldInput
+                      field={field}
+                      value={formData[field.name]}
+                      onChange={(val) => handleFieldChange(field.name, val)}
+                      error={
+                        errors[currentLocale]
+                          ? errors[currentLocale][field.name]?._errors?.[0]
+                          : errors[field.name]
+                      }
+                      relationData={relationData}
+                      availableDocuments={availableDocuments}
+                      onMediaPickerOpen={setActiveMediaPickerField}
+                    />
+                    {field.type === 'media' && field.multiple && (
+                      <p className='text-[10px] text-muted-foreground italic'>
+                        You can select multiple files for this field and reorder
+                        them by moving their positions.
+                      </p>
                     )}
-                  </Label>
-                  <span className='text-[10px] font-mono opacity-40'>
-                    {field.type}
-                  </span>
-                </div>
-                <FieldInput
-                  field={field}
-                  value={formData[field.name]}
-                  onChange={(val) => handleFieldChange(field.name, val)}
-                  error={
-                    errors[currentLocale]
+                    {(errors[currentLocale]
                       ? errors[currentLocale][field.name]?._errors?.[0]
-                      : errors[field.name]
-                  }
-                  relationData={relationData}
-                  availableDocuments={availableDocuments}
-                  onMediaPickerOpen={setActiveMediaPickerField}
-                />
-                {field.type === 'media' && field.multiple && (
-                  <p className='text-[10px] text-muted-foreground italic'>
-                    You can select multiple files for this field.
-                  </p>
-                )}
-                {(errors[currentLocale]
-                  ? errors[currentLocale][field.name]?._errors?.[0]
-                  : errors[field.name]) && (
-                  <p className='text-xs font-medium text-destructive mt-1'>
-                    {errors[currentLocale]
-                      ? errors[currentLocale][field.name]?._errors?.[0]
-                      : errors[field.name]}
-                  </p>
-                )}
+                      : errors[field.name]) && (
+                      <p className='text-xs font-medium text-destructive mt-1'>
+                        {errors[currentLocale]
+                          ? errors[currentLocale][field.name]?._errors?.[0]
+                          : errors[field.name]}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className='flex justify-end space-x-4'>
-            <Button type='button' variant='outline' asChild>
-              <Link href={`/entries/${collection.id}`}>Cancel</Link>
-            </Button>
-            {!isPreviewingVersion && (
-              <div className='flex items-center'>
-                <div className='flex -space-x-px'>
-                  <Button
-                    type='button'
-                    disabled={isSubmitting}
-                    onClick={() => handleSubmit(undefined, 'published')}
-                    className='rounded-r-none border-r border-primary-foreground/20'
-                  >
-                    {isSubmitting ? (
-                      <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
-                    ) : (
-                      <Send className='w-4 h-4 mr-2' />
-                    )}
-                    {mode === 'create' ? 'Publish' : 'Update & Publish'}
-                  </Button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+              <div className='flex justify-end space-x-4'>
+                <Button type='button' variant='outline' asChild>
+                  <Link href={`/entries/${collection.id}`}>Cancel</Link>
+                </Button>
+                {!isPreviewingVersion && (
+                  <div className='flex items-center'>
+                    <div className='flex -space-x-px'>
                       <Button
                         type='button'
-                        size='icon'
                         disabled={isSubmitting}
-                        className='rounded-l-none'
+                        onClick={() => handleSubmit(undefined, 'published')}
+                        className='rounded-r-none border-r border-primary-foreground/20'
                       >
-                        <ChevronDown className='w-4 h-4' />
+                        {isSubmitting ? (
+                          <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
+                        ) : (
+                          <Send className='w-4 h-4 mr-2' />
+                        )}
+                        {mode === 'create' ? 'Publish' : 'Update & Publish'}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='end' className='w-48'>
-                      <DropdownMenuItem
-                        onClick={() => handleSubmit(undefined, 'draft')}
-                        className='cursor-pointer'
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type='button'
+                            size='icon'
+                            disabled={isSubmitting}
+                            className='rounded-l-none'
+                          >
+                            <ChevronDown className='w-4 h-4' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end' className='w-48'>
+                          <DropdownMenuItem
+                            onClick={() => handleSubmit(undefined, 'draft')}
+                            className='cursor-pointer'
+                          >
+                            <Save className='w-4 h-4 mr-2' />
+                            Save as Draft
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Metadata Sidebar (Edit Mode Only) */}
+          {mode === 'edit' && entry && isDetailsVisible && (
+            <div className='lg:col-span-1 space-y-6 animate-in slide-in-from-right-4 duration-300'>
+              <div className='bg-card rounded-xl border shadow-sm divide-y overflow-hidden'>
+                <div className='p-6 bg-muted/20'>
+                  <h3 className='text-sm font-bold uppercase tracking-widest text-muted-foreground'>
+                    Entry Details
+                  </h3>
+                </div>
+
+                <div className='p-6 space-y-4'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-muted-foreground'>
+                      ID
+                    </span>
+                    <span className='text-xs font-mono bg-muted px-2 py-1 rounded'>
+                      {entry.id}
+                    </span>
+                  </div>
+
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-muted-foreground'>
+                      Status
+                    </span>
+                    <div className='flex items-center'>
+                      <div
+                        className={cn(
+                          'w-2 h-2 rounded-full mr-2',
+                          entry.status === 'published'
+                            ? 'bg-green-500'
+                            : 'bg-amber-500'
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'text-xs font-bold uppercase tracking-wider',
+                          entry.status === 'published'
+                            ? 'text-green-600'
+                            : 'text-amber-600'
+                        )}
                       >
-                        <Save className='w-4 h-4 mr-2' />
-                        Save as Draft
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        {entry.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-muted-foreground'>
+                      Created At
+                    </span>
+                    <div className='flex items-center text-sm text-foreground/80'>
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-muted-foreground'>
+                      Last Updated
+                    </span>
+                    <div className='flex items-center text-sm text-foreground/80'>
+                      {new Date(entry.updatedAt).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </form>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* History Sidebar Overlay */}
