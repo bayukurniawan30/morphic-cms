@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/bayukurniawan30/morphic-cms/blob/main/morphic_cms_hero_mockup.png?raw=true" alt="Morphic CMS Hero" width="100%" style="border-radius: 12px; margin-bottom: 20px;" />
+  <img src="public/dashboard.png" alt="Morphic CMS Dashboard" width="100%" style="border-radius: 12px; margin-bottom: 20px;" />
 
 # MORPHIC CMS
 
