@@ -368,7 +368,7 @@ export default function EntriesList({
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant='outline'>
-                  <CodeIcon className='w-4 h-4 mr-2' />
+                  <TerminalIcon className='w-4 h-4 mr-2' />
                   API Preview
                 </Button>
               </DialogTrigger>

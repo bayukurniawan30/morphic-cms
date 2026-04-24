@@ -386,7 +386,7 @@ export default function Dashboard({
                     <tr>
                       <th className='px-6 py-3 font-medium'>Name</th>
                       <th className='px-6 py-3 font-medium'>Slug</th>
-                      <th className='px-6 py-3 font-medium text-right'>
+                      <th className='px-6 py-3 font-medium text-center'>
                         Entries
                       </th>
                       <th className='px-6 py-3 text-right'></th>
@@ -402,7 +402,7 @@ export default function Dashboard({
                         <td className='px-6 py-4 font-mono text-xs opacity-60'>
                           /{col.slug}
                         </td>
-                        <td className='px-6 py-4 text-right'>
+                        <td className='px-6 py-4 text-center'>
                           <span className='bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold text-xs'>
                             {col.count}
                           </span>

@@ -243,9 +243,6 @@ export default function CollectionsList({
                   <th className='px-6 py-4 font-medium uppercase tracking-wider text-center'>
                     Fields
                   </th>
-                  <th className='px-6 py-4 font-medium uppercase tracking-wider'>
-                    By
-                  </th>
                   <th
                     className='px-6 py-4 font-medium uppercase tracking-wider cursor-pointer hover:bg-muted/60 transition-colors'
                     onClick={() => toggleSort('createdAt')}
@@ -309,19 +306,6 @@ export default function CollectionsList({
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        {collection.createdBy?.name ? (
-                          <div className='flex items-center space-x-2'>
-                            <span className='text-xs font-medium'>
-                              {collection.createdBy.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className='text-xs text-muted-foreground italic'>
-                            System
-                          </span>
-                        )}
                       </td>
                       <td className='px-6 py-4 text-muted-foreground whitespace-nowrap'>
                         <div className='flex items-center space-x-2'>

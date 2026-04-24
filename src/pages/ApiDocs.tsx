@@ -205,6 +205,26 @@ curl -X GET "${baseUrl}/api/collections/blog-posts/entries?page=1&limit=10" \\
               />
             </div>
 
+            {/* Get Single Entry */}
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-green-500/10 text-green-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  GET
+                </span>
+                Get Single Entry
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Fetch a specific entry by its unique numeric ID.
+              </p>
+              <CodeBlock
+                id='get-single-entry'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X GET "${baseUrl}/api/entries/123" \\
+  -H "Authorization: Bearer YOUR_API_KEY"`}
+              />
+            </div>
+
             {/* Create Entry */}
             <div className='space-y-4'>
               <h3 className='text-lg font-semibold flex items-center gap-2'>
@@ -229,6 +249,51 @@ curl -X GET "${baseUrl}/api/collections/blog-posts/entries?page=1&limit=10" \\
     "content": "Hello World",
     "status": "published"
   }'`}
+              />
+            </div>
+
+            {/* Update Entry */}
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  PUT
+                </span>
+                Update Entry
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Update an existing entry by its ID. You only need to send the
+                fields you want to change.
+              </p>
+              <CodeBlock
+                id='put-entry'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X PUT "${baseUrl}/api/entries/123" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "title": "Updated Title"
+  }'`}
+              />
+            </div>
+
+            {/* Delete Entry */}
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-red-500/10 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  DELETE
+                </span>
+                Delete Entry
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Permanently remove an entry from the database by its ID.
+              </p>
+              <CodeBlock
+                id='delete-entry'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X DELETE "${baseUrl}/api/entries/123" \\
+  -H "Authorization: Bearer YOUR_API_KEY"`}
               />
             </div>
           </div>

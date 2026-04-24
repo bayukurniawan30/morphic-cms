@@ -13,12 +13,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { FieldDefinition } from '@/lib/dynamic-schema'
 import { cn } from '@/lib/utils'
@@ -51,6 +60,8 @@ import {
   RotateCcw,
   Save,
   Send,
+  Terminal,
+  TerminalIcon,
   Type,
   User,
   XIcon,
@@ -545,6 +556,35 @@ export default function EntriesForm({
   const [isPreviewingVersion, setPreviewingVersion] = useState<any | null>(null)
   const [isDirty, setIsDirty] = useState(false)
 
+  // API Preview State
+  const [isApiPreviewOpen, setIsApiPreviewOpen] = useState(false)
+  const [apiPreviewData, setApiPreviewData] = useState<any>(null)
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false)
+
+  const fetchApiPreview = async () => {
+    if (!entry?.id) return
+    setIsFetchingPreview(true)
+    try {
+      const res = await fetch(`/api/entries/${entry.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setApiPreviewData(data)
+      } else {
+        toast.error('Failed to fetch API preview')
+      }
+    } catch (err) {
+      toast.error('Network error')
+    } finally {
+      setIsFetchingPreview(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isApiPreviewOpen && !apiPreviewData && mode === 'edit') {
+      fetchApiPreview()
+    }
+  }, [isApiPreviewOpen])
+
   // Block navigation if there are unsaved changes
   useEffect(() => {
     if (!isDirty) return
@@ -877,6 +917,71 @@ export default function EntriesForm({
 
           {mode === 'edit' && (
             <div className='flex items-center space-x-2'>
+              <Dialog
+                open={isApiPreviewOpen}
+                onOpenChange={setIsApiPreviewOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant='outline' size='sm'>
+                    <TerminalIcon className='w-4 h-4 mr-2' />
+                    API Preview
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className='max-w-3xl max-h-[90vh] flex flex-col'>
+                  <DialogHeader>
+                    <DialogTitle className='flex items-center'>
+                      <Terminal className='w-5 h-5 mr-2 text-primary' />
+                      REST API Preview
+                    </DialogTitle>
+                    <DialogDescription>
+                      Live preview of the JSON response for this specific entry.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <ScrollArea className='h-[450px] mt-4 bg-zinc-950 rounded-xl border border-white/10 p-4 font-mono text-sm text-zinc-300'>
+                    {isFetchingPreview ? (
+                      <div className='h-full flex items-center justify-center text-zinc-500'>
+                        <Loader2Icon className='w-6 h-6 animate-spin mr-2' />
+                        Loading preview...
+                      </div>
+                    ) : apiPreviewData ? (
+                      <div>
+                        <div className='flex items-center justify-between mb-4 border-b border-white/5 pb-2'>
+                          <div className='flex items-center space-x-2'>
+                            <span className='px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold'>
+                              GET
+                            </span>
+                            <code className='text-[10px] text-zinc-400'>
+                              /api/entries/{entry?.id}
+                            </code>
+                          </div>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
+                            onClick={() => {
+                              navigator.clipboard.writeText(
+                                JSON.stringify(apiPreviewData, null, 2)
+                              )
+                              toast.success('Copied to clipboard')
+                            }}
+                          >
+                            Copy JSON
+                          </Button>
+                        </div>
+                        <pre className='whitespace-pre-wrap break-all'>
+                          {JSON.stringify(apiPreviewData, null, 2)}
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className='h-full flex items-center justify-center text-zinc-500'>
+                        No data available
+                      </div>
+                    )}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+
               <Button
                 type='button'
                 variant='outline'

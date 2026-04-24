@@ -454,8 +454,8 @@ export default function Documentation({ user }: { user: any }) {
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Single Entry
             </h4>
-            <CodeBlock code={`GET /api/collections/:slug/entries/:entryId`} />
-            <p className='mb-4'>Fetch a specific entry by its ID or slug.</p>
+            <CodeBlock code={`GET /api/entries/:id`} />
+            <p className='mb-4'>Fetch a specific entry by its ID.</p>
           </div>
           <div className='space-y-4'>
             <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
@@ -475,20 +475,17 @@ export default function Documentation({ user }: { user: any }) {
               Update Entry
             </h4>
             <CodeBlock
-              code={`PUT /api/collections/:id/entries/:entryId\nContent-Type: application/json\n\n{\n  "title": "Updated Title"\n}`}
+              code={`PUT /api/entries/:id\nContent-Type: application/json\n\n{\n  "title": "Updated Title"\n}`}
             />
-            <p className='mb-4'>Partially update an existing entry.</p>
+            <p className='mb-4'>Update an existing entry by its ID.</p>
           </div>
           <div className='space-y-4'>
             <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
               <span className='w-1.5 h-1.5 rounded-full bg-red-500 mr-2' />
               Delete Entry
             </h4>
-            <CodeBlock code={`DELETE /api/collections/:id/entries/:entryId`} />
-            <p className='mb-4'>
-              Permanently remove an entry. Returns a <code>200 OK</code> status
-              on success.
-            </p>
+            <CodeBlock code={`DELETE /api/entries/:id`} />
+            <p className='mb-4'>Permanently delete an entry.</p>
           </div>
         </div>
       </Section>
