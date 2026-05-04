@@ -113,7 +113,6 @@ export const inertia = (viewFile: string = 'index.html') => {
         <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Morphic CMS</title>
             <script>
               window.addEventListener('error', function(e) {
                 console.error('Global Runtime Error:', e.message, 'at', e.lineno, ':', e.colno);

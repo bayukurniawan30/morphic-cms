@@ -247,9 +247,7 @@ export default function MediaIndex({ user }: { user: any }) {
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Media Library | Morphic' />
-
+    <Layout user={user} title='Media'>
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0'>
           <div>

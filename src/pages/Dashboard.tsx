@@ -105,9 +105,7 @@ export default function Dashboard({
   ]
 
   return (
-    <Layout user={user}>
-      <Head title='Dashboard | Morphic CMS' />
-
+    <Layout user={user} title='Dashboard'>
       <div className='space-y-8 pb-12'>
         {/* Welcome Section */}
         <div>

@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Head, Link, useForm } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -291,9 +291,7 @@ export default function EditCollection({
   }, [isDialogOpen, collection.slug, collection.type])
 
   return (
-    <Layout user={user}>
-      <Head title={`Edit ${collection.name} | Morphic`} />
-
+    <Layout user={user} title={`Edit ${collection.name}`}>
       <div className='w-full space-y-8 pb-12'>
         <div
           className={`flex items-center space-x-4 ${collection.type === 'global' ? 'justify-between' : ''}`}

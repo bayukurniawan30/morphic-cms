@@ -31,7 +31,51 @@ export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   return (
     <div className='min-h-screen bg-slate-950 text-white selection:bg-primary/30'>
-      <Head title='Morphic CMS - Modern Headless CMS' />
+      <Head title='Morphic CMS - Modern, Edge-Ready Headless CMS'>
+        <meta
+          name='description'
+          content='Morphic CMS is a high-performance, multi-tenant headless CMS built for the edge. Fast, beautiful, and developer-friendly.'
+        />
+        <meta
+          name='keywords'
+          content='headless cms, edge-ready, multi-tenant, hono, drizzle, neon, react cms, modern cms'
+        />
+
+        {/* Favicon */}
+        <link rel='icon' type='image/png' href='/favicon.png' />
+
+        {/* Open Graph / Facebook */}
+        <meta property='og:type' content='website' />
+        <meta
+          property='og:url'
+          content={typeof window !== 'undefined' ? window.location.href : ''}
+        />
+        <meta
+          property='og:title'
+          content='Morphic CMS - Modern Headless CMS'
+        />
+        <meta
+          property='og:description'
+          content='The Edge-Ready, High-Performance Headless CMS for Modern Developers.'
+        />
+        <meta property='og:image' content='/dashboard.png' />
+
+        {/* Twitter */}
+        <meta property='twitter:card' content='summary_large_image' />
+        <meta
+          property='twitter:url'
+          content={typeof window !== 'undefined' ? window.location.href : ''}
+        />
+        <meta
+          property='twitter:title'
+          content='Morphic CMS - Modern Headless CMS'
+        />
+        <meta
+          property='twitter:description'
+          content='The Edge-Ready, High-Performance Headless CMS for Modern Developers.'
+        />
+        <meta property='twitter:image' content='/dashboard.png' />
+      </Head>
 
       {/* Background Glow */}
       <div className='fixed inset-0 overflow-hidden pointer-events-none'>

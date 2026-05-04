@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Head, Link, router } from '@inertiajs/react'
+import { Link, router } from '@inertiajs/react'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
@@ -92,8 +92,10 @@ export default function Form({ user, locale, mode }: FormProps) {
   const isEn = locale?.code === 'en'
 
   return (
-    <Layout user={user}>
-      <Head title={`${mode === 'create' ? 'Add' : 'Edit'} Language`} />
+    <Layout
+      user={user}
+      title={`${mode === 'create' ? 'Add' : 'Edit'} Language`}
+    >
       <div className='w-full space-y-6'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-3'>

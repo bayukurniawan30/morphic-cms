@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link, router } from '@inertiajs/react'
+import { Link, router } from '@inertiajs/react'
 import {
   CheckCircle2Icon,
   EditIcon,
@@ -50,9 +50,7 @@ export default function ApiKeyAbilities({
   }
 
   return (
-    <Layout user={user}>
-      <Head title='API Key Abilities | Morphic' />
-
+    <Layout user={user} title='API Key Abilities'>
       <div className='space-y-6 flex flex-col'>
         <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>
           <div>

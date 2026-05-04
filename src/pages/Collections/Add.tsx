@@ -11,11 +11,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Head, Link, useForm } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import {
   ChevronDownIcon,
   ChevronUpIcon,
+  LayoutTemplate,
   PlusIcon,
   Settings2Icon,
   TrashIcon,
@@ -57,6 +66,51 @@ export default function AddCollection({ user }: AddProps) {
     const newFields = [...data.fields]
     newFields[index] = { ...newFields[index], ...updates }
     setData('fields', newFields)
+  }
+
+  const loadTemplate = (type: string) => {
+    const generateId = () => Math.random().toString(36).substr(2, 9)
+    let templateFields: FieldDefinition[] = []
+
+    switch (type) {
+      case 'category':
+        templateFields = [
+          { id: generateId(), name: 'title', label: 'Title', type: 'text', required: true },
+          { id: generateId(), name: 'slug', label: 'Slug', type: 'slug', required: true },
+        ]
+        break
+      case 'post':
+        templateFields = [
+          { id: generateId(), name: 'title', label: 'Title', type: 'text', required: true },
+          { id: generateId(), name: 'slug', label: 'Slug', type: 'slug', required: true },
+          { id: generateId(), name: 'content', label: 'Content', type: 'rich-text', required: true },
+          { id: generateId(), name: 'excerpt', label: 'Excerpt', type: 'textarea', required: false },
+          { id: generateId(), name: 'featuredImage', label: 'Featured Image', type: 'media', required: false },
+        ]
+        break
+      case 'product':
+        templateFields = [
+          { id: generateId(), name: 'name', label: 'Name', type: 'text', required: true },
+          { id: generateId(), name: 'slug', label: 'Slug', type: 'slug', required: true },
+          { id: generateId(), name: 'description', label: 'Description', type: 'rich-text', required: true },
+          { id: generateId(), name: 'price', label: 'Price', type: 'number', required: true },
+          { id: generateId(), name: 'sku', label: 'SKU', type: 'text', required: false },
+          { id: generateId(), name: 'thumbnail', label: 'Thumbnail', type: 'media', required: false },
+        ]
+        break
+      case 'member':
+        templateFields = [
+          { id: generateId(), name: 'name', label: 'Full Name', type: 'text', required: true },
+          { id: generateId(), name: 'position', label: 'Position', type: 'text', required: true },
+          { id: generateId(), name: 'bio', label: 'Biography', type: 'textarea', required: false },
+          { id: generateId(), name: 'photo', label: 'Photo', type: 'media', required: false },
+          { id: generateId(), name: 'email', label: 'Email', type: 'email', required: false },
+        ]
+        break
+    }
+
+    setData('fields', [...data.fields, ...templateFields])
+    toast.success(`Loaded ${type} template`)
   }
 
   const moveField = (index: number, direction: 'up' | 'down') => {
@@ -237,9 +291,7 @@ export default function AddCollection({ user }: AddProps) {
   }, [])
 
   return (
-    <Layout user={user}>
-      <Head title='Add Collection | Morphic' />
-
+    <Layout user={user} title='Add Collection'>
       <div className='w-full space-y-8'>
         <div>
           <h1 className='text-3xl font-bold tracking-tight'>
@@ -332,10 +384,37 @@ export default function AddCollection({ user }: AddProps) {
           <div className='space-y-4'>
             <div className='flex justify-between items-center'>
               <h2 className='text-xl font-semibold'>Fields</h2>
-              <Button type='button' onClick={addField} size='sm'>
-                <PlusIcon className='w-4 h-4 mr-2' />
-                Add Field
-              </Button>
+              <div className='flex items-center gap-2'>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant='outline' size='sm'>
+                      <LayoutTemplate className='w-4 h-4 mr-2' />
+                      Load from template
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end' className='w-48'>
+                    <DropdownMenuLabel>Quick Templates</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => loadTemplate('category')}>
+                      Category Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('post')}>
+                      Blog Post Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('product')}>
+                      Product Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('member')}>
+                      Team Member Template
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button type='button' onClick={addField} size='sm'>
+                  <PlusIcon className='w-4 h-4 mr-2' />
+                  Add Field
+                </Button>
+              </div>
             </div>
 
             <div className='space-y-4'>

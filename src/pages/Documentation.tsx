@@ -448,6 +448,48 @@ export default function Documentation({ user }: { user: any }) {
               Returns a paginated list of entries for the given collection slug
               or ID.
             </p>
+
+            <div className='bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800 space-y-3'>
+              <h5 className='text-xs font-bold uppercase tracking-wider text-slate-400'>
+                Query Parameters
+              </h5>
+              <ul className='space-y-2 text-sm'>
+                <li className='flex items-start'>
+                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                    page
+                  </code>
+                  <span className='text-slate-600 dark:text-slate-400'>
+                    The page number to retrieve. Default is <code>1</code>.
+                  </span>
+                </li>
+                <li className='flex items-start'>
+                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                    limit
+                  </code>
+                  <span className='text-slate-600 dark:text-slate-400'>
+                    Number of items per page. Default is <code>10</code>.
+                  </span>
+                </li>
+                <li className='flex items-start'>
+                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                    locale
+                  </code>
+                  <span className='text-slate-600 dark:text-slate-400'>
+                    Filter by language code (e.g. <code>en</code>, <code>id</code>
+                    ). Set to <code>_all</code> to retrieve all localized versions.
+                  </span>
+                </li>
+                <li className='flex items-start'>
+                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                    trash
+                  </code>
+                  <span className='text-slate-600 dark:text-slate-400'>
+                    Set to <code>true</code> to retrieve deleted items (only if
+                    trash is enabled for the collection).
+                  </span>
+                </li>
+              </ul>
+            </div>
           </div>
           <div className='space-y-4'>
             <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
@@ -574,10 +616,12 @@ export default function Documentation({ user }: { user: any }) {
 
   return (
     <>
-      <Head title='Documentation | Morphic CMS' />
+      <Head title='Documentation | Morphic CMS'>
+        <link rel='icon' type='image/png' href='/favicon.png' />
+      </Head>
 
       {user ? (
-        <Layout user={user}>
+        <Layout user={user} title='Documentation'>
           <div className='flex flex-col lg:flex-row min-h-screen'>
             {/* Desktop Navigation Sidebar */}
             <aside className='hidden lg:block w-72 border-r p-8 sticky top-0 h-screen overflow-y-auto'>

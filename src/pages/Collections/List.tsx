@@ -161,8 +161,7 @@ export default function CollectionsList({
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Collections | Morphic' />
+    <Layout user={user} title='Collections'>
 
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>

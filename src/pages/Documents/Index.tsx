@@ -2,21 +2,18 @@ import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LoadingState } from '@/components/ui/loader'
-import { Head } from '@inertiajs/react'
 import {
-  FileTextIcon,
-  UploadIcon,
-  TrashIcon,
-  CopyIcon,
-  DownloadIcon,
-  SearchIcon,
-  FileIcon,
-  ExternalLinkIcon,
   ChevronLeft,
   ChevronRight,
+  CopyIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  SearchIcon,
+  TrashIcon,
+  UploadIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 interface DocumentFile {
   id: number
@@ -139,9 +136,7 @@ export default function DocumentsIndex({ user }: { user: any }) {
   const filteredFiles = files
 
   return (
-    <Layout user={user}>
-      <Head title='Documents | Morphic' />
-
+    <Layout user={user} title='Documents'>
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0'>
           <div>

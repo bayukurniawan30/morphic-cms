@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
 import { Languages, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
@@ -55,8 +55,7 @@ export default function List({ user }: ListProps) {
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Localization Management' />
+    <Layout user={user} title='Localization'>
       <div className='space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between items-end gap-4'>
           <div>

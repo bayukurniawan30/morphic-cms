@@ -2,7 +2,7 @@ import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Head, router } from '@inertiajs/react'
+import { router } from '@inertiajs/react'
 import { Building2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
@@ -56,8 +56,7 @@ export default function AddTenant({ user }: AddTenantProps) {
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Create Workspace' />
+    <Layout user={user} title='Create Workspace'>
       <div className='max-w-2xl space-y-6'>
         <div>
           <div className='flex items-center gap-3'>

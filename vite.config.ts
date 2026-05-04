@@ -27,7 +27,7 @@ export default defineConfig({
         /.*\.css(\?.*)?$/,
         /^\/node_modules\/.*/,
         /^\/@.+$/,
-        /^\/favicon\.ico$/,
+        /^\/favicon\.png$/,
       ],
       injectClientScript: false,
     }),

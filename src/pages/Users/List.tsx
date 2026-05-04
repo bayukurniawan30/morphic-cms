@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -15,8 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Head, Link, router } from '@inertiajs/react'
+import { Link, router } from '@inertiajs/react'
 import {
   ArrowDown,
   ArrowUp,
@@ -243,8 +243,7 @@ export default function List({
     users.some((u) => u.canManage)
 
   return (
-    <Layout user={user}>
-      <Head title='Users Management' />
+    <Layout user={user} title='Users'>
       <div className='max-w-6xl mx-auto space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between items-end gap-4'>
           <div>

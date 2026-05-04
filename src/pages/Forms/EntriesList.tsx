@@ -1,15 +1,13 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
-  FileCheckIcon,
-  SearchIcon,
   ExternalLinkIcon,
-  PlusIcon,
-  DatabaseIcon,
-  RefreshCwIcon,
+  FileCheckIcon,
   MoreHorizontalIcon,
+  RefreshCwIcon,
+  SearchIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
@@ -52,9 +50,7 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
   }, [fetchEntries])
 
   return (
-    <Layout user={user}>
-      <Head title={`${form.name} Entries | Morphic`} />
-
+    <Layout user={user} title={`${form.name} Entries | Morphic`}>
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0'>
           <div className='flex items-center space-x-4'>

@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
 import { EditIcon, FileCheckIcon, PlusIcon, TrashIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -42,9 +42,7 @@ export default function FormsList({ forms, user }: ListProps) {
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Forms | Morphic' />
-
+    <Layout user={user} title='Forms'>
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>
           <div>

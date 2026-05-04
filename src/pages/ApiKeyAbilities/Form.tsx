@@ -8,7 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Head, Link, useForm } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import { ArrowLeftIcon, HelpCircleIcon, LockIcon, SaveIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
@@ -107,9 +107,10 @@ export default function AbilityForm({
   }
 
   return (
-    <Layout user={user}>
-      <Head title={mode === 'create' ? 'Create Ability' : 'Edit Ability'} />
-
+    <Layout
+      user={user}
+      title={mode === 'create' ? 'Create Ability' : 'Edit Ability'}
+    >
       <div className='w-full space-y-6 flex flex-col pt-4 pb-12'>
         <div className='flex justify-between items-center'>
           <div className='flex items-center space-x-3'>

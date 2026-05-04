@@ -1,13 +1,12 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Head } from '@inertiajs/react'
 import {
+  AlertCircleIcon,
+  CheckCircleIcon,
+  Loader2Icon,
   MailIcon,
   SendIcon,
-  CheckCircleIcon,
-  AlertCircleIcon,
-  Loader2Icon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
@@ -62,9 +61,7 @@ export default function EmailTest({ user }: { user?: any }) {
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Email Settings | Morphic' />
-
+    <Layout user={user} title='Email Settings'>
       <div className='w-full space-y-6 flex flex-col'>
         <div className='flex justify-between items-end'>
           <div>

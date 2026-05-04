@@ -18,18 +18,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Head, Link } from '@inertiajs/react'
-import { useForm } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import {
-  PlusIcon,
-  TrashIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  Settings2Icon,
   ArrowLeftIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   GlobeIcon,
-  ShieldCheckIcon,
   HelpCircleIcon,
+  PlusIcon,
+  Settings2Icon,
+  ShieldCheckIcon,
+  TrashIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
@@ -214,9 +213,7 @@ export default function AddForm({ user }: AddProps) {
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Create Form | Morphic' />
-
+    <Layout user={user} title='Create Form'>
       <div className='w-full space-y-8'>
         <div className='flex items-center space-x-4'>
           <Button variant='ghost' size='icon' asChild className='rounded-full'>

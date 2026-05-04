@@ -203,6 +203,54 @@ export default function ApiDocs({ user }: ApiDocsProps) {
 curl -X GET "${baseUrl}/api/collections/blog-posts/entries?page=1&limit=10" \\
   -H "Authorization: Bearer YOUR_API_KEY"`}
               />
+
+              <div className='bg-muted/50 border rounded-lg p-4 space-y-3'>
+                <h4 className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
+                  Query Parameters
+                </h4>
+                <div className='grid gap-3 text-sm'>
+                  <div className='flex items-start gap-3'>
+                    <code className='bg-muted px-1.5 py-0.5 rounded text-primary font-bold shrink-0'>
+                      page
+                    </code>
+                    <span className='text-muted-foreground'>
+                      The page number to retrieve. Default is{' '}
+                      <code className='text-foreground'>1</code>.
+                    </span>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <code className='bg-muted px-1.5 py-0.5 rounded text-primary font-bold shrink-0'>
+                      limit
+                    </code>
+                    <span className='text-muted-foreground'>
+                      Number of items per page. Default is{' '}
+                      <code className='text-foreground'>10</code>.
+                    </span>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <code className='bg-muted px-1.5 py-0.5 rounded text-primary font-bold shrink-0'>
+                      locale
+                    </code>
+                    <span className='text-muted-foreground'>
+                      Filter by language code (e.g.{' '}
+                      <code className='text-foreground'>en</code>,{' '}
+                      <code className='text-foreground'>id</code>). Set to{' '}
+                      <code className='text-foreground'>_all</code> to retrieve
+                      all localized versions.
+                    </span>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <code className='bg-muted px-1.5 py-0.5 rounded text-primary font-bold shrink-0'>
+                      trash
+                    </code>
+                    <span className='text-muted-foreground'>
+                      Set to <code className='text-foreground'>true</code> to
+                      retrieve deleted items (only if trash is enabled for the
+                      collection).
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Get Single Entry */}

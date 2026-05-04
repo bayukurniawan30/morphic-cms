@@ -45,7 +45,9 @@ export default function Index({ title }: { title: string }) {
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-background p-6 overflow-hidden relative'>
-      <Head title={`Login | ${title}`} />
+      <Head title={`Login | ${title || 'Morphic CMS'}`}>
+        <link rel='icon' type='image/png' href='/favicon.png' />
+      </Head>
 
       {/* Animated Background Elements */}
       <div className='absolute top-[-15%] left-[-15%] w-[60%] h-[60%] bg-cyan-600/30 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]' />

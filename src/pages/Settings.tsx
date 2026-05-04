@@ -1,12 +1,6 @@
 import Layout from '@/components/Layout'
-import { Head, Link } from '@inertiajs/react'
-import {
-  SettingsIcon,
-  MailIcon,
-  ShieldCheckIcon,
-  DatabaseIcon,
-} from 'lucide-react'
-import React from 'react'
+import { Link } from '@inertiajs/react'
+import { MailIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
 
 export default function Settings({ user }: { user?: any }) {
   const settingGroups = [
@@ -49,9 +43,7 @@ export default function Settings({ user }: { user?: any }) {
   ]
 
   return (
-    <Layout user={user}>
-      <Head title='Settings | Morphic' />
-
+    <Layout user={user} title='Settings'>
       <div className='max-w-4xl mx-auto space-y-8 flex flex-col pt-4'>
         <div>
           <h1 className='text-3xl font-bold tracking-tight'>Settings</h1>

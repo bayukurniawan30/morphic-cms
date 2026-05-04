@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Head, Link, useForm } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import { Eye, EyeOff } from 'lucide-react'
 import React, { useState } from 'react'
 
@@ -63,8 +63,7 @@ export default function Add({
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Add User' />
+    <Layout user={user} title='Add User'>
       <div className='w-full space-y-6'>
         <div className='flex justify-between items-center'>
           <div>
@@ -152,7 +151,6 @@ export default function Add({
               </button>
             </div>
           </div>
-
 
           <div className='space-y-2'>
             <Label htmlFor='ability'>API Ability</Label>

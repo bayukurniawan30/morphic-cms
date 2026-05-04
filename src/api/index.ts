@@ -97,7 +97,7 @@ const distPath = './dist'
 
 // Serve static assets from the dist folder
 app.use('/assets/*', serveStatic({ root: distPath }))
-app.use('/favicon.ico', serveStatic({ root: distPath }))
+app.use('/favicon.png', serveStatic({ root: distPath }))
 app.use('/vite.svg', serveStatic({ root: distPath }))
 
 // Serve the Landing Page at root
@@ -107,7 +107,7 @@ app.get('/', async (c) => {
 
 // Serve the Login page at /login
 app.get('/login', async (c) => {
-  return c.get('inertia')('Index', { title: 'Morphic CMS - Login' })
+  return c.get('inertia')('Index', { title: 'Morphic CMS' })
 })
 
 app.get('/logout', async (c) => {

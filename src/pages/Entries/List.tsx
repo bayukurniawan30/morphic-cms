@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Head, Link, router } from '@inertiajs/react'
+import { Link, router } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -332,9 +332,7 @@ export default function EntriesList({
   }
 
   return (
-    <Layout user={user}>
-      <Head title={`${collection.name} Entries | Morphic`} />
-
+    <Layout user={user} title={`${collection.name} Entries | Morphic`}>
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between lg:items-end space-y-4 sm:space-y-0'>
           <div className='flex items-center space-x-4'>

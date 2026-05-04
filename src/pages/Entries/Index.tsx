@@ -7,9 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Head, Link, router } from '@inertiajs/react'
-import { DatabaseIcon, LayersIcon, ArrowRightIcon } from 'lucide-react'
-import React from 'react'
+import { Link, router } from '@inertiajs/react'
+import { ArrowRightIcon, DatabaseIcon, LayersIcon } from 'lucide-react'
 
 interface Collection {
   id: number
@@ -41,9 +40,7 @@ export default function EntriesIndex({
   }
 
   return (
-    <Layout user={user}>
-      <Head title='Content Manager | Morphic' />
-
+    <Layout user={user} title='Content Manager'>
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>
           <div>

@@ -4,15 +4,6 @@ import RichTextEditor from '@/components/RichTextEditor'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,17 +12,26 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { FieldDefinition } from '@/lib/dynamic-schema'
 import { cn } from '@/lib/utils'
-import { Head, Link, router } from '@inertiajs/react'
+import { Link, router } from '@inertiajs/react'
 import {
   AlignLeft,
   ArrowLeft,
@@ -870,11 +870,10 @@ export default function EntriesForm({
   }
 
   return (
-    <Layout user={user}>
-      <Head
-        title={`${mode === 'create' ? 'Add' : 'Edit'} ${collection.name} Entry | Morphic`}
-      />
-
+    <Layout
+      user={user}
+      title={`${mode === 'create' ? 'Add' : 'Edit'} ${collection.name} Entry | Morphic`}
+    >
       <div className='space-y-6 pb-12'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-4'>

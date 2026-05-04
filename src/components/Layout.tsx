@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { getAppVersion } from '@/lib/version'
-import { Link, usePage } from '@inertiajs/react'
+import { Head, Link, usePage } from '@inertiajs/react'
 import {
   Book,
   Building2,
@@ -57,6 +57,7 @@ interface TenantProps {
 
 interface LayoutProps {
   user: UserProps
+  title?: string
   children: React.ReactNode
 }
 
@@ -112,7 +113,7 @@ const NavItem = ({
   )
 }
 
-export default function Layout({ user, children }: LayoutProps) {
+export default function Layout({ user, title, children }: LayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
 
   React.useEffect(() => {
@@ -176,6 +177,9 @@ export default function Layout({ user, children }: LayoutProps) {
 
   return (
     <TooltipProvider>
+      <Head title={title ? `${title} | Morphic CMS` : 'Morphic CMS'}>
+        <link rel='icon' type='image/png' href='/favicon.png' />
+      </Head>
       <div className='min-h-screen flex bg-background text-foreground'>
         <Toaster />
         {/* ... existing aside and main ... */}
