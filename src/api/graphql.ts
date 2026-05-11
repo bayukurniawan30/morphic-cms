@@ -3,8 +3,13 @@ import { db } from '../db/index.js'
 import { collections, entries, media } from '../db/schema.js'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
 
+interface YogaContext {
+  tenantId: number | null
+  user: any
+}
+
 export const createGraphQLHandler = () => {
-  const schema = createSchema({
+  const schema = createSchema<YogaContext>({
     typeDefs: /* GraphQL */ `
       scalar JSON
 
@@ -117,7 +122,7 @@ export const createGraphQLHandler = () => {
     }
   })
 
-  return createYoga({
+  return createYoga<YogaContext>({
     schema,
     graphqlEndpoint: '/api/graphql',
     fetchAPI: { Response, Request }
