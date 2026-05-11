@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { Link, router } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -92,6 +93,8 @@ export default function EntriesList({
   allLocales = [],
 }: ListProps) {
   const isTrash = filters?.trash || false
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
 
   const handleDelete = async (entryId: number, force?: boolean) => {
     if (
@@ -374,220 +377,338 @@ export default function EntriesList({
                 <DialogHeader>
                   <DialogTitle className='flex items-center'>
                     <TerminalIcon className='w-5 h-5 mr-2 text-primary' />
-                    REST API Preview
+                    API Documentation & Preview
                   </DialogTitle>
                   <DialogDescription>
-                    Interactive preview of the JSON response for this
+                    Interactive preview of the API responses for this
                     collection.
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className='flex-1 space-y-4 overflow-hidden flex flex-col mt-4'>
-                  {(collection as any).type !== 'global' && (
-                    <div
-                      className={cn(
-                        'grid gap-4 bg-muted/30 p-4 rounded-lg border',
-                        collection.localized
-                          ? 'grid-cols-1 md:grid-cols-3'
-                          : 'grid-cols-1 md:grid-cols-2'
-                      )}
-                    >
-                      <div className='space-y-2'>
-                        <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                          Page Number
-                        </label>
-                        <Input
-                          type='number'
-                          min={1}
-                          value={previewPage}
-                          onChange={(e) =>
-                            setPreviewPage(
-                              Math.max(1, parseInt(e.target.value) || 1)
-                            )
-                          }
-                          className='h-8 text-xs'
-                        />
-                      </div>
-                      <div className='space-y-2'>
-                        <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                          Limit per Page
-                        </label>
-                        <Input
-                          type='number'
-                          min={1}
-                          max={100}
-                          value={previewLimit}
-                          onChange={(e) =>
-                            setPreviewLimit(
-                              Math.max(
-                                1,
-                                Math.min(100, parseInt(e.target.value) || 10)
-                              )
-                            )
-                          }
-                          className='h-8 text-xs'
-                        />
-                      </div>
-                      {collection.localized && (
+                <Tabs
+                  defaultValue='rest'
+                  className='flex-1 flex flex-col mt-4 overflow-hidden'
+                >
+                  <TabsList className='grid w-full grid-cols-2 mb-4'>
+                    <TabsTrigger value='rest' className='flex items-center'>
+                      <TerminalIcon className='w-4 h-4 mr-2' />
+                      REST API
+                    </TabsTrigger>
+                    <TabsTrigger value='graphql' className='flex items-center'>
+                      <DatabaseIcon className='w-4 h-4 mr-2' />
+                      GraphQL API
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent
+                    value='rest'
+                    className='flex-1 flex flex-col overflow-hidden space-y-4 m-0'
+                  >
+                    {(collection as any).type !== 'global' && (
+                      <div
+                        className={cn(
+                          'grid gap-4 bg-muted/30 p-4 rounded-lg border',
+                          collection.localized
+                            ? 'grid-cols-1 md:grid-cols-3'
+                            : 'grid-cols-1 md:grid-cols-2'
+                        )}
+                      >
                         <div className='space-y-2'>
                           <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                            Locale
+                            Page Number
                           </label>
-                          <Select
-                            value={previewLocale}
-                            onValueChange={setPreviewLocale}
-                          >
-                            <SelectTrigger className='h-8 text-xs'>
-                              <SelectValue placeholder='Select locale' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='_all'>
-                                All Languages
-                              </SelectItem>
-                              {allLocales.map((l) => (
-                                <SelectItem key={l.code} value={l.code}>
-                                  {l.name} ({l.code})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            type='number'
+                            min={1}
+                            value={previewPage}
+                            onChange={(e) =>
+                              setPreviewPage(
+                                Math.max(1, parseInt(e.target.value) || 1)
+                              )
+                            }
+                            className='h-8 text-xs'
+                          />
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className='space-y-2'>
-                    <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                      Endpoint URL
-                    </label>
-                    <div className='flex space-x-2'>
-                      <Input
-                        readOnly
-                        value={(() => {
-                          let url =
-                            (collection as any).type === 'global'
-                              ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                              : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
-
-                          if (collection.localized && previewLocale) {
-                            url += `&locale=${previewLocale}`
-                          }
-                          return url
-                        })()}
-                        className='font-mono text-xs bg-muted/50'
-                      />
-                      <Button
-                        variant='secondary'
-                        size='icon'
-                        onClick={() => {
-                          let url =
-                            (collection as any).type === 'global'
-                              ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                              : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
-
-                          if (collection.localized && previewLocale) {
-                            url += `&locale=${previewLocale}`
-                          }
-
-                          navigator.clipboard.writeText(url)
-                          toast.success('URL copied to clipboard')
-                        }}
-                      >
-                        <CopyIcon className='w-4 h-4' />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className='flex-1 flex flex-col min-h-0 space-y-2'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-2'>
-                        <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                          JSON Response
-                        </label>
-                        {isPreviewLoading && (
-                          <span className='text-[10px] animate-pulse text-primary font-bold'>
-                            LOADING...
-                          </span>
+                        <div className='space-y-2'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            Limit per Page
+                          </label>
+                          <Input
+                            type='number'
+                            min={1}
+                            max={100}
+                            value={previewLimit}
+                            onChange={(e) =>
+                              setPreviewLimit(
+                                Math.max(
+                                  1,
+                                  Math.min(100, parseInt(e.target.value) || 10)
+                                )
+                              )
+                            }
+                            className='h-8 text-xs'
+                          />
+                        </div>
+                        {collection.localized && (
+                          <div className='space-y-2'>
+                            <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                              Locale
+                            </label>
+                            <Select
+                              value={previewLocale}
+                              onValueChange={setPreviewLocale}
+                            >
+                              <SelectTrigger className='h-8 text-xs'>
+                                <SelectValue placeholder='Select locale' />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='_all'>
+                                  All Languages
+                                </SelectItem>
+                                {allLocales.map((l) => (
+                                  <SelectItem key={l.code} value={l.code}>
+                                    {l.name} ({l.code})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
                       </div>
-                      <div className='flex items-center space-x-2'>
+                    )}
+
+                    <div className='space-y-2'>
+                      <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                        REST Endpoint URL
+                      </label>
+                      <div className='flex space-x-2'>
+                        <Input
+                          readOnly
+                          value={(() => {
+                            let url =
+                              (collection as any).type === 'global'
+                                ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                                : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+
+                            if (collection.localized && previewLocale) {
+                              url += `&locale=${previewLocale}`
+                            }
+                            return url
+                          })()}
+                          className='font-mono text-xs bg-muted/50'
+                        />
                         <Button
-                          variant='ghost'
-                          size='sm'
-                          className='h-7 text-[10px]'
+                          variant='secondary'
+                          size='icon'
                           onClick={() => {
-                            const name = collection.name.replace(
-                              /[^a-zA-Z0-9]/g,
-                              ''
-                            )
-                            let fieldsTs = ''
+                            let url =
+                              (collection as any).type === 'global'
+                                ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                                : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
 
-                            collection.fields.forEach((f: any) => {
-                              let type = 'any'
-                              if (
-                                [
-                                  'text',
-                                  'textarea',
-                                  'rich-text',
-                                  'slug',
-                                  'email',
-                                  'date',
-                                  'datetime',
-                                  'time',
-                                  'select',
-                                  'radio',
-                                ].includes(f.type)
-                              )
-                                type = 'string'
-                              if (['number'].includes(f.type)) type = 'number'
-                              if (['boolean', 'checkbox'].includes(f.type))
-                                type = 'boolean'
-                              if (f.type === 'array') type = 'any[]'
-                              if (f.type === 'relation')
-                                type = '{ id: number; [key: string]: any }'
+                            if (collection.localized && previewLocale) {
+                              url += `&locale=${previewLocale}`
+                            }
 
-                              fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
-                            })
-
-                            const tsInterface = `export interface ${name}Content {\n${fieldsTs}}\n\nexport interface ${name}Entry {\n  id: number;\n  content: ${name}Content;\n  createdAt: string;\n  updatedAt: string;\n}\n`
-
-                            navigator.clipboard.writeText(tsInterface)
-                            toast.success(
-                              'TypeScript interface copied to clipboard'
-                            )
+                            navigator.clipboard.writeText(url)
+                            toast.success('URL copied to clipboard')
                           }}
                         >
-                          <CodeIcon className='w-3 h-3 mr-1.5' />
-                          Copy Types
-                        </Button>
-                        <Button
-                          variant='ghost'
-                          size='sm'
-                          className='h-7 text-[10px]'
-                          onClick={() => {
-                            const json = JSON.stringify(
-                              previewData || { entries, pagination },
-                              null,
-                              2
-                            )
-                            navigator.clipboard.writeText(json)
-                            toast.success('JSON copied to clipboard')
-                          }}
-                        >
-                          <CopyIcon className='w-3 h-3 mr-1.5' />
-                          Copy JSON
+                          <CopyIcon className='w-4 h-4' />
                         </Button>
                       </div>
                     </div>
-                    <ScrollArea className='h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300'>
-                      <div className='min-w-max'>
-                        <pre className='whitespace-pre'>
-                          {previewData
-                            ? JSON.stringify(previewData, null, 2)
-                            : '// Loading preview data...'}
-                        </pre>
+
+                    <div className='flex-1 flex flex-col min-h-0 space-y-2'>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center space-x-2'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            JSON Response
+                          </label>
+                          {isPreviewLoading && (
+                            <span className='text-[10px] animate-pulse text-primary font-bold'>
+                              LOADING...
+                            </span>
+                          )}
+                        </div>
+                        <div className='flex items-center space-x-2'>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 text-[10px]'
+                            onClick={() => {
+                              const name = collection.name.replace(
+                                /[^a-zA-Z0-9]/g,
+                                ''
+                              )
+                              let fieldsTs = ''
+
+                              collection.fields.forEach((f: any) => {
+                                let type = 'any'
+                                if (
+                                  [
+                                    'text',
+                                    'textarea',
+                                    'rich-text',
+                                    'slug',
+                                    'email',
+                                    'date',
+                                    'datetime',
+                                    'time',
+                                    'select',
+                                    'radio',
+                                  ].includes(f.type)
+                                )
+                                  type = 'string'
+                                if (['number'].includes(f.type)) type = 'number'
+                                if (['boolean', 'checkbox'].includes(f.type))
+                                  type = 'boolean'
+                                if (f.type === 'array') type = 'any[]'
+                                if (f.type === 'relation')
+                                  type = '{ id: number; [key: string]: any }'
+
+                                fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
+                              })
+
+                              const tsInterface = `export interface ${name}Content {\n${fieldsTs}}\n\nexport interface ${name}Entry {\n  id: number;\n  content: ${name}Content;\n  createdAt: string;\n  updatedAt: string;\n}\n`
+
+                              navigator.clipboard.writeText(tsInterface)
+                              toast.success(
+                                'TypeScript interface copied to clipboard'
+                              )
+                            }}
+                          >
+                            <CodeIcon className='w-3 h-3 mr-1.5' />
+                            Copy Types
+                          </Button>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 text-[10px]'
+                            onClick={() => {
+                              const json = JSON.stringify(
+                                previewData || { entries, pagination },
+                                null,
+                                2
+                              )
+                              navigator.clipboard.writeText(json)
+                              toast.success('JSON copied to clipboard')
+                            }}
+                          >
+                            <CopyIcon className='w-3 h-3 mr-1.5' />
+                            Copy JSON
+                          </Button>
+                        </div>
                       </div>
-                    </ScrollArea>
+                      <ScrollArea className='h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300'>
+                        <div className='min-w-max'>
+                          <pre className='whitespace-pre'>
+                            {previewData
+                              ? JSON.stringify(previewData, null, 2)
+                              : '// Loading preview data...'}
+                          </pre>
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent
+                    value='graphql'
+                    className='flex-1 flex flex-col overflow-hidden space-y-4 m-0'
+                  >
+                    <div className='space-y-2'>
+                      <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                        GraphQL Endpoint
+                      </label>
+                      <div className='flex space-x-2'>
+                        <Input
+                          readOnly
+                          value={`${window.location.origin}/api/graphql`}
+                          className='font-mono text-xs bg-muted/50'
+                        />
+                        <Button
+                          variant='secondary'
+                          size='icon'
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              `${window.location.origin}/api/graphql`
+                            )
+                            toast.success(
+                              'GraphQL endpoint copied to clipboard'
+                            )
+                          }}
+                        >
+                          <CopyIcon className='w-4 h-4' />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0'>
+                      <div className='flex flex-col space-y-2 overflow-hidden'>
+                        <div className='flex items-center justify-between'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            GraphQL Query
+                          </label>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 text-[10px]'
+                            onClick={() => {
+                              const query = `query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`
+                              navigator.clipboard.writeText(query)
+                              toast.success('Query copied to clipboard')
+                            }}
+                          >
+                            <CopyIcon className='w-3 h-3 mr-1.5' />
+                            Copy Query
+                          </Button>
+                        </div>
+                        <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-400'>
+                          <pre className='whitespace-pre'>
+                            {`query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
+                          </pre>
+                        </ScrollArea>
+                      </div>
+
+                      <div className='flex flex-col space-y-2 overflow-hidden'>
+                        <div className='flex items-center justify-between'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            Data Response
+                          </label>
+                        </div>
+                        <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-300'>
+                          <pre className='whitespace-pre'>
+                            {previewData
+                              ? JSON.stringify(
+                                  {
+                                    data: {
+                                      entries:
+                                        previewData.entries || previewData,
+                                    },
+                                  },
+                                  null,
+                                  2
+                                )
+                              : '// Requesting data...'}
+                          </pre>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className='mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-start space-x-3'>
+                  <DatabaseIcon className='w-4 h-4 text-primary mt-0.5' />
+                  <div className='text-[11px] text-zinc-500 leading-relaxed'>
+                    <span className='font-bold text-primary'>
+                      External Request Tip:
+                    </span>{' '}
+                    When hitting the API from external apps (Mobile, Frontend,
+                    cURL), you must include the header{' '}
+                    <code className='text-primary font-mono'>
+                      X-Tenant-ID: {activeTenant?.id || '[TENANT_ID]'}
+                    </code>{' '}
+                    to authorize access to this workspace's data.
                   </div>
                 </div>
               </DialogContent>

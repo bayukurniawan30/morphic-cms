@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Head, Link, router } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import {
   ArrowDown,
   ArrowUp,
@@ -36,6 +36,7 @@ interface Collection {
   type: 'collection' | 'global'
   createdBy?: { id: number; name: string }
   createdById?: number
+  tenant?: { id: number; name: string }
   createdAt: string
   updatedAt: string
 }
@@ -65,6 +66,10 @@ export default function CollectionsList({
   filters,
   pagination,
 }: ListProps) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
   const [searchQuery, setSearchQuery] = useState(filters?.q || '')
 
   const handleDelete = async (id: number) => {
@@ -162,7 +167,6 @@ export default function CollectionsList({
 
   return (
     <Layout user={user} title='Collections'>
-
       <div className='flex flex-col space-y-6'>
         <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>
           <div>
@@ -239,6 +243,11 @@ export default function CollectionsList({
                   <th className='px-6 py-4 font-medium uppercase tracking-wider'>
                     Type
                   </th>
+                  {isSystemGlobal && (
+                    <th className='px-6 py-4 font-medium uppercase tracking-wider'>
+                      Tenant
+                    </th>
+                  )}
                   <th className='px-6 py-4 font-medium uppercase tracking-wider text-center'>
                     Fields
                   </th>
@@ -260,7 +269,7 @@ export default function CollectionsList({
                 {collections.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={isSystemGlobal ? 7 : 6}
                       className='px-6 py-12 text-center text-muted-foreground'
                     >
                       <LayersIcon className='w-12 h-12 mx-auto mb-4 opacity-20' />
@@ -292,6 +301,11 @@ export default function CollectionsList({
                       <td className='px-6 py-4 capitalize'>
                         {collection.type}
                       </td>
+                      {isSystemGlobal && (
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          {collection.tenant?.name || 'System Global'}
+                        </td>
+                      )}
                       <td className='px-6 py-4'>
                         <TooltipProvider>
                           <Tooltip>

@@ -85,9 +85,6 @@ export default function FormsList({ forms, user }: ListProps) {
                     Target API URL
                   </th>
                   <th className='px-6 py-4 font-medium uppercase tracking-wider'>
-                    Fields
-                  </th>
-                  <th className='px-6 py-4 font-medium uppercase tracking-wider'>
                     Created
                   </th>
                   <th className='px-6 py-4 font-medium uppercase tracking-wider text-right'>
@@ -99,7 +96,7 @@ export default function FormsList({ forms, user }: ListProps) {
                 {forms?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={6}
                       className='px-6 py-12 text-center text-muted-foreground'
                     >
                       <FileCheckIcon className='w-12 h-12 mx-auto mb-4 opacity-20' />
@@ -145,11 +142,6 @@ export default function FormsList({ forms, user }: ListProps) {
                       </td>
                       <td className='px-6 py-4 max-w-xs truncate text-muted-foreground font-mono text-[10px]'>
                         {form.apiUrl || '-'}
-                      </td>
-                      <td className='px-6 py-4'>
-                        <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground'>
-                          {form.fields?.length || 0} Fields
-                        </span>
                       </td>
                       <td className='px-6 py-4 text-muted-foreground whitespace-nowrap'>
                         {new Date(form.createdAt).toLocaleDateString()}

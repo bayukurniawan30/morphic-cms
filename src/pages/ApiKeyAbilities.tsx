@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Link, router } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import {
   CheckCircle2Icon,
   EditIcon,
@@ -21,6 +21,7 @@ interface Ability {
   >
   isSystem: string
   createdAt: string
+  tenant?: { id: number; name: string }
 }
 
 export default function ApiKeyAbilities({
@@ -30,6 +31,10 @@ export default function ApiKeyAbilities({
   user?: any
   abilities: Ability[]
 }) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Are you sure you want to delete the ability "${name}"?`))
       return
@@ -74,13 +79,16 @@ export default function ApiKeyAbilities({
 
         <div className='bg-card rounded-xl border shadow-sm overflow-x-auto'>
           <table className='w-full text-sm text-left'>
-            <thead className='bg-muted/50 text-muted-foreground font-medium border-b'>
+            <thead className='bg-muted/50 text-xs text-muted-foreground uppercase border-b'>
               <tr>
-                <th className='px-6 py-4'>Name</th>
-                <th className='px-6 py-4'>Status</th>
-                <th className='px-6 py-4'>Active Permissions</th>
-                <th className='px-6 py-4'>Created</th>
-                <th className='px-6 py-4 text-right'>Actions</th>
+                <th className='px-6 py-4 font-medium'>Name</th>
+                <th className='px-6 py-4 font-medium'>Status</th>
+                <th className='px-6 py-4 font-medium'>Active Permissions</th>
+                {isSystemGlobal && (
+                  <th className='px-6 py-4 font-medium'>Tenant</th>
+                )}
+                <th className='px-6 py-4 font-medium'>Created</th>
+                <th className='px-6 py-4 font-medium text-right'>Actions</th>
               </tr>
             </thead>
             <tbody className='divide-y'>
@@ -144,6 +152,11 @@ export default function ApiKeyAbilities({
                           )}
                       </div>
                     </td>
+                    {isSystemGlobal && (
+                      <td className='px-6 py-4'>
+                        {ability.tenant?.name || 'System Global'}
+                      </td>
+                    )}
                     <td className='px-6 py-4 text-muted-foreground text-xs font-mono'>
                       {new Date(ability.createdAt).toLocaleDateString()}
                     </td>
@@ -178,7 +191,7 @@ export default function ApiKeyAbilities({
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={isSystemGlobal ? 6 : 5}
                     className='px-6 py-12 text-center text-muted-foreground'
                   >
                     <div className='flex flex-col items-center space-y-2'>

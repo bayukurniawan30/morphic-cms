@@ -37,6 +37,7 @@ import {
   Plus,
   ShieldCheck,
   Users,
+  Webhook,
   X,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -349,6 +350,13 @@ export default function Layout({ user, title, children }: LayoutProps) {
                     href='/localization'
                     icon={Languages}
                     label='Localization'
+                    isSidebarOpen={isSidebarOpen}
+                    currentUrl={url}
+                  />
+                  <NavItem
+                    href='/webhooks'
+                    icon={Webhook}
+                    label='Webhooks'
                     isSidebarOpen={isSidebarOpen}
                     currentUrl={url}
                   />

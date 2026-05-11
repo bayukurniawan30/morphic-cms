@@ -585,6 +585,10 @@ export default function Documentation({ user }: { user: any }) {
                   Learn more
                 </a>
               </li>
+              <li>
+                <code>SIMPLE_HOMEPAGE</code>: Set to <code>1</code> to show a
+                minimal landing page instead of the full marketing site.
+              </li>
             </ul>
           </div>
         </div>
@@ -604,7 +608,7 @@ export default function Documentation({ user }: { user: any }) {
             <code>CLOUDINARY_API_KEY</code>, <code>CLOUDINARY_API_SECRET</code>,{' '}
             <code>CLOUDINARY_CLOUD_NAME</code>,{' '}
             <code>CLOUDINARY_UPLOAD_PRESET</code>, <code>RESEND_API_KEY</code>,{' '}
-            <code>EMAIL_FROM</code>).
+            <code>EMAIL_FROM</code>, <code>SIMPLE_HOMEPAGE</code>).
           </p>
           <p className='text-sm font-bold text-primary'>
             Done! Automated deployments on every push.

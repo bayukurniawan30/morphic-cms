@@ -23,26 +23,27 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Head } from '@inertiajs/react'
+import { usePage } from '@inertiajs/react'
 import {
-  FolderIcon,
-  FileImageIcon,
-  UploadIcon,
-  PlusIcon,
   ChevronRightIcon,
-  TrashIcon,
-  MoreVerticalIcon,
   CopyIcon,
   DownloadIcon,
+  FileImageIcon,
+  FolderIcon,
+  MoreVerticalIcon,
+  PlusIcon,
+  TrashIcon,
+  UploadIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface MediaFolder {
   id: number
   name: string
   parentId: number | null
   createdAt: string
+  tenant?: { id: number; name: string }
 }
 
 interface MediaFile {
@@ -55,6 +56,7 @@ interface MediaFile {
   height: number | null
   resourceType?: string
   createdAt: string
+  tenant?: { id: number; name: string }
 }
 
 interface BreadcrumbItem {
@@ -63,6 +65,10 @@ interface BreadcrumbItem {
 }
 
 export default function MediaIndex({ user }: { user: any }) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null)
   const [folders, setFolders] = useState<MediaFolder[]>([])
   const [files, setFiles] = useState<MediaFile[]>([])
@@ -470,6 +476,14 @@ export default function MediaIndex({ user }: { user: any }) {
               Uploaded on{' '}
               {selectedFile &&
                 new Date(selectedFile.createdAt).toLocaleDateString()}
+              {isSystemGlobal && selectedFile?.tenant && (
+                <>
+                  <span className='mx-2 opacity-50'>•</span>
+                  <span className='text-xs text-muted-foreground'>
+                    Tenant: {selectedFile.tenant.name}
+                  </span>
+                </>
+              )}
             </div>
             <div className='flex space-x-2 w-full sm:w-auto'>
               <Button

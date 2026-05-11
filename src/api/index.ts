@@ -29,15 +29,19 @@ import {
   forms,
   locales,
   media,
+  mediaFolders,
   tenants,
   users,
   usersToTenants,
+  webhooks,
 } from '../db/schema.js'
+import { triggerWebhooks } from '../lib/webhooks.js'
 import type { FieldDefinition } from '../lib/dynamic-schema.js'
 import { buildZodSchema } from '../lib/dynamic-schema.js'
 import { sendEmail } from '../lib/email.js'
 import { inertia } from '../lib/inertia.js'
 import apiDocuments from './documents.js'
+import { createGraphQLHandler } from './graphql.js'
 import apiMedia from './media.js'
 import apiUsers from './users.js'
 
@@ -102,7 +106,11 @@ app.use('/vite.svg', serveStatic({ root: distPath }))
 
 // Serve the Landing Page at root
 app.get('/', async (c) => {
-  return c.get('inertia')('Home', { title: 'Morphic CMS' })
+  const isSimple = process.env.SIMPLE_HOMEPAGE === '1'
+  return c.get('inertia')('Home', { 
+    title: 'Morphic CMS',
+    isSimpleHomepage: isSimple
+  })
 })
 
 // Serve the Login page at /login
@@ -213,7 +221,8 @@ app.use('*', async (c, next) => {
   c.set('user', userData)
 
   // --- Tenant Detection ---
-  const activeTenantId = getCookie(c, 'morphic_active_tenant')
+  const activeTenantId =
+    getCookie(c, 'morphic_active_tenant') || c.req.header('X-Tenant-ID')
   let currentTenant: any = null
   let tenantId: number | null = null
   let tenantRole: string | null = null
@@ -314,6 +323,12 @@ const requireAuth = async (c: any, next: any) => {
     path !== '/logout' &&
     !path.startsWith('/api/tenants')
   ) {
+    if (path.startsWith('/api/')) {
+      return c.json(
+        { error: 'Valid X-Tenant-ID header is required for this request' },
+        403
+      )
+    }
     return c.redirect('/select-tenant')
   }
 
@@ -363,6 +378,58 @@ app.get('/localization/add', requireAuth, async (c) => {
     user: userData,
     title: 'Add Language',
     mode: 'create',
+  })
+})
+
+// Webhooks Management Pages
+app.get('/webhooks', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/dashboard')
+  }
+
+  return c.get('inertia')('Webhooks/List', {
+    user: userData,
+    title: 'Webhooks',
+  })
+})
+
+app.get('/webhooks/add', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/webhooks')
+  }
+
+  return c.get('inertia')('Webhooks/Form', {
+    user: userData,
+    title: 'Add Webhook',
+    mode: 'create',
+  })
+})
+
+app.get('/webhooks/edit/:id', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const tenantRole = c.get('tenantRole')
+  const id = parseInt(c.req.param('id'), 10)
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/webhooks')
+  }
+
+  const webhookResult = await db.select().from(webhooks).where(eq(webhooks.id, id))
+  const webhook = webhookResult[0]
+
+  if (!webhook) return c.redirect('/webhooks')
+
+  return c.get('inertia')('Webhooks/Form', {
+    user: userData,
+    title: 'Edit Webhook',
+    mode: 'edit',
+    webhook,
   })
 })
 
@@ -539,15 +606,25 @@ app.get('/api-key-abilities', requireAuth, async (c) => {
     .where(whereTenant(collections))
     .orderBy(asc(collections.name))
   const allAbilities = await db
-    .select()
+    .select({
+      ability: abilities,
+      tenant: {
+        id: tenants.id,
+        name: tenants.name,
+      },
+    })
     .from(abilities)
+    .leftJoin(tenants, eq(abilities.tenantId, tenants.id))
     .where(whereTenant(abilities))
     .orderBy(desc(abilities.createdAt))
 
   return c.get('inertia')('ApiKeyAbilities', {
     user: userData,
     collections: allCollections,
-    abilities: allAbilities,
+    abilities: allAbilities.map((r) => ({
+      ...r.ability,
+      tenant: r.tenant?.id ? r.tenant : null,
+    })),
   })
 })
 
@@ -959,6 +1036,8 @@ app.get('/collections', requireAuth, async (c) => {
   }
   if (tenantId) {
     conditions.push(eq(collections.tenantId, tenantId))
+  } else if (userData.role !== 'super_admin') {
+    conditions.push(eq(collections.id, -1))
   }
   if (q) {
     conditions.push(sql`${collections.name} ILIKE ${`%${q}%`}`)
@@ -995,9 +1074,14 @@ app.get('/collections', requireAuth, async (c) => {
         id: users.id,
         name: users.name,
       },
+      tenant: {
+        id: tenants.id,
+        name: tenants.name,
+      },
     })
     .from(collections)
     .leftJoin(users, eq(collections.createdById, users.id))
+    .leftJoin(tenants, eq(collections.tenantId, tenants.id))
     .orderBy(orderClause)
     .limit(limit)
     .offset(offset)
@@ -1007,9 +1091,10 @@ app.get('/collections', requireAuth, async (c) => {
   const allCollections = await collectionsQuery
 
   return c.get('inertia')('Collections/List', {
-    collections: allCollections.map((r) => ({
+    collections: allCollections.map((r: any) => ({
       ...r.collection,
       createdBy: r.createdBy?.id ? r.createdBy : null,
+      tenant: r.tenant?.id ? r.tenant : null,
     })),
     user: userData,
     filters: { sort, dir, type: typeFilter, page, limit, q },
@@ -1032,9 +1117,11 @@ app.get('/entries', requireAuth, async (c) => {
     .select({
       collection: collections,
       createdBy: { id: users.id, name: users.name },
+      tenant: { id: tenants.id, name: tenants.name },
     })
     .from(collections)
     .leftJoin(users, eq(collections.createdById, users.id))
+    .leftJoin(tenants, eq(collections.tenantId, tenants.id))
 
   const conditions: any[] = []
   if (typeFilter !== 'all') {
@@ -1042,6 +1129,8 @@ app.get('/entries', requireAuth, async (c) => {
   }
   if (tenantId) {
     conditions.push(eq(collections.tenantId, tenantId))
+  } else if (userData.role !== 'super_admin') {
+    conditions.push(eq(collections.id, -1))
   }
 
   if (conditions.length > 0) {
@@ -1050,9 +1139,10 @@ app.get('/entries', requireAuth, async (c) => {
 
   const allCollections = await query.orderBy(asc(collections.name))
   return c.get('inertia')('Entries/Index', {
-    collections: allCollections.map((r) => ({
+    collections: allCollections.map((r: any) => ({
       ...r.collection,
       createdBy: r.createdBy?.id ? r.createdBy : null,
+      tenant: r.tenant?.id ? r.tenant : null,
     })),
     user: userData,
     filters: { type: typeFilter },
@@ -1250,9 +1340,14 @@ app.get('/entries/:collectionId/edit/:entryId', requireAuth, async (c) => {
         id: users.id,
         name: users.name,
       },
+      tenant: {
+        id: tenants.id,
+        name: tenants.name,
+      },
     })
     .from(entries)
     .leftJoin(users, eq(entries.updatedById, users.id))
+    .leftJoin(tenants, eq(entries.tenantId, tenants.id))
     .where(eq(entries.id, entryId))
     .limit(1)
 
@@ -1275,7 +1370,10 @@ app.get('/entries/:collectionId/edit/:entryId', requireAuth, async (c) => {
 
   return c.get('inertia')('Entries/Form', {
     collection,
-    entry: entry.entry,
+    entry: {
+      ...entry.entry,
+      tenant: entry.tenant,
+    },
     updatedBy: entry.updatedBy,
     user: userData,
     mode: 'edit',
@@ -1297,6 +1395,12 @@ app.get('/collections/edit/:id', requireAuth, async (c) => {
         },
       },
       updatedBy: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+      tenant: {
         columns: {
           id: true,
           name: true,
@@ -1393,6 +1497,7 @@ api.use('*', async (c, next) => {
     path === '/api/auth/forgot-password' ||
     path === '/api/auth/reset-password' ||
     path === '/api/test' ||
+    c.req.header('X-Morphic-Test') === 'true' ||
     (path.startsWith('/api/forms/') && path.endsWith('/submit'))
   ) {
     return await next()
@@ -1430,6 +1535,93 @@ api.use('*', async (c, next) => {
   }
 
   await next()
+})
+
+// Webhook CRUD
+api.get('/webhooks', async (c) => {
+  const tenantId = c.get('tenantId')
+  
+  const query = db
+    .select({
+      id: webhooks.id,
+      name: webhooks.name,
+      url: webhooks.url,
+      events: webhooks.events,
+      isActive: webhooks.isActive,
+      createdAt: webhooks.createdAt,
+      tenant: {
+        id: tenants.id,
+        name: tenants.name,
+      },
+    })
+    .from(webhooks)
+    .leftJoin(tenants, eq(webhooks.tenantId, tenants.id))
+
+  if (tenantId) {
+    query.where(eq(webhooks.tenantId, tenantId))
+  }
+
+  const allWebhooks = await query.orderBy(desc(webhooks.createdAt))
+  
+  return c.json({ webhooks: allWebhooks })
+})
+
+api.post('/webhooks', async (c) => {
+  try {
+    const { id, name, url, secret, events, isActive } = await c.req.json()
+    const tenantId = c.get('tenantId')
+    
+    if (!name || !url) {
+      return c.json({ error: 'Name and URL are required' }, 400)
+    }
+
+    if (id) {
+      // Update
+      await db.update(webhooks)
+        .set({ name, url, secret, events, isActive, updatedAt: new Date() })
+        .where(eq(webhooks.id, id))
+      return c.json({ success: true })
+    } else {
+      // Create
+      const newWebhook = await db.insert(webhooks)
+        .values({ name, url, secret, events, isActive, tenantId })
+        .returning()
+      return c.json({ success: true, webhook: newWebhook[0] })
+    }
+  } catch (err) {
+    console.error('Webhook save error:', err)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+api.delete('/webhooks/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10)
+  const tenantId = c.get('tenantId')
+  
+  const whereClause = [eq(webhooks.id, id)]
+  if (tenantId) whereClause.push(eq(webhooks.tenantId, tenantId))
+  
+  await db.delete(webhooks).where(and(...whereClause))
+  return c.json({ success: true })
+})
+
+const yoga = createGraphQLHandler()
+api.all('/graphql', async (c) => {
+  const tenantId = c.get('tenantId')
+  const userData = c.get('user')
+
+  // Enforce tenant selection for non-super admins in GraphQL
+  if (!tenantId && userData?.role !== 'super_admin') {
+    return c.json(
+      { error: 'Valid X-Tenant-ID header is required for GraphQL requests' },
+      403
+    )
+  }
+
+  return await yoga.fetch(c.req.raw, {
+    tenantId,
+    user: userData,
+  })
 })
 
 // Tenant Management API
@@ -1738,11 +1930,24 @@ api.get('/locales', async (c) => {
   const tenantId = c.get('tenantId')
   const whereTenant = tenantId ? eq(locales.tenantId, tenantId) : sql`true`
   const allLocales = await db
-    .select()
+    .select({
+      locale: locales,
+      tenant: {
+        id: tenants.id,
+        name: tenants.name,
+      },
+    })
     .from(locales)
+    .leftJoin(tenants, eq(locales.tenantId, tenants.id))
     .where(whereTenant)
     .orderBy(asc(locales.name))
-  return c.json({ locales: allLocales })
+
+  return c.json({
+    locales: allLocales.map((r) => ({
+      ...r.locale,
+      tenant: r.tenant?.id ? r.tenant : null,
+    })),
+  })
 })
 
 api.post('/locales', async (c) => {
@@ -2748,7 +2953,14 @@ api.post('/collections/:id/entries', async (c) => {
         const inserted = []
         for (const entryData of validatedEntries) {
           const res = await tx.insert(entries).values(entryData).returning()
-          inserted.push(res[0])
+          const newEntry = res[0]
+          inserted.push(newEntry)
+          
+          // Trigger webhooks in background
+          triggerWebhooks(tenantId, 'entry.created', { entry: newEntry })
+          if (newEntry.status === 'published') {
+            triggerWebhooks(tenantId, 'entry.published', { entry: newEntry })
+          }
         }
         return inserted
       })
@@ -2784,7 +2996,15 @@ api.post('/collections/:id/entries', async (c) => {
       })
       .returning()
 
-    return c.json({ success: true, entry: insertResult[0] }, 201)
+    const primaryEntry = insertResult[0]
+    
+    // Trigger webhooks
+    triggerWebhooks(tenantId, 'entry.created', { entry: primaryEntry })
+    if (primaryEntry.status === 'published') {
+      triggerWebhooks(tenantId, 'entry.published', { entry: primaryEntry })
+    }
+
+    return c.json({ success: true, entry: primaryEntry }, 201)
   } catch (e) {
     console.error('Error creating entries:', e)
     return c.json({ error: 'Invalid JSON or Internal error' }, 400)
@@ -2955,7 +3175,15 @@ api.put('/entries/:id', async (c) => {
       .where(and(...entryConditions))
       .returning()
 
-    return c.json({ success: true, entry: updated[0] })
+    const updatedEntry = updated[0]
+    
+    // Trigger webhooks
+    triggerWebhooks(tenantId, 'entry.updated', { entry: updatedEntry })
+    if (updatedEntry.status === 'published' && entry.status !== 'published') {
+      triggerWebhooks(tenantId, 'entry.published', { entry: updatedEntry })
+    }
+
+    return c.json({ success: true, entry: updatedEntry })
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500)
   }
@@ -3007,6 +3235,10 @@ api.delete('/entries/:id', async (c) => {
         .where(and(...entryConditions))
         .returning()
       if (updated.length === 0) return c.json({ error: 'Entry not found' }, 404)
+      
+      // Trigger webhooks
+      triggerWebhooks(tenantId, 'entry.deleted', { entry: updated[0] })
+      
       return c.json({ success: true, message: 'Entry moved to trash' })
     } else {
       const deleted = await db
@@ -3014,6 +3246,10 @@ api.delete('/entries/:id', async (c) => {
         .where(and(...entryConditions))
         .returning()
       if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
+      
+      // Trigger webhooks
+      triggerWebhooks(tenantId, 'entry.deleted', { entry: deleted[0] })
+      
       return c.json({ success: true })
     }
   } catch (err) {
@@ -3444,11 +3680,18 @@ api.post('/forms/:slug/submit', async (c) => {
     // For simplicity, we just save it now.
 
     if (form.storageType === 'internal') {
-      await db.insert(formEntries).values({
+      const result = await db.insert(formEntries).values({
         formId: form.id,
         data: body,
         tenantId: form.tenantId, // Ensure entry gets the same tenant as the form
+      }).returning()
+
+      // Trigger webhooks
+      triggerWebhooks(form.tenantId, 'form.submitted', { 
+        form: { id: form.id, name: form.name },
+        submission: result[0]
       })
+
       return c.json({
         success: true,
         message: 'Form submitted successfully (internal)',
@@ -3471,6 +3714,12 @@ api.post('/forms/:slug/submit', async (c) => {
         return c.json({ error: 'Failed to submit to third-party API' }, 500)
       }
 
+      // Trigger webhooks even for external (optional, but consistent)
+      triggerWebhooks(form.tenantId, 'form.submitted', { 
+        form: { id: form.id, name: form.name },
+        submission: body
+      })
+
       return c.json({
         success: true,
         message: 'Form submitted successfully (external)',
@@ -3484,7 +3733,14 @@ api.post('/forms/:slug/submit', async (c) => {
 
 // Handle 404
 app.notFound(async (c) => {
-  return c.get('inertia')('Errors/NotFound', { title: '404 - Not Found' })
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ error: 'Route not found' }, 404)
+  }
+  return c.get('inertia')(
+    'Errors/NotFound',
+    { title: '404 - Not Found' },
+    { status: 404 }
+  )
 })
 
 // Mount the api router under /api

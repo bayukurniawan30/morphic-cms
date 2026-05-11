@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Link, router } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import { ArrowRightIcon, DatabaseIcon, LayersIcon } from 'lucide-react'
 
 interface Collection {
@@ -18,6 +18,7 @@ interface Collection {
   _count?: {
     entries: number
   }
+  tenant?: { id: number; name: string }
 }
 
 interface IndexProps {
@@ -33,6 +34,10 @@ export default function EntriesIndex({
   user,
   filters,
 }: IndexProps) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
   const currentType = filters?.type || 'all'
 
   const handleTypeChange = (type: string) => {
@@ -103,6 +108,11 @@ export default function EntriesIndex({
                       <p className='text-sm text-muted-foreground font-mono mt-1'>
                         /{collection.slug}
                       </p>
+                      {isSystemGlobal && (
+                        <p className='text-[10px] text-primary/60 font-semibold uppercase tracking-wider mt-2'>
+                          Tenant: {collection.tenant?.name || 'System Global'}
+                        </p>
+                      )}
                       <div className='mt-4 flex items-center text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full w-fit'>
                         {collection.type === 'global'
                           ? 'Global Singleton'

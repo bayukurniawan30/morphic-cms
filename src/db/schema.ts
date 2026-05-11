@@ -32,22 +32,26 @@ export const usersToTenants = pgTable('users_to_tenants', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const collections = pgTable('collections', {
-  id: serial('id').primaryKey(),
-  tenantId: integer('tenant_id').references(() => tenants.id),
-  name: varchar('name', { length: 255 }).notNull(),
-  slug: varchar('slug', { length: 255 }).notNull(),
-  type: varchar('type', { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
-  enableTrash: boolean('enable_trash').notNull().default(false),
-  localized: boolean('localized').notNull().default(false),
-  fields: jsonb('fields').$type<any[]>().notNull().default([]),
-  createdById: integer('created_by_id').references(() => users.id),
-  updatedById: integer('updated_by_id').references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  nameIdx: index('collections_name_idx').on(table.name),
-}))
+export const collections = pgTable(
+  'collections',
+  {
+    id: serial('id').primaryKey(),
+    tenantId: integer('tenant_id').references(() => tenants.id),
+    name: varchar('name', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 255 }).notNull(),
+    type: varchar('type', { length: 50 }).notNull().default('collection'), // 'collection' or 'global'
+    enableTrash: boolean('enable_trash').notNull().default(false),
+    localized: boolean('localized').notNull().default(false),
+    fields: jsonb('fields').$type<any[]>().notNull().default([]),
+    createdById: integer('created_by_id').references(() => users.id),
+    updatedById: integer('updated_by_id').references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    nameIdx: index('collections_name_idx').on(table.name),
+  })
+)
 
 export const collectionsRelations = relations(collections, ({ one }) => ({
   createdBy: one(users, {
@@ -59,6 +63,10 @@ export const collectionsRelations = relations(collections, ({ one }) => ({
     fields: [collections.updatedById],
     references: [users.id],
     relationName: 'collection_updater',
+  }),
+  tenant: one(tenants, {
+    fields: [collections.tenantId],
+    references: [tenants.id],
   }),
 }))
 
@@ -88,6 +96,13 @@ export const entries = pgTable('entries', {
   deletedAt: timestamp('deleted_at'),
 })
 
+export const entriesRelations = relations(entries, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [entries.tenantId],
+    references: [tenants.id],
+  }),
+}))
+
 export const entryVersions = pgTable('entry_versions', {
   id: serial('id').primaryKey(),
   entryId: integer('entry_id')
@@ -113,24 +128,28 @@ export const abilities = pgTable('abilities', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  username: varchar('username', { length: 255 }).notNull().unique(),
-  password: varchar('password', { length: 255 }).notNull(),
-  role: roleEnum('role').default('editor').notNull(),
-  apiKey: varchar('api_key', { length: 255 }).unique(),
-  abilityId: integer('ability_id').references(() => abilities.id),
-  lastLogin: timestamp('last_login'),
-  resetPasswordToken: varchar('reset_password_token', { length: 255 }),
-  resetPasswordExpiresAt: timestamp('reset_password_expires_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  deletedAt: timestamp('deleted_at'),
-}, (table) => ({
-  nameIdx: index('users_name_idx').on(table.name),
-}))
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    username: varchar('username', { length: 255 }).notNull().unique(),
+    password: varchar('password', { length: 255 }).notNull(),
+    role: roleEnum('role').default('editor').notNull(),
+    apiKey: varchar('api_key', { length: 255 }).unique(),
+    abilityId: integer('ability_id').references(() => abilities.id),
+    lastLogin: timestamp('last_login'),
+    resetPasswordToken: varchar('reset_password_token', { length: 255 }),
+    resetPasswordExpiresAt: timestamp('reset_password_expires_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at'),
+  },
+  (table) => ({
+    nameIdx: index('users_name_idx').on(table.name),
+  })
+)
 
 export const mediaFolders = pgTable('media_folders', {
   id: serial('id').primaryKey(),
@@ -227,3 +246,22 @@ export const apiLogs = pgTable(
     }
   }
 )
+
+export const webhooks = pgTable('webhooks', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: varchar('url', { length: 1024 }).notNull(),
+  secret: varchar('secret', { length: 255 }),
+  events: jsonb('events').$type<string[]>().notNull().default([]),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const webhooksRelations = relations(webhooks, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [webhooks.tenantId],
+    references: [tenants.id],
+  }),
+}))

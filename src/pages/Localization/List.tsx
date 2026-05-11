@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Link } from '@inertiajs/react'
+import { Link, usePage } from '@inertiajs/react'
 import { Languages, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
@@ -11,6 +11,7 @@ interface Locale {
   name: string
   isDefault: boolean
   createdAt: string
+  tenant?: { id: number; name: string }
 }
 
 interface ListProps {
@@ -18,6 +19,10 @@ interface ListProps {
 }
 
 export default function List({ user }: ListProps) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
   const [locales, setLocales] = useState<Locale[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -84,6 +89,9 @@ export default function List({ user }: ListProps) {
                 <tr>
                   <th className='px-6 py-4 font-medium'>Language Name</th>
                   <th className='px-6 py-4 font-medium'>Code</th>
+                  {isSystemGlobal && (
+                    <th className='px-6 py-4 font-medium'>Tenant</th>
+                  )}
                   <th className='px-6 py-4 font-medium'>Status</th>
                   <th className='px-6 py-4 font-medium text-right'>Actions</th>
                 </tr>
@@ -92,7 +100,7 @@ export default function List({ user }: ListProps) {
                 {isLoading ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={isSystemGlobal ? 5 : 4}
                       className='px-6 py-8 text-center text-muted-foreground'
                     >
                       Loading languages...
@@ -101,7 +109,7 @@ export default function List({ user }: ListProps) {
                 ) : locales.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={isSystemGlobal ? 5 : 4}
                       className='px-6 py-8 text-center text-muted-foreground'
                     >
                       No languages found.
@@ -119,6 +127,11 @@ export default function List({ user }: ListProps) {
                       <td className='px-6 py-4 font-mono text-xs uppercase'>
                         {locale.code}
                       </td>
+                      {isSystemGlobal && (
+                        <td className='px-6 py-4'>
+                          {locale.tenant?.name || 'System Global'}
+                        </td>
+                      )}
                       <td className='px-6 py-4'>
                         {locale.isDefault ? (
                           <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-500 dark:bg-blue-400/10 dark:text-blue-400'>

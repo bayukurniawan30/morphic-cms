@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Link, useForm } from '@inertiajs/react'
+import { Link, useForm, router, usePage } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -45,6 +45,7 @@ interface Collection {
   enableTrash?: boolean
   localized?: boolean
   fields: FieldDefinition[]
+  tenant?: { id: number; name: string }
   createdBy?: { id: number; name: string }
 }
 
@@ -59,6 +60,10 @@ export default function EditCollection({
   updatedBy,
   user,
 }: EditProps) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
   const { data, setData, processing, errors } = useForm({
     name: collection.name,
     type: collection.type || 'collection',
@@ -318,6 +323,17 @@ export default function EditCollection({
                     {collection.name}
                   </span>
                 </p>
+                {isSystemGlobal && (
+                  <>
+                    <span className='text-muted-foreground/30 text-xs'>•</span>
+                    <p className='text-muted-foreground text-sm'>
+                      Tenant:{' '}
+                      <span className='font-semibold text-foreground text-sm'>
+                        {collection.tenant?.name || 'System Global'}
+                      </span>
+                    </p>
+                  </>
+                )}
                 {updatedBy ? (
                   <>
                     <span className='text-muted-foreground/30 text-xs'>•</span>

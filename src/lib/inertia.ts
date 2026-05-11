@@ -59,7 +59,8 @@ export const inertia = (viewFile: string = 'index.html') => {
 
     const isInertiaRequest = getHeader('X-Inertia') === 'true'
 
-    c.set('inertia', (component: string, props: any = {}) => {
+    c.set('inertia', (component: string, props: any = {}, options: { status?: number } = {}) => {
+      const status = options.status || 200
       // Merge shared props if they exist in context
       const sharedProps = c.get('inertiaSharedProps' as any) || {}
       const mergedProps = { ...sharedProps, ...props }
@@ -72,7 +73,7 @@ export const inertia = (viewFile: string = 'index.html') => {
       }
 
       if (isInertiaRequest) {
-        return c.json(inertiaProps, 200, {
+        return c.json(inertiaProps, status as any, {
           'X-Inertia': 'true',
           Vary: 'Accept',
         })
@@ -170,7 +171,7 @@ export const inertia = (viewFile: string = 'index.html') => {
         </body>
         </html>`
 
-      return c.html(html)
+      return c.html(html, status as any)
     })
 
     await next()
@@ -179,6 +180,6 @@ export const inertia = (viewFile: string = 'index.html') => {
 
 declare module 'hono' {
   interface ContextVariableMap {
-    inertia: (component: string, props?: any) => Response | Promise<Response>
+    inertia: (component: string, props?: any, options?: { status?: number }) => Response | Promise<Response>
   }
 }

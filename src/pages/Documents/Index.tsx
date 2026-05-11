@@ -13,9 +13,10 @@ import {
   UploadIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Link, usePage } from '@inertiajs/react'
 import React, { useEffect, useRef, useState } from 'react'
 
-interface DocumentFile {
+interface FileItem {
   id: number
   filename: string
   secureUrl: string
@@ -23,6 +24,7 @@ interface DocumentFile {
   mimeType: string | null
   size: number | null
   createdAt: string
+  tenant?: { id: number; name: string }
 }
 
 interface Pagination {
@@ -32,8 +34,16 @@ interface Pagination {
   limit: number
 }
 
-export default function DocumentsIndex({ user }: { user: any }) {
-  const [files, setFiles] = useState<DocumentFile[]>([])
+interface IndexProps {
+  user: any
+}
+
+export default function DocumentsIndex({ user }: IndexProps) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const isSystemGlobal = !activeTenant
+
+  const [files, setFiles] = useState<FileItem[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -183,6 +193,9 @@ export default function DocumentsIndex({ user }: { user: any }) {
                   <th className='px-6 py-4 font-medium'>Filename</th>
                   <th className='px-6 py-4 font-medium'>Type</th>
                   <th className='px-6 py-4 font-medium'>Size</th>
+                  {isSystemGlobal && (
+                    <th className='px-6 py-4 font-medium'>Tenant</th>
+                  )}
                   <th className='px-6 py-4 font-medium'>Uploaded At</th>
                   <th className='px-6 py-4 font-medium text-right'>Actions</th>
                 </tr>
@@ -190,14 +203,14 @@ export default function DocumentsIndex({ user }: { user: any }) {
               <tbody className='divide-y'>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className='h-64 text-center px-6 py-4'>
+                    <td colSpan={isSystemGlobal ? 7 : 6} className='h-64 text-center px-6 py-4'>
                       <LoadingState text='Fetching documents...' />
                     </td>
                   </tr>
                 ) : filteredFiles.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={isSystemGlobal ? 7 : 6}
                       className='h-64 text-center text-muted-foreground italic px-6 py-4'
                     >
                       No documents found.
@@ -221,10 +234,17 @@ export default function DocumentsIndex({ user }: { user: any }) {
                           {file.format || 'unknown'}
                         </span>
                       </td>
-                      <td className='px-6 py-4 align-middle text-muted-foreground text-xs'>
+                      <td className='px-6 py-4 align-middle text-muted-foreground'>
                         {formatBytes(file.size)}
                       </td>
-                      <td className='px-6 py-4 align-middle text-muted-foreground text-xs'>
+                      {isSystemGlobal && (
+                        <td className='px-6 py-4 align-middle'>
+                          <span className='text-zinc-400'>
+                            {file.tenant?.name || 'System Global'}
+                          </span>
+                        </td>
+                      )}
+                      <td className='px-6 py-4 align-middle text-muted-foreground text-xs font-mono'>
                         {new Date(file.createdAt).toLocaleDateString()}
                       </td>
                       <td className='px-6 py-4 align-middle text-right'>

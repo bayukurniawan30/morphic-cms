@@ -1,5 +1,6 @@
 import { Logo } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { APP_VERSION } from '@/lib/version'
 import { Head, Link } from '@inertiajs/react'
 import {
   ArrowRight,
@@ -24,11 +25,73 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { APP_VERSION } from '@/lib/version'
 import { useState } from 'react'
 
-export default function Home() {
+export default function Home({
+  isSimpleHomepage,
+}: {
+  isSimpleHomepage?: boolean
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  if (isSimpleHomepage) {
+    const domain =
+      typeof window !== 'undefined' ? window.location.hostname : 'morphic-cms'
+
+    return (
+      <div className='min-h-screen bg-deep-mocha-950 text-white flex flex-col items-center justify-between p-6 selection:bg-primary/30'>
+        <Head title='Powered by Morphic CMS'>
+          <meta
+            name='description'
+            content={`Powered by Morphic CMS - ${domain}`}
+          />
+        </Head>
+
+        {/* Background Glow */}
+        <div className='fixed inset-0 overflow-hidden pointer-events-none'>
+          <div className='absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/40 rounded-full blur-[160px] animate-pulse duration-[10s]' />
+          <div className='absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-green-500/10 rounded-full blur-[160px] animate-pulse duration-[15s]' />
+          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] bg-primary/20 rounded-full blur-[140px]' />
+        </div>
+
+        <div />
+
+        <div className='relative z-10 text-center space-y-6'>
+          <div className='flex flex-col items-center mt-4'>
+            <h1 className='text-5xl md:text-7xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-l from-primary to-deep-mocha-200'>
+              {domain.toLowerCase()}
+            </h1>
+            <div className='flex flex-wrap justify-center gap-x-6 gap-y-2 text-deep-mocha-400 text-sm font-medium mt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300'>
+              <div className='flex items-center'>
+                <span className='w-1 h-1 bg-primary/40 rounded-full mr-2'></span>
+                Dynamic Schemas
+              </div>
+              <div className='flex items-center'>
+                <span className='w-1 h-1 bg-primary/40 rounded-full mr-2'></span>
+                Instant APIs
+              </div>
+              <div className='flex items-center'>
+                <span className='w-1 h-1 bg-primary/40 rounded-full mr-2'></span>
+                Flexible Field Types
+              </div>
+            </div>
+            <div className='inline-flex items-center bg-deep-mocha-800/30 border border-deep-mocha-700/50 px-4 py-2 rounded-full text-[0.85rem] text-deep-mocha-200 mb-12 animate-in fade-in zoom-in duration-700 mt-6'>
+              <span className='relative flex h-2 w-2 mr-3'>
+                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75'></span>
+                <span className='relative inline-flex rounded-full h-2 w-2 bg-primary'></span>
+              </span>
+              Powered by Morphic CMS
+            </div>
+          </div>
+        </div>
+
+        <footer className='relative z-10 py-8 text-deep-mocha-500 text-xs opacity-50'>
+          &copy; {new Date().getFullYear()} {domain}. All rights reserved.
+        </footer>
+      </div>
+    )
+  }
+
   return (
     <div className='min-h-screen bg-slate-950 text-white selection:bg-primary/30'>
       <Head title='Morphic CMS - Modern, Edge-Ready Headless CMS'>
@@ -50,10 +113,7 @@ export default function Home() {
           property='og:url'
           content={typeof window !== 'undefined' ? window.location.href : ''}
         />
-        <meta
-          property='og:title'
-          content='Morphic CMS - Modern Headless CMS'
-        />
+        <meta property='og:title' content='Morphic CMS - Modern Headless CMS' />
         <meta
           property='og:description'
           content='The Edge-Ready, High-Performance Headless CMS for Modern Developers.'

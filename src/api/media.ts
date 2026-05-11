@@ -10,6 +10,8 @@ import {
   uploadBufferToCloudinary,
 } from '../lib/cloudinary.js'
 
+import { triggerWebhooks } from '../lib/webhooks.js'
+
 type Variables = {
   userId: number
   tenantId: number | null
@@ -88,20 +90,43 @@ apiMedia.get('/', async (c) => {
     }
 
     // Fetch folders in this level
-    const folders = await db
-      .select()
+    const foldersData = await db
+      .select({
+        folder: mediaFolders,
+        tenant: {
+          id: tenants.id,
+          name: tenants.name,
+        },
+      })
       .from(mediaFolders)
+      .leftJoin(tenants, eq(mediaFolders.tenantId, tenants.id))
       .where(condition)
       .orderBy(desc(mediaFolders.createdAt))
 
     // Fetch media in this level
-    const files = await db
-      .select()
+    const filesData = await db
+      .select({
+        file: media,
+        tenant: {
+          id: tenants.id,
+          name: tenants.name,
+        },
+      })
       .from(media)
+      .leftJoin(tenants, eq(media.tenantId, tenants.id))
       .where(mediaCondition)
       .orderBy(desc(media.createdAt))
 
-    return c.json({ folders, files })
+    return c.json({
+      folders: foldersData.map((r) => ({
+        ...r.folder,
+        tenant: r.tenant?.id ? r.tenant : null,
+      })),
+      files: filesData.map((r) => ({
+        ...r.file,
+        tenant: r.tenant?.id ? r.tenant : null,
+      })),
+    })
   } catch (err) {
     console.error('Error fetching media payload:', err)
     return c.json({ error: 'Internal server error' }, 500)
@@ -258,7 +283,12 @@ apiMedia.post('/upload', async (c) => {
       })
       .returning()
 
-    return c.json({ success: true, media: newMedia[0] }, 201)
+    const mediaItem = newMedia[0]
+    
+    // Trigger webhooks
+    triggerWebhooks(tenantId, 'media.uploaded', { media: mediaItem })
+
+    return c.json({ success: true, media: mediaItem }, 201)
   } catch (err) {
     console.error('Error uploading media:', err)
     return c.json({ error: 'Failed to upload media' }, 500)
@@ -297,7 +327,12 @@ apiMedia.delete('/:id', async (c) => {
     }
 
     // 3. Delete from database
-    await db.delete(media).where(eq(media.id, mediaId))
+    const deleted = await db.delete(media).where(eq(media.id, mediaId)).returning()
+
+    // Trigger webhooks
+    if (deleted.length > 0) {
+      triggerWebhooks(tenantId, 'media.deleted', { media: deleted[0] })
+    }
 
     return c.json({ success: true })
   } catch (err) {

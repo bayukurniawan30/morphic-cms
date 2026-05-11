@@ -29,6 +29,20 @@
       "when": 1776908187861,
       "tag": "0003_rapid_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778313680142,
+      "tag": "0004_awesome_wiccan",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778466058938,
+      "tag": "0005_pretty_bromley",
+      "breakpoints": true
     }
   ]
 }
