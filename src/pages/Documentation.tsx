@@ -18,6 +18,7 @@ import {
   Shield,
   Terminal,
   Users,
+  Webhook,
   Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -138,6 +139,7 @@ export default function Documentation({ user }: { user: any }) {
     { id: 'api-reference', label: 'API Reference', icon: Terminal },
     { id: 'auth', label: 'Authentication', icon: Shield },
     { id: 'storage', label: 'Storage', icon: Cloud },
+    { id: 'webhooks', label: 'Webhooks', icon: Webhook },
     { id: 'hosting', label: 'Deployment', icon: Server },
   ]
 
@@ -219,8 +221,8 @@ export default function Documentation({ user }: { user: any }) {
         </p>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-8'>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold flex items-center mb-2 text-foreground'>
-              <Database className='w-4 h-4 mr-2' /> Database First
+            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
+              <Database className='w-4 h-4 mr-2 text-slate-400' /> Database First
             </h4>
             <p className='text-sm'>
               Built on top of Drizzle ORM and Postgres. We recommend using{' '}
@@ -236,8 +238,8 @@ export default function Documentation({ user }: { user: any }) {
             </p>
           </div>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold flex items-center mb-2 text-foreground'>
-              <Zap className='w-4 h-4 mr-2' /> Instant APIs
+            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
+              <Zap className='w-4 h-4 mr-2 text-slate-400' /> Instant APIs
             </h4>
             <p className='text-sm'>
               Define a collection and get a production-ready REST API
@@ -256,8 +258,8 @@ export default function Documentation({ user }: { user: any }) {
         </p>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold flex items-center mb-2 text-foreground'>
-              <Shield className='w-4 h-4 mr-2' /> Complete Isolation
+            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
+              <Shield className='w-4 h-4 mr-2 text-slate-400' /> Complete Isolation
             </h4>
             <p className='text-sm'>
               Every collection, entry, and media asset is scoped to a specific
@@ -266,8 +268,8 @@ export default function Documentation({ user }: { user: any }) {
             </p>
           </div>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold flex items-center mb-2 text-foreground'>
-              <Layers className='w-4 h-4 mr-2' /> Shared Architecture
+            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
+              <Layers className='w-4 h-4 mr-2 text-slate-400' /> Shared Architecture
             </h4>
             <p className='text-sm'>
               While data is isolated, the underlying infrastructure is shared. A
@@ -277,7 +279,7 @@ export default function Documentation({ user }: { user: any }) {
           </div>
         </div>
         <div className='mt-8 space-y-4'>
-          <h4 className='font-bold text-foreground'>Super Admin Roles</h4>
+          <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500'>Super Admin Roles</h4>
           <p>
             Super Admins have platform-wide access and can switch between any
             workspace using the <strong>Tenant Switcher</strong> in the sidebar.
@@ -401,8 +403,8 @@ export default function Documentation({ user }: { user: any }) {
             />
           </div>
           <div className='bg-primary/5 border border-primary/20 p-8 rounded-2xl overflow-hidden'>
-            <h4 className='font-bold mb-4 flex items-center text-primary'>
-              <div className='w-2 h-2 rounded-full bg-primary mr-2' />
+            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 mb-4 flex items-center'>
+              <div className='w-2 h-2 rounded-full bg-slate-400 mr-2' />
               Frontend Example (Fetch)
             </h4>
             <CodeBlock
@@ -590,6 +592,82 @@ export default function Documentation({ user }: { user: any }) {
                 minimal landing page instead of the full marketing site.
               </li>
             </ul>
+          </div>
+        </div>
+      </Section>
+
+      <Section id='webhooks' title='Webhooks' icon={Webhook}>
+        <p>
+          Webhooks allow you to build automated workflows by notifying external
+          services when events happen in Morphic CMS. You can configure multiple
+          webhooks to listen for specific events.
+        </p>
+
+        <div className='space-y-8 mt-8'>
+          <div>
+            <h3 className='font-bold text-sm uppercase tracking-widest text-slate-500 mb-3'>Available Events</h3>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <div className='p-4 bg-muted/50 rounded-xl border'>
+                <p className='font-mono text-sm font-bold text-primary mb-1'>
+                  entry.*
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  Triggered when an entry is created, updated, published, or
+                  deleted (including trash).
+                </p>
+              </div>
+              <div className='p-4 bg-muted/50 rounded-xl border'>
+                <p className='font-mono text-sm font-bold text-primary mb-1'>
+                  media.*
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  Triggered when a file is uploaded or deleted from the media
+                  library.
+                </p>
+              </div>
+              <div className='p-4 bg-muted/50 rounded-xl border'>
+                <p className='font-mono text-sm font-bold text-primary mb-1'>
+                  form.submitted
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  Triggered when a new submission is received from a frontend
+                  form.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className='font-bold text-sm uppercase tracking-widest text-slate-500 mb-3'>Security & Verification</h3>
+            <p className='mb-4'>
+              If you provide a <strong>Secret Key</strong> for a webhook, Morphic
+              CMS will sign each request using HMAC SHA256. You should verify
+              this signature on your server to ensure the request is authentic.
+            </p>
+            <div className='bg-card border rounded-xl p-4 space-y-3'>
+              <div className='flex items-center space-x-2'>
+                <Key className='w-4 h-4 text-primary' />
+                <span className='font-mono text-xs font-bold uppercase tracking-wider'>
+                  Signature Header
+                </span>
+              </div>
+              <code className='block bg-muted p-2 rounded text-xs'>
+                X-Morphic-Signature: [sha256-hmac-signature]
+              </code>
+            </div>
+            <div className='mt-4'>
+              <p className='text-sm mb-2'>Node.js Verification Example:</p>
+              <CodeBlock
+                language='javascript'
+                code={`const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = hmac.update(JSON.stringify(payload)).digest('hex');
+  return signature === digest;
+}`}
+              />
+            </div>
           </div>
         </div>
       </Section>

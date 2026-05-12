@@ -49,6 +49,6 @@ For users who want to use Morphic CMS as a backend without the full marketing la
 If you are upgrading from v1.1.5, please run the following to update your database schema for webhooks:
 
 ```bash
-npm run db:generate
-npm run db:migrate
+pnpm run db:generate
+pnpm run db:migrate
 ```
