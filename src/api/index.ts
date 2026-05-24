@@ -743,8 +743,24 @@ app.get('/forms/:slug/entries', requireAuth, async (c) => {
   if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
 
   const formResult = await db
-    .select()
+    .select({
+      id: forms.id,
+      tenantId: forms.tenantId,
+      name: forms.name,
+      slug: forms.slug,
+      fields: forms.fields,
+      storageType: forms.storageType,
+      apiUrl: forms.apiUrl,
+      apiMethod: forms.apiMethod,
+      apiHeaders: forms.apiHeaders,
+      apiEntriesPath: forms.apiEntriesPath,
+      allowedOrigins: forms.allowedOrigins,
+      honeypotField: forms.honeypotField,
+      collectionId: forms.collectionId,
+      collectionName: collections.name,
+    })
     .from(forms)
+    .leftJoin(collections, eq(forms.collectionId, collections.id))
     .where(and(...whereClause))
     .limit(1)
   if (formResult.length === 0) return c.redirect('/forms')
@@ -1213,10 +1229,20 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
     .offset(offset)
 
   const localesWhere = tenantId ? [eq(locales.tenantId, tenantId)] : []
+  const connectedForms = await db
+    .select()
+    .from(forms)
+    .where(
+      and(
+        eq(forms.collectionId, collectionId),
+        tenantId ? eq(forms.tenantId, tenantId) : sql`true`
+      )
+    )
 
   return c.get('inertia')('Entries/List', {
     collection,
     entries: entriesList.map((r) => ({ ...r.entry, updatedBy: r.updatedBy })),
+    connectedForms,
     user: userData,
     pagination: {
       currentPage: page,
@@ -3487,6 +3513,7 @@ api.post('/forms', async (c) => {
       apiEntriesPath,
       allowedOrigins,
       honeypotField,
+      collectionId,
     } = body
 
     if (!name || !slug) {
@@ -3510,6 +3537,7 @@ api.post('/forms', async (c) => {
         apiEntriesPath: apiEntriesPath || null,
         allowedOrigins: allowedOrigins || null,
         honeypotField: honeypotField || null,
+        collectionId: collectionId || null,
         tenantId,
       })
       .returning()
@@ -3539,6 +3567,7 @@ api.put('/forms/:id', async (c) => {
       apiEntriesPath,
       allowedOrigins,
       honeypotField,
+      collectionId,
     } = body
 
     const whereClause = [eq(forms.id, id)]
@@ -3556,6 +3585,7 @@ api.put('/forms/:id', async (c) => {
         apiEntriesPath: apiEntriesPath || null,
         allowedOrigins: allowedOrigins || null,
         honeypotField: honeypotField || null,
+        collectionId: collectionId || null,
         updatedAt: new Date(),
       })
       .where(and(...whereClause))
@@ -3604,12 +3634,24 @@ api.get('/forms/:slug/entries', async (c) => {
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 
     const form = formResult[0]
+    const queryParams = c.req.query()
 
     if (form.storageType === 'internal') {
+      const entriesWhere = [eq(formEntries.formId, form.id)]
+
+      // Allow filtering by any field defined in the form
+      form.fields.forEach((field: any) => {
+        if (queryParams[field.name]) {
+          entriesWhere.push(
+            sql`${formEntries.data}->>${field.name} = ${queryParams[field.name]}`
+          )
+        }
+      })
+
       const entriesResult = await db
         .select()
         .from(formEntries)
-        .where(eq(formEntries.formId, form.id))
+        .where(and(...entriesWhere))
         .orderBy(desc(formEntries.createdAt))
       // Map to consistent structure
       const entries = entriesResult.map((e) => ({
@@ -3626,6 +3668,46 @@ api.get('/forms/:slug/entries', async (c) => {
       entries: [],
       message: 'Third-party integration pending real API URL',
     })
+  } catch (err) {
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+// Delete Form Entry
+api.delete('/forms/:slug/entries/:entryId', async (c) => {
+  try {
+    const slug = c.req.param('slug')
+    const entryId = parseInt(c.req.param('entryId'), 10)
+    const tenantId = c.get('tenantId')
+
+    const whereClause = [eq(forms.slug, slug)]
+    if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+
+    const formResult = await db
+      .select()
+      .from(forms)
+      .where(and(...whereClause))
+      .limit(1)
+    if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
+
+    const form = formResult[0]
+
+    if (form.storageType === 'internal') {
+      const deleted = await db
+        .delete(formEntries)
+        .where(
+          and(
+            eq(formEntries.id, entryId),
+            eq(formEntries.formId, form.id)
+          )
+        )
+        .returning()
+      
+      if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
+      return c.json({ success: true })
+    }
+
+    return c.json({ error: 'Cannot delete external entries from CMS' }, 400)
   } catch (err) {
     return c.json({ error: 'Internal server error' }, 500)
   }
@@ -3648,7 +3730,18 @@ api.post('/forms/:slug/submit', async (c) => {
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 
     const form = formResult[0]
-    const body = await c.req.json()
+    
+    let body: Record<string, any> = {}
+    try {
+      const contentType = c.req.header('content-type') || ''
+      if (contentType.includes('application/json')) {
+        body = await c.req.json()
+      } else {
+        body = await c.req.parseBody()
+      }
+    } catch (e) {
+      return c.json({ error: 'Invalid request body format' }, 400)
+    }
 
     // 1. Origin Check (CORS-like security)
     const requestOrigin = c.req.header('Origin') || c.req.header('Referer')

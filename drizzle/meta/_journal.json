@@ -43,6 +43,13 @@
       "when": 1778466058938,
       "tag": "0005_pretty_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778592886138,
+      "tag": "0006_wealthy_karnak",
+      "breakpoints": true
     }
   ]
 }

@@ -31,7 +31,7 @@ import {
   TrashIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface EditProps {
   form: any
@@ -50,7 +50,17 @@ export default function EditForm({ form, user }: EditProps) {
     apiEntriesPath: form.apiEntriesPath || '',
     allowedOrigins: form.allowedOrigins || '',
     honeypotField: form.honeypotField || '',
+    collectionId: form.collectionId || (null as number | null),
   })
+
+  const [collectionsList, setCollectionsList] = useState<any[]>([])
+
+  useEffect(() => {
+    fetch('/api/collections')
+      .then((res) => res.json())
+      .then((d) => setCollectionsList(d.collections || []))
+      .catch((err) => console.error('Failed to fetch collections:', err))
+  }, [])
 
   const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set())
 
@@ -76,9 +86,19 @@ export default function EditForm({ form, user }: EditProps) {
   }
 
   const removeField = (index: number) => {
+    const fieldToRemove = data.fields[index]
     const newFields = [...data.fields]
     newFields.splice(index, 1)
-    setData('fields', newFields)
+
+    if (fieldToRemove && fieldToRemove.name === 'collection_id') {
+      setData((d) => ({
+        ...d,
+        fields: newFields,
+        collectionId: null,
+      }))
+    } else {
+      setData('fields', newFields)
+    }
   }
 
   const updateField = (index: number, updates: Partial<FieldDefinition>) => {
@@ -222,9 +242,7 @@ export default function EditForm({ form, user }: EditProps) {
             <h1 className='text-3xl font-bold tracking-tight text-primary'>
               Edit Form
             </h1>
-            <p className='text-muted-foreground mt-1 underline decoration-primary/20'>
-              {form.name} definition
-            </p>
+            <p className='text-muted-foreground mt-1'>{form.name} definition</p>
           </div>
         </div>
 
@@ -503,6 +521,59 @@ export default function EditForm({ form, user }: EditProps) {
                   disabled
                   className='bg-muted text-xs font-mono'
                 />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='collectionId'>
+                  Connected Collection (Optional)
+                </Label>
+                <Select
+                  value={data.collectionId?.toString() || 'none'}
+                  onValueChange={(val) => {
+                    const isSelected = val !== 'none'
+                    const hasCollectionIdField = data.fields.some(
+                      (f) => f.name === 'collection_id'
+                    )
+                    let newFields = [...data.fields]
+                    if (isSelected) {
+                      if (!hasCollectionIdField) {
+                        newFields.push({
+                          id: Math.random().toString(36).substr(2, 9),
+                          name: 'collection_id',
+                          label: 'collection_id',
+                          type: 'text',
+                          required: true,
+                        })
+                      }
+                    } else {
+                      newFields = newFields.filter((f) => f.name !== 'collection_id')
+                    }
+
+                    setData((d) => ({
+                      ...d,
+                      collectionId: val === 'none' ? null : parseInt(val),
+                      fields: newFields,
+                    }))
+                  }}
+                >
+                  <SelectTrigger id='collectionId'>
+                    <SelectValue placeholder='Select a collection' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='none'>
+                      None (Independent Form)
+                    </SelectItem>
+                    {collectionsList.map((c) => (
+                      <SelectItem key={c.id} value={c.id.toString()}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className='text-[10px] text-muted-foreground'>
+                  Linking to a collection allows the CMS to show these
+                  submissions alongside your entries.
+                </p>
               </div>
 
               <div className='space-y-3 pt-4 border-t'>

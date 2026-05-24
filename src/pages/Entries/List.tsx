@@ -28,6 +28,7 @@ import {
   CodeIcon,
   CopyIcon,
   DatabaseIcon,
+  FileCheckIcon,
   PlusIcon,
   TerminalIcon,
 } from 'lucide-react'
@@ -82,6 +83,7 @@ interface ListProps {
     locale?: string
   }
   allLocales?: { id: number; code: string; name: string; isDefault: boolean }[]
+  connectedForms?: any[]
 }
 
 export default function EntriesList({
@@ -91,6 +93,7 @@ export default function EntriesList({
   pagination,
   filters,
   allLocales = [],
+  connectedForms = [],
 }: ListProps) {
   const isTrash = filters?.trash || false
   const { props: pageProps } = usePage()
@@ -722,6 +725,30 @@ export default function EntriesList({
             </Button>
           </div>
         </div>
+
+        {connectedForms.length > 0 && (
+          <div className='flex flex-wrap gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10'>
+            <div className='flex items-center gap-2 mr-2'>
+              <FileCheckIcon className='w-4 h-4 text-primary' />
+              <span className='text-xs font-bold uppercase tracking-wider text-primary/70'>
+                Connected Forms:
+              </span>
+            </div>
+            {connectedForms.map((f) => (
+              <Button
+                key={f.id}
+                variant='secondary'
+                size='sm'
+                asChild
+                className='h-7 text-xs bg-background hover:bg-primary/10 border-primary/20'
+              >
+                <Link href={`/forms/${f.slug}/entries`}>
+                  View {f.name} Entries
+                </Link>
+              </Button>
+            ))}
+          </div>
+        )}
 
         {collection.enableTrash && (
           <div className='flex items-center space-x-2'>

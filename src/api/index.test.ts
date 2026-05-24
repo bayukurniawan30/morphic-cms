@@ -34,4 +34,35 @@ describe('Morphic CMS API', () => {
     const data = await res.json()
     expect(data.error).toContain('X-Tenant-ID header is required')
   })
+
+  describe('Public Routes', () => {
+    it('should return 200 for the landing page (/)', async () => {
+      const res = await app.request('/')
+      expect(res.status).toBe(200)
+    })
+
+    it('should return 200 for the login page (/login)', async () => {
+      const res = await app.request('/login')
+      expect(res.status).toBe(200)
+    })
+
+    it('should redirect to /login and clear cookie on logout (/logout)', async () => {
+      const res = await app.request('/logout')
+      expect(res.status).toBe(302)
+      expect(res.headers.get('location')).toBe('/login')
+      // Check if Set-Cookie header attempts to clear the morphic_token
+      const setCookie = res.headers.get('set-cookie')
+      expect(setCookie).toContain('morphic_token=')
+    })
+
+    it('should return 200 for the forgot password page (/forgot-password)', async () => {
+      const res = await app.request('/forgot-password')
+      expect(res.status).toBe(200)
+    })
+
+    it('should return 200 for the docs page (/docs)', async () => {
+      const res = await app.request('/docs')
+      expect(res.status).toBe(200)
+    })
+  })
 })

@@ -4,11 +4,15 @@ import { Link } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   ExternalLinkIcon,
-  FileCheckIcon,
-  MoreHorizontalIcon,
   RefreshCwIcon,
   SearchIcon,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import React from 'react'
 
@@ -20,6 +24,8 @@ interface EntriesListProps {
     fields: any[]
     storageType: 'internal' | 'external'
     apiUrl?: string
+    collectionId?: number | null
+    collectionName?: string | null
   }
   user?: any
 }
@@ -27,6 +33,26 @@ interface EntriesListProps {
 export default function FormEntriesList({ form, user }: EntriesListProps) {
   const [entries, setEntries] = React.useState<any[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [selectedEntry, setSelectedEntry] = React.useState<any>(null)
+
+  const handleDelete = async (entryId: number) => {
+    if (!confirm('Are you sure you want to delete this entry?')) return
+
+    try {
+      const res = await fetch(`/api/forms/${form.slug}/entries/${entryId}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success('Entry deleted successfully')
+        fetchEntries()
+      } else {
+        toast.error(data.error || 'Failed to delete entry')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    }
+  }
 
   const fetchEntries = React.useCallback(async () => {
     setIsLoading(true)
@@ -66,7 +92,6 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
             </Button>
             <div>
               <div className='flex items-center space-x-2 mb-1'>
-                <FileCheckIcon className='w-5 h-5 text-primary' />
                 <h1 className='text-3xl font-bold tracking-tight'>
                   {form.name} Entries
                 </h1>
@@ -89,6 +114,17 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
                   <span className='text-xs opacity-70'>
                     Stored internally in CMS
                   </span>
+                )}
+                {form.collectionName && (
+                  <>
+                    <span className='text-muted-foreground/30 text-xs'>•</span>
+                    <span className='text-xs opacity-70'>
+                      Connected Collection:{' '}
+                      <span className='font-semibold text-foreground text-xs'>
+                        {form.collectionName}
+                      </span>
+                    </span>
+                  </>
                 )}
               </p>
             </div>
@@ -126,7 +162,7 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
             </div>
           ) : entries.length === 0 ? (
             <div className='p-12 text-center space-y-4'>
-              <div className='w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto'>
+              <div className='w-16 h-16 border border-muted rounded-full flex items-center justify-center mx-auto'>
                 <SearchIcon className='w-8 h-8 text-muted-foreground opacity-40' />
               </div>
               <div>
@@ -143,7 +179,7 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
               <table className='w-full text-sm text-left'>
                 <thead className='text-xs text-muted-foreground uppercase bg-muted/50 border-b'>
                   <tr>
-                    <th className='px-6 py-4 font-medium'>Date</th>
+                    <th className='px-6 py-4 font-medium w-[200px]'>Date</th>
                     {form.fields.map((field) => (
                       <th
                         key={field.id}
@@ -187,10 +223,23 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
                           )}
                         </td>
                       ))}
-                      <td className='px-6 py-4 text-right'>
-                        <Button variant='ghost' size='icon' className='h-8 w-8'>
-                          <MoreHorizontalIcon className='w-4 h-4' />
+                      <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => setSelectedEntry(entry)}
+                        >
+                          Details
                         </Button>
+                        {form.storageType === 'internal' && (
+                          <Button
+                            variant='destructive'
+                            size='sm'
+                            onClick={() => handleDelete(entry.id)}
+                          >
+                            Delete
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -200,6 +249,42 @@ export default function FormEntriesList({ form, user }: EntriesListProps) {
           )}
         </div>
       </div>
+
+      <Dialog open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Entry Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="grid grid-cols-3 gap-4 border-b pb-4">
+              <div className="text-sm font-medium text-muted-foreground">Date</div>
+              <div className="col-span-2 text-sm font-mono">
+                {selectedEntry?.createdAt
+                  ? new Date(selectedEntry.createdAt).toLocaleString()
+                  : '-'}
+              </div>
+            </div>
+            {form.fields.map((field) => (
+              <div key={field.id} className="grid grid-cols-3 gap-4 border-b pb-4 last:border-0 last:pb-0">
+                <div className="text-sm font-medium text-muted-foreground">{field.label}</div>
+                <div className="col-span-2 text-sm break-words whitespace-pre-wrap">
+                  {selectedEntry && selectedEntry[field.name] !== undefined ? (
+                    typeof selectedEntry[field.name] === 'boolean' ? (
+                      selectedEntry[field.name] ? 'Yes' : 'No'
+                    ) : typeof selectedEntry[field.name] === 'object' ? (
+                      JSON.stringify(selectedEntry[field.name], null, 2)
+                    ) : (
+                      String(selectedEntry[field.name])
+                    )
+                  ) : (
+                    <span className="text-muted-foreground italic text-xs">null</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   )
 }

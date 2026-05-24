@@ -77,7 +77,7 @@ const NavItem = ({
   isSidebarOpen,
   currentUrl,
 }: NavItemProps) => {
-  const isActive = currentUrl.includes(href)
+  const isActive = currentUrl.startsWith(href)
   const content = (
     <Link
       href={href}

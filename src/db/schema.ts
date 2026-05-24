@@ -211,6 +211,7 @@ export const forms = pgTable('forms', {
   apiEntriesPath: varchar('api_entries_path', { length: 255 }),
   allowedOrigins: varchar('allowed_origins', { length: 1024 }), // Comma-separated list of domains
   honeypotField: varchar('honeypot_field', { length: 255 }), // Field name for honeypot
+  collectionId: integer('collection_id').references(() => collections.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

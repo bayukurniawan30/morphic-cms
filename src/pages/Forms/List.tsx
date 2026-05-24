@@ -117,10 +117,7 @@ export default function FormsList({ forms, user }: ListProps) {
                       className='hover:bg-muted/50 transition-colors group'
                     >
                       <td className='px-6 py-4'>
-                        <div className='flex items-center space-x-3'>
-                          <div className='w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary'>
-                            <FileCheckIcon className='w-5 h-5' />
-                          </div>
+                        <div className='flex items-center'>
                           <span className='font-semibold text-foreground text-base'>
                             {form.name}
                           </span>
@@ -146,29 +143,31 @@ export default function FormsList({ forms, user }: ListProps) {
                       <td className='px-6 py-4 text-muted-foreground whitespace-nowrap'>
                         {new Date(form.createdAt).toLocaleDateString()}
                       </td>
-                      <td className='px-6 py-4 text-right space-x-2 whitespace-nowrap'>
-                        <Button variant='outline' size='sm' asChild>
-                          <Link href={`/forms/${form.slug}/entries`}>
-                            Entries
-                          </Link>
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          asChild
-                          title='Edit Form'
-                        >
-                          <Link href={`/forms/edit/${form.id}`}>
-                            <EditIcon className='w-4 h-4' />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant='destructive'
-                          size='sm'
-                          onClick={() => handleDelete(form.id)}
-                        >
-                          <TrashIcon className='w-4 h-4' />
-                        </Button>
+                      <td className='px-6 py-4 text-right whitespace-nowrap'>
+                        <div className='flex items-center justify-end gap-2'>
+                          <Button variant='outline' size='sm' asChild>
+                            <Link href={`/forms/${form.slug}/entries`}>
+                              Entries
+                            </Link>
+                          </Button>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            asChild
+                            title='Edit Form'
+                          >
+                            <Link href={`/forms/edit/${form.id}`}>
+                              <EditIcon className='w-4 h-4' />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant='destructive'
+                            size='sm'
+                            onClick={() => handleDelete(form.id)}
+                          >
+                            <TrashIcon className='w-4 h-4' />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
