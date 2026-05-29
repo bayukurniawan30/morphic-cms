@@ -30,6 +30,7 @@ import {
   DownloadIcon,
   FileImageIcon,
   FolderIcon,
+  InfoIcon,
   MoreVerticalIcon,
   PlusIcon,
   TrashIcon,
@@ -293,6 +294,16 @@ export default function MediaIndex({ user }: { user: any }) {
             </React.Fragment>
           ))}
         </div>
+
+        {/* Folder Navigation Tip */}
+        {!loading && folders.length > 0 && (
+          <div className='flex items-center space-x-2 text-xs text-muted-foreground bg-accent/20 px-3.5 py-2 rounded-md border border-primary/10 animate-in fade-in slide-in-from-top-1 duration-200'>
+            <InfoIcon className='w-3.5 h-3.5 text-primary shrink-0' />
+            <span>
+              <strong>Tip:</strong> Double-click or double-tap a folder to open it and view its contents.
+            </span>
+          </div>
+        )}
 
         {/* Grid Area */}
         {loading ? (

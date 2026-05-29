@@ -16,18 +16,22 @@ export default function Settings({ user }: { user?: any }) {
         },
       ],
     },
-    {
-      title: 'Services',
-      items: [
-        {
-          name: 'Email Service',
-          description: 'Configure transactional emails via Resend.',
-          icon: MailIcon,
-          href: '/email-settings',
-          disabled: false,
-        },
-      ],
-    },
+    ...(user?.role === 'super_admin'
+      ? [
+          {
+            title: 'Services',
+            items: [
+              {
+                name: 'Email Service',
+                description: 'Configure transactional emails via Resend.',
+                icon: MailIcon,
+                href: '/email-settings',
+                disabled: false,
+              },
+            ],
+          },
+        ]
+      : []),
     {
       title: 'Security',
       items: [

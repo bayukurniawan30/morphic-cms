@@ -96,7 +96,7 @@ apiUsers.post('/', async (c) => {
           email,
           username,
           password: hashedPassword,
-          role: userData.role === 'super_admin' ? (role || 'editor') : 'editor',
+          role: userData.role === 'super_admin' ? role || 'editor' : 'editor',
           abilityId: body.abilityId || null,
         })
         .returning({
@@ -134,7 +134,7 @@ apiUsers.post('/', async (c) => {
                 An account has been created for you on Morphic CMS with the <strong>${role || 'editor'}</strong> role.
               </p>
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Username:</strong> ${username}</p>
+                <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
                 <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
               </div>
               <div style="text-align: center; margin: 30px 0;">
@@ -177,8 +177,10 @@ apiUsers.put('/:id', async (c) => {
     if (email !== undefined) updateData.email = email
     if (username !== undefined) updateData.username = username
 
-    // Security: Only super_admin can change roles or abilities
+    // Security: Only super_admin can change roles or abilities globally.
+    // Tenant owners are allowed to change user abilities within their tenant.
     const currentUserRole = userData.role
+    const tenantRole = c.get('tenantRole')
 
     // --- Hierarchy Check ---
     const targetUserResult = await db
@@ -188,14 +190,18 @@ apiUsers.put('/:id', async (c) => {
       .limit(1)
     const targetUser = targetUserResult[0]
 
-    if (currentUserRole !== 'super_admin') {
+    if (currentUserRole === 'super_admin') {
+      if (role !== undefined) updateData.role = role
+      if (body.abilityId !== undefined) updateData.abilityId = body.abilityId
+    } else {
       if (targetUser?.role === 'super_admin') {
         return c.json({ error: 'Forbidden: Cannot edit a Super Admin' }, 403)
       }
-      // Non-admins cannot change roles or abilities
-    } else {
-      if (role !== undefined) updateData.role = role
-      if (body.abilityId !== undefined) updateData.abilityId = body.abilityId
+      
+      // Allow tenant owners to update abilities
+      if (tenantRole === 'owner') {
+        if (body.abilityId !== undefined) updateData.abilityId = body.abilityId
+      }
     }
 
     if (password) {

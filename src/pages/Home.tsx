@@ -43,7 +43,29 @@ export default function Home({
         <Head title='Powered by Morphic CMS'>
           <meta
             name='description'
-            content={`Powered by Morphic CMS - ${domain}`}
+            content={`Powered by Morphic CMS - Dynamic, high-performance headless content delivery for ${domain}.`}
+          />
+          <meta
+            name='keywords'
+            content={`morphic cms, headless cms, ${domain}, instant apis, dynamic schemas, modern content management, edge-ready cms`}
+          />
+          <meta name='robots' content='index, follow' />
+
+          {/* Open Graph / Facebook */}
+          <meta property='og:type' content='website' />
+          <meta property='og:title' content={`Powered by Morphic CMS - ${domain}`} />
+          <meta
+            property='og:description'
+            content={`Morphic CMS powers dynamic, high-performance headless content delivery for ${domain}.`}
+          />
+          <meta property='og:site_name' content='Morphic CMS' />
+
+          {/* Twitter */}
+          <meta property='twitter:card' content='summary_large_image' />
+          <meta property='twitter:title' content={`Powered by Morphic CMS - ${domain}`} />
+          <meta
+            property='twitter:description'
+            content={`Morphic CMS powers dynamic, high-performance headless content delivery for ${domain}.`}
           />
         </Head>
 

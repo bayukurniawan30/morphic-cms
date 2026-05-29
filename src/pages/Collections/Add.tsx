@@ -382,9 +382,9 @@ export default function AddCollection({ user }: AddProps) {
           </div>
 
           <div className='space-y-4'>
-            <div className='flex justify-between items-center'>
+            <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-0'>
               <h2 className='text-xl font-semibold'>Fields</h2>
-              <div className='flex items-center gap-2'>
+              <div className='flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start'>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant='outline' size='sm'>
@@ -472,23 +472,23 @@ export default function AddCollection({ user }: AddProps) {
                       />
                     </div>
 
-                    <div className='md:col-span-3 flex items-center space-x-2 pb-3'>
-                      <Switch
-                        id={`req-${field.id}`}
-                        checked={field.required}
-                        onCheckedChange={(val) =>
-                          updateField(index, { required: val })
-                        }
-                      />
-                      <Label
-                        htmlFor={`req-${field.id}`}
-                        className='cursor-pointer'
-                      >
-                        Required
-                      </Label>
-                    </div>
+                    <div className='col-span-1 md:col-span-5 flex items-center justify-between pb-1 md:pb-2'>
+                      <div className='flex items-center space-x-2 pb-1.5'>
+                        <Switch
+                          id={`req-${field.id}`}
+                          checked={field.required}
+                          onCheckedChange={(val) =>
+                            updateField(index, { required: val })
+                          }
+                        />
+                        <Label
+                          htmlFor={`req-${field.id}`}
+                          className='cursor-pointer'
+                        >
+                          Required
+                        </Label>
+                      </div>
 
-                    <div className='md:col-span-2 flex justify-end pb-1'>
                       <Button
                         type='button'
                         variant='ghost'
@@ -575,16 +575,16 @@ export default function AddCollection({ user }: AddProps) {
                                     value={child.label}
                                     className='h-8 text-xs bg-background'
                                     placeholder='Human Friendly Label'
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                      const label = e.target.value
+                                      const name = label
+                                        .toLowerCase()
+                                        .replace(/[^a-z0-9]/g, '_')
                                       updateChildField(index, childIndex, {
-                                        label: e.target.value,
-                                        name:
-                                          child.name ||
-                                          e.target.value
-                                            .toLowerCase()
-                                            .replace(/\s+/g, '_'),
+                                        label,
+                                        name,
                                       })
-                                    }
+                                    }}
                                   />
                                 </div>
                                 <div className='col-span-3 space-y-1'>
@@ -943,6 +943,21 @@ export default function AddCollection({ user }: AddProps) {
                   </div>
                 </div>
               ))}
+
+              {data.fields.length >= 3 && (
+                <div className='flex justify-center pt-2'>
+                  <Button
+                    type='button'
+                    onClick={addField}
+                    size='sm'
+                    variant='outline'
+                    className='w-full max-w-xs border-dashed'
+                  >
+                    <PlusIcon className='w-4 h-4 mr-2' />
+                    Add Field
+                  </Button>
+                </div>
+              )}
 
               {data.fields.length === 0 && (
                 <div className='text-center p-12 border-2 border-dashed rounded-xl'>

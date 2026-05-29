@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react'
 import { Building2, ChevronRight, LogOut, Shield } from 'lucide-react'
+import { useEffect } from 'react'
 
 interface Tenant {
   id: number
@@ -25,6 +26,31 @@ export default function SelectTenant({ user, tenants }: SelectTenantProps) {
         window.location.href = '/dashboard'
       }
     })
+  }
+
+  useEffect(() => {
+    if (tenants.length === 1) {
+      handleSelect(tenants[0].id)
+    }
+  }, [tenants])
+
+  if (tenants.length === 1) {
+    return (
+      <div className='min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-6 overflow-hidden relative'>
+        <div className='absolute top-[-15%] left-[-15%] w-[60%] h-[60%] bg-cyan-600/30 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]' />
+        <div className='absolute bottom-[-15%] right-[-15%] w-[60%] h-[60%] bg-blue-600/20 rounded-full blur-[120px] animate-[pulse_15s_ease-in-out_infinite]' />
+        
+        <Head title='Entering Workspace | Morphic CMS' />
+        
+        <div className='text-center space-y-4 z-10'>
+          <div className='inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-card border shadow-xl shadow-primary/5 mb-6 animate-bounce'>
+            <Building2 className='w-10 h-10 text-primary' />
+          </div>
+          <h2 className='text-2xl font-bold tracking-tight'>Entering Workspace...</h2>
+          <p className='text-sm text-muted-foreground'>Redirecting you to <span className='font-semibold text-foreground'>{tenants[0].name}</span></p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -75,6 +75,37 @@ export default function AbilityForm({
     setData('permissions', newPermissions)
   }
 
+  const handleCheckAll = (checked: boolean) => {
+    const newPermissions = { ...data.permissions }
+    collections.forEach((col) => {
+      newPermissions[col.slug] = {
+        create: checked,
+        read: checked,
+        update: checked,
+        delete: checked,
+      }
+    })
+    setData('permissions', newPermissions)
+  }
+
+  const handleRowCheckAll = (slug: string, checked: boolean) => {
+    const newPermissions = { ...data.permissions }
+    newPermissions[slug] = {
+      create: checked,
+      read: checked,
+      update: checked,
+      delete: checked,
+    }
+    setData('permissions', newPermissions)
+  }
+
+  const allChecked =
+    collections.length > 0 &&
+    collections.every((col) => {
+      const p = data.permissions[col.slug]
+      return p && p.create && p.read && p.update && p.delete
+    })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!data.name) {
@@ -177,6 +208,22 @@ export default function AbilityForm({
                   </TooltipContent>
                 </Tooltip>
               </h3>
+
+              {collections.length > 0 && ability?.isSystem !== '1' && (
+                <div className='flex items-center space-x-2 mr-2 bg-background/50 border border-muted hover:border-border hover:bg-background px-3 py-1.5 rounded-lg transition-all'>
+                  <Checkbox
+                    id='check-all-permissions'
+                    checked={allChecked}
+                    onCheckedChange={(checked) => handleCheckAll(!!checked)}
+                  />
+                  <Label
+                    htmlFor='check-all-permissions'
+                    className='text-[10px] font-bold uppercase tracking-wider cursor-pointer select-none'
+                  >
+                    Select All
+                  </Label>
+                </div>
+              )}
             </div>
 
             <div className='divide-y'>
@@ -202,36 +249,64 @@ export default function AbilityForm({
                         </span>
                       </div>
 
-                      <div className='md:col-span-4 grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 md:mt-0'>
-                        {['read', 'create', 'update', 'delete'].map(
-                          (action) => (
-                            <div
-                              key={action}
-                              className='flex items-center space-x-2 bg-muted/20 p-2.5 rounded-lg border border-transparent hover:border-border transition-all'
-                            >
-                              <Checkbox
-                                id={`perm-${col.slug}-${action}`}
-                                checked={
-                                  colPerms[action as keyof typeof colPerms]
-                                }
-                                onCheckedChange={(checked) =>
-                                  handlePermissionChange(
-                                    col.slug,
-                                    action as any,
-                                    !!checked
-                                  )
-                                }
-                                disabled={ability?.isSystem === '1'}
-                              />
-                              <Label
-                                htmlFor={`perm-${col.slug}-${action}`}
-                                className='text-xs font-medium uppercase tracking-widest cursor-pointer select-none'
-                              >
-                                {action}
-                              </Label>
-                            </div>
-                          )
+                      <div className='md:col-span-4 flex items-center gap-4 mt-4 md:mt-0 w-full'>
+                        {ability?.isSystem !== '1' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className='flex items-center justify-center p-2.5 rounded-lg border border-dashed hover:border-border hover:bg-muted/10 transition-all shrink-0 h-10 w-10'>
+                                <Checkbox
+                                  id={`row-check-all-${col.slug}`}
+                                  checked={
+                                    !!(
+                                      colPerms.create &&
+                                      colPerms.read &&
+                                      colPerms.update &&
+                                      colPerms.delete
+                                    )
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    handleRowCheckAll(col.slug, !!checked)
+                                  }}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Toggle all permissions for {col.name}
+                            </TooltipContent>
+                          </Tooltip>
                         )}
+
+                        <div className='flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4'>
+                          {['read', 'create', 'update', 'delete'].map(
+                            (action) => (
+                              <div
+                                key={action}
+                                className='flex items-center space-x-2 bg-muted/20 p-2.5 rounded-lg border border-transparent hover:border-border transition-all h-10'
+                              >
+                                <Checkbox
+                                  id={`perm-${col.slug}-${action}`}
+                                  checked={
+                                    colPerms[action as keyof typeof colPerms]
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(
+                                      col.slug,
+                                      action as any,
+                                      !!checked
+                                    )
+                                  }
+                                  disabled={ability?.isSystem === '1'}
+                                />
+                                <Label
+                                  htmlFor={`perm-${col.slug}-${action}`}
+                                  className='text-xs font-medium uppercase tracking-widest cursor-pointer select-none'
+                                >
+                                  {action}
+                                </Label>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
                   )

@@ -332,13 +332,15 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   Settings
                 </h3>
                 <div className='space-y-1'>
-                  <NavItem
-                    href='/email-settings'
-                    icon={Mail}
-                    label='Email'
-                    isSidebarOpen={isSidebarOpen}
-                    currentUrl={url}
-                  />
+                  {user.role === 'super_admin' && (
+                    <NavItem
+                      href='/email-settings'
+                      icon={Mail}
+                      label='Email'
+                      isSidebarOpen={isSidebarOpen}
+                      currentUrl={url}
+                    />
+                  )}
                   <NavItem
                     href='/api-key-abilities'
                     icon={ShieldCheck}

@@ -8,6 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -31,6 +37,7 @@ import {
   FileCheckIcon,
   PlusIcon,
   TerminalIcon,
+  MoreVertical,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
@@ -572,7 +579,8 @@ export default function EntriesList({
                             </span>
                           )}
                         </div>
-                        <div className='flex items-center space-x-2'>
+                        {/* Desktop Copy Buttons: Hidden on mobile, shown on desktop */}
+                        <div className='hidden sm:flex items-center space-x-2'>
                           <Button
                             variant='ghost'
                             size='sm'
@@ -664,6 +672,105 @@ export default function EntriesList({
                             <TerminalIcon className='w-3 h-3 mr-1.5' />
                             Copy cURL
                           </Button>
+                        </div>
+
+                        {/* Mobile Dropdown Menu: Shown on mobile, hidden on desktop */}
+                        <div className='flex sm:hidden'>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant='ghost'
+                                size='icon'
+                                className='h-7 w-7 text-muted-foreground hover:text-foreground'
+                              >
+                                <MoreVertical className='w-4 h-4' />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align='end' className='w-48'>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const name = collection.name.replace(
+                                    /[^a-zA-Z0-9]/g,
+                                    ''
+                                  )
+                                  let fieldsTs = ''
+
+                                  collection.fields.forEach((f: any) => {
+                                    let type = 'any'
+                                    if (
+                                      [
+                                        'text',
+                                        'textarea',
+                                        'rich-text',
+                                        'slug',
+                                        'email',
+                                        'date',
+                                        'datetime',
+                                        'time',
+                                        'select',
+                                        'radio',
+                                      ].includes(f.type)
+                                    )
+                                      type = 'string'
+                                    if (['number'].includes(f.type)) type = 'number'
+                                    if (['boolean', 'checkbox'].includes(f.type))
+                                      type = 'boolean'
+                                    if (f.type === 'array') type = 'any[]'
+                                    if (f.type === 'relation')
+                                      type = '{ id: number; [key: string]: any }'
+
+                                    fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
+                                  })
+
+                                  const tsInterface = `export interface ${name}Content {\n${fieldsTs}}\n\nexport interface ${name}Entry {\n  id: number;\n  content: ${name}Content;\n  createdAt: string;\n  updatedAt: string;\n}\n`
+
+                                  navigator.clipboard.writeText(tsInterface)
+                                  toast.success(
+                                    'TypeScript interface copied to clipboard'
+                                  )
+                                }}
+                              >
+                                <CodeIcon className='w-4 h-4 mr-2 text-muted-foreground' />
+                                Copy TS Types
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const json = JSON.stringify(
+                                    previewData || { entries, pagination },
+                                    null,
+                                    2
+                                  )
+                                  navigator.clipboard.writeText(json)
+                                  toast.success('JSON copied to clipboard')
+                                }}
+                              >
+                                <CopyIcon className='w-4 h-4 mr-2 text-muted-foreground' />
+                                Copy JSON
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  let url =
+                                    (collection as any).type === 'global'
+                                      ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                                      : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
+
+                                  if (collection.localized && previewLocale) {
+                                    url += `&locale=${previewLocale}`
+                                  }
+
+                                  const tenantId =
+                                    activeTenant?.id || 'YOUR_TENANT_ID'
+                                  const apiKey = user?.apiKey || 'YOUR_API_KEY'
+                                  const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
+                                  navigator.clipboard.writeText(curlCmd)
+                                  toast.success('cURL copied to clipboard')
+                                }}
+                              >
+                                <TerminalIcon className='w-4 h-4 mr-2 text-muted-foreground' />
+                                Copy cURL
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                       <ScrollArea className='h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300'>

@@ -624,7 +624,7 @@ app.get('/api-key-abilities', requireAuth, async (c) => {
     .where(whereTenant(abilities))
     .orderBy(desc(abilities.createdAt))
 
-  return c.get('inertia')('ApiKeyAbilities', {
+  return c.get('inertia')('ApiKeyAbilities/List', {
     user: userData,
     collections: allCollections,
     abilities: allAbilities.map((r) => ({
@@ -2108,7 +2108,15 @@ const checkPermission = (
 ) => {
   const user = c.get('user')
   if (!user) return false
-  if (user.role === 'super_admin' || user.permissions === '*') return true
+  
+  const tenantRole = c.get('tenantRole')
+  if (
+    user.role === 'super_admin' ||
+    user.permissions === '*' ||
+    tenantRole === 'owner'
+  ) {
+    return true
+  }
 
   // Special case for seeded "Read Access"
   if (user.abilityName === 'Read Access' && action === 'read') return true

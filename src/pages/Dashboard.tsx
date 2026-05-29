@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link } from '@inertiajs/react'
+import { Head, Link, usePage } from '@inertiajs/react'
 import {
   ArrowUpRight,
   ChevronRight,
@@ -69,6 +69,9 @@ export default function Dashboard({
   trafficData = [],
   performanceData = [],
 }: DashboardProps) {
+  const { activeTenantRole } = usePage().props as any
+  const canAccessApiAbilities = user?.role === 'super_admin' || activeTenantRole === 'owner'
+
   const overviewItems = [
     {
       label: 'Collections',
@@ -454,16 +457,18 @@ export default function Dashboard({
                     Manage Media
                   </Link>
                 </Button>
-                <Button
-                  variant='outline'
-                  className='justify-start h-12 rounded-xl border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary transition-all'
-                  asChild
-                >
-                  <Link href='/api-key-abilities'>
-                    <Users className='w-4 h-4 mr-3' />
-                    API Permissions
-                  </Link>
-                </Button>
+                {canAccessApiAbilities && (
+                  <Button
+                    variant='outline'
+                    className='justify-start h-12 rounded-xl border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary transition-all'
+                    asChild
+                  >
+                    <Link href='/api-key-abilities'>
+                      <Users className='w-4 h-4 mr-3' />
+                      API Permissions
+                    </Link>
+                  </Button>
+                )}
               </div>
             </section>
 

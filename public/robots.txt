@@ -1,0 +1,22 @@
+# www.robotstxt.org/
+
+# Allow all search engine crawlers to access public pages
+User-agent: *
+Allow: /
+Allow: /api/forms/*/submit # Allow public form submissions
+
+# Disallow search engines from indexing secure admin pages and backend routes
+Disallow: /login
+Disallow: /logout
+Disallow: /select-tenant
+Disallow: /dashboard
+Disallow: /collections
+Disallow: /entries
+Disallow: /users
+Disallow: /media
+Disallow: /settings
+Disallow: /email-settings
+Disallow: /api-key-abilities
+Disallow: /localization
+Disallow: /webhooks
+Disallow: /api/
