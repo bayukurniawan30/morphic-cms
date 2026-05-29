@@ -50,6 +50,13 @@
       "when": 1778592886138,
       "tag": "0006_wealthy_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779958103825,
+      "tag": "0007_eminent_shooting_star",
+      "breakpoints": true
     }
   ]
 }

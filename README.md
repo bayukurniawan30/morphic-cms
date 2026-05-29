@@ -82,6 +82,57 @@ The fastest way to get Morphic running is to click the **Deploy with Vercel** bu
 
 ---
 
+### 🚀 Deployment
+
+#### 🐳 Deploying with Docker (VPS Setup)
+
+Morphic CMS includes a fully configured `Dockerfile` and `docker-compose.yml` for easy deployment to any VPS (DigitalOcean, Hetzner, AWS EC2, etc.).
+
+1. **Clone the repository on your server**:
+   ```bash
+   git clone https://github.com/bayukurniawan30/morphic-cms.git
+   cd morphic-cms
+   ```
+
+2. **Configure Environment**:
+   Open `docker-compose.yml` and set up your Cloudinary credentials under the `environment` section.
+
+3. **Start the containers**:
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Initialize the Database**:
+   You need to push the schema to your new local PostgreSQL container:
+   ```bash
+   docker compose exec morphic pnpm run db:push
+   docker compose exec morphic pnpm run db:seed
+   ```
+
+Your CMS is now running on `http://your-server-ip:3000`. We recommend putting it behind an Nginx reverse proxy with SSL (e.g., using Certbot).
+
+#### ☁️ Deploying to AWS (Serverless)
+
+For an enterprise-grade setup entirely on AWS, you can utilize a true Serverless architecture using AWS Lambda, S3, CloudFront, and Amazon RDS.
+
+1. **Database (Amazon Aurora)**: 
+   Provision an **Amazon Aurora Serverless v2 (PostgreSQL)** database. Copy the connection string and set it as your `DATABASE_URL`.
+2. **API (AWS Lambda)**: 
+   Morphic is built on Hono, which has first-class AWS Lambda support. 
+   - Install the adapter: `pnpm add hono/aws-lambda`
+   - Create a Lambda entry point (`lambda.ts`) using the `handle` function from `hono/aws-lambda` wrapping the app from `src/api/index.ts`.
+   - Deploy this function using AWS SAM, CDK, or Serverless Framework.
+3. **Static Assets (Amazon S3 + CloudFront)**:
+   - Build the frontend: `pnpm run build`
+   - Upload the contents of the `./dist` folder to an Amazon S3 bucket.
+   - Put an Amazon CloudFront distribution in front of your S3 bucket to serve static assets globally. Ensure CloudFront is configured to route `/api/*` and non-asset requests back to your Lambda function URL or API Gateway.
+4. **Email (Amazon SES vs Resend)**:
+   Morphic supports both Resend (default) and Amazon SES out-of-the-box. To use SES for a 100% AWS-native stack, simply set `EMAIL_SERVICE=SES` in your environment variables and provide your AWS credentials (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
+5. **Storage (Amazon S3 vs Cloudinary)**:
+   Morphic supports both Cloudinary (default) and Amazon S3. To use S3 for a 100% AWS-native stack, set `STORAGE_SERVICE=S3` and provide your AWS credentials as well as `AWS_S3_BUCKET`. Make sure your bucket allows public read access.
+
+---
+
 ### 🤝 Contributing
 
 We love stars! ⭐ If you find Morphic useful, please give it a star on GitHub to help others find it.

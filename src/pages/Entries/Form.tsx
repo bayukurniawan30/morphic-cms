@@ -985,20 +985,38 @@ export default function EntriesForm({
                                   /api/entries/{entry?.id}
                                 </code>
                               </div>
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    JSON.stringify(apiPreviewData, null, 2)
-                                  )
-                                  toast.success('Copied to clipboard')
-                                }}
-                              >
-                                <CopyIcon className='w-3 h-3 mr-1.5' />
-                                Copy JSON
-                              </Button>
+                              <div className='flex items-center space-x-2'>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(
+                                      JSON.stringify(apiPreviewData, null, 2)
+                                    )
+                                    toast.success('Copied to clipboard')
+                                  }}
+                                >
+                                  <CopyIcon className='w-3 h-3 mr-1.5' />
+                                  Copy JSON
+                                </Button>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
+                                  onClick={() => {
+                                    const tenantId = activeTenant?.id || 'YOUR_TENANT_ID'
+                                    const apiKey = user?.apiKey || 'YOUR_API_KEY'
+                                    const url = `${window.location.origin}/api/entries/${entry?.id}`
+                                    const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
+                                    navigator.clipboard.writeText(curlCmd)
+                                    toast.success('cURL copied to clipboard')
+                                  }}
+                                >
+                                  <TerminalIcon className='w-3 h-3 mr-1.5' />
+                                  Copy cURL
+                                </Button>
+                              </div>
                             </div>
                             <pre className='whitespace-pre-wrap break-all'>
                               {JSON.stringify(apiPreviewData, null, 2)}

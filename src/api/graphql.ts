@@ -1,7 +1,7 @@
 import { createSchema, createYoga } from 'graphql-yoga'
 import { db } from '../db/index.js'
 import { collections, entries, media } from '../db/schema.js'
-import { and, eq, desc, isNull, sql } from 'drizzle-orm'
+import { and, eq, desc, asc, isNull, sql } from 'drizzle-orm'
 
 interface YogaContext {
   tenantId: number | null
@@ -45,7 +45,7 @@ export const createGraphQLHandler = () => {
       type Query {
         collections: [Collection!]!
         collection(slug: String!): Collection
-        entries(collectionSlug: String!, limit: Int, offset: Int, locale: String): [Entry!]!
+        entries(collectionSlug: String!, limit: Int, page: Int, offset: Int, sortBy: String, sortDir: String, locale: String): [Entry!]!
         media(limit: Int, offset: Int): [Media!]!
       }
     `,
@@ -75,8 +75,9 @@ export const createGraphQLHandler = () => {
             .limit(1)
           return result[0] || null
         },
-        entries: async (_, { collectionSlug, limit = 10, offset = 0, locale }, context) => {
+        entries: async (_, { collectionSlug, limit = 10, offset = 0, page, sortBy = 'createdAt', sortDir = 'desc', locale }, context) => {
           const { tenantId } = context
+          const computedOffset = page ? (page - 1) * limit : offset;
           if (!tenantId) return []
 
           // First find the collection ID
@@ -104,8 +105,8 @@ export const createGraphQLHandler = () => {
             .from(entries)
             .where(and(...conditions))
             .limit(limit)
-            .offset(offset)
-            .orderBy(desc(entries.createdAt))
+            .offset(computedOffset)
+            .orderBy(sortDir === 'asc' ? asc(sortBy === 'id' ? entries.id : entries.createdAt) : desc(sortBy === 'id' ? entries.id : entries.createdAt))
         },
         media: async (_, { limit = 20, offset = 0 }, context) => {
           const { tenantId } = context

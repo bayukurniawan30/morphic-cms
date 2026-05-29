@@ -164,6 +164,8 @@ export default function EntriesList({
   // API Preview states
   const [previewPage, setPreviewPage] = React.useState(1)
   const [previewLimit, setPreviewLimit] = React.useState(10)
+  const [previewSortBy, setPreviewSortBy] = React.useState('createdAt')
+  const [previewSortDir, setPreviewSortDir] = React.useState('desc')
   const [previewLocale, setPreviewLocale] = React.useState('')
   const [previewData, setPreviewData] = React.useState<any>(null)
   const [isPreviewLoading, setIsPreviewLoading] = React.useState(false)
@@ -179,7 +181,7 @@ export default function EntriesList({
         let url =
           collectionType === 'global'
             ? `/api/collections/${collection.slug}/entries`
-            : `/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+            : `/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
 
         if (collection.localized && previewLocale) {
           url += (url.includes('?') ? '&' : '?') + `locale=${previewLocale}`
@@ -200,6 +202,8 @@ export default function EntriesList({
   }, [
     previewPage,
     previewLimit,
+    previewSortBy,
+    previewSortDir,
     previewLocale,
     collection.slug,
     isDialogOpen,
@@ -412,8 +416,8 @@ export default function EntriesList({
                         className={cn(
                           'grid gap-4 bg-muted/30 p-4 rounded-lg border',
                           collection.localized
-                            ? 'grid-cols-1 md:grid-cols-3'
-                            : 'grid-cols-1 md:grid-cols-2'
+                            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+                            : 'grid-cols-2 md:grid-cols-4'
                         )}
                       >
                         <div className='space-y-2'>
@@ -451,6 +455,40 @@ export default function EntriesList({
                             }
                             className='h-8 text-xs'
                           />
+                        </div>
+                        <div className='space-y-2'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            Sort By
+                          </label>
+                          <Select
+                            value={previewSortBy}
+                            onValueChange={setPreviewSortBy}
+                          >
+                            <SelectTrigger className='h-8 text-xs'>
+                              <SelectValue placeholder='Sort by' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='createdAt'>Created At</SelectItem>
+                              <SelectItem value='id'>ID</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className='space-y-2'>
+                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                            Sort Direction
+                          </label>
+                          <Select
+                            value={previewSortDir}
+                            onValueChange={setPreviewSortDir}
+                          >
+                            <SelectTrigger className='h-8 text-xs'>
+                              <SelectValue placeholder='Sort direction' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='desc'>Descending</SelectItem>
+                              <SelectItem value='asc'>Ascending</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         {collection.localized && (
                           <div className='space-y-2'>
@@ -491,7 +529,7 @@ export default function EntriesList({
                             let url =
                               (collection as any).type === 'global'
                                 ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+                                : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
 
                             if (collection.localized && previewLocale) {
                               url += `&locale=${previewLocale}`
@@ -601,6 +639,31 @@ export default function EntriesList({
                             <CopyIcon className='w-3 h-3 mr-1.5' />
                             Copy JSON
                           </Button>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 text-[10px]'
+                            onClick={() => {
+                              let url =
+                                (collection as any).type === 'global'
+                                  ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                                  : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
+
+                              if (collection.localized && previewLocale) {
+                                url += `&locale=${previewLocale}`
+                              }
+
+                              const tenantId =
+                                activeTenant?.id || 'YOUR_TENANT_ID'
+                              const apiKey = user?.apiKey || 'YOUR_API_KEY'
+                              const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
+                              navigator.clipboard.writeText(curlCmd)
+                              toast.success('cURL copied to clipboard')
+                            }}
+                          >
+                            <TerminalIcon className='w-3 h-3 mr-1.5' />
+                            Copy cURL
+                          </Button>
                         </div>
                       </div>
                       <ScrollArea className='h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300'>
@@ -657,7 +720,7 @@ export default function EntriesList({
                             size='sm'
                             className='h-7 text-[10px]'
                             onClick={() => {
-                              const query = `query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`
+                              const query = `query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}, page: ${previewPage}, sortBy: "${previewSortBy}", sortDir: "${previewSortDir}"${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`
                               navigator.clipboard.writeText(query)
                               toast.success('Query copied to clipboard')
                             }}
@@ -668,7 +731,7 @@ export default function EntriesList({
                         </div>
                         <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-400'>
                           <pre className='whitespace-pre'>
-                            {`query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
+                            {`query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}, page: ${previewPage}, sortBy: "${previewSortBy}", sortDir: "${previewSortDir}"${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
                           </pre>
                         </ScrollArea>
                       </div>

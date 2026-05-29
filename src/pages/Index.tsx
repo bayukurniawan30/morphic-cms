@@ -15,6 +15,9 @@ export default function Index({ title }: { title: string }) {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [showPassword, setShowPassword] = React.useState(false)
+  const [step, setStep] = React.useState(1)
+  const [tempToken, setTempToken] = React.useState('')
+  const [code, setCode] = React.useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,18 +25,41 @@ export default function Index({ title }: { title: string }) {
     setError('email', '')
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      if (step === 1) {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
 
-      const result = await res.json()
+        const result = await res.json()
 
-      if (!res.ok) {
-        setError('email', result.error || 'Login failed. Please try again.')
-        setIsSubmitting(false)
-        return
+        if (!res.ok) {
+          setError('email', result.error || 'Login failed. Please try again.')
+          setIsSubmitting(false)
+          return
+        }
+
+        if (result.requires2fa) {
+          setTempToken(result.tempToken)
+          setStep(2)
+          setIsSubmitting(false)
+          return
+        }
+      } else if (step === 2) {
+        const res = await fetch('/api/auth/login/2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tempToken, code }),
+        })
+
+        const result = await res.json()
+
+        if (!res.ok) {
+          setError('email', result.error || 'Invalid authentication code.')
+          setIsSubmitting(false)
+          return
+        }
       }
 
       window.location.href = '/dashboard'
@@ -71,67 +97,97 @@ export default function Index({ title }: { title: string }) {
 
         <div className='bg-card/50 backdrop-blur-xl p-8 rounded-3xl border border-border shadow-2xl space-y-8'>
           <form onSubmit={handleSubmit} className='space-y-6'>
-            <div className='space-y-2'>
-              <Label
-                htmlFor='email'
-                className='text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1'
-              >
-                Email Address
-              </Label>
-              <Input
-                id='email'
-                type='email'
-                placeholder='admin@morphic.cms'
-                value={data.email}
-                onChange={(e) => setData('email', e.target.value)}
-                required
-                className='h-12 bg-background/50 border-border focus:ring-primary focus:border-primary rounded-xl'
-              />
-              {errors.email && (
-                <p className='text-xs font-bold text-destructive px-1'>
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            <div className='space-y-2'>
-              <div className='flex items-center justify-between ml-1'>
-                <Label
-                  htmlFor='password'
-                  title='password'
-                  className='text-sm font-bold uppercase tracking-wider text-muted-foreground'
-                >
-                  Password
-                </Label>
-                <a
-                  href='/forgot-password'
-                  className='text-xs font-bold text-primary hover:text-primary/80 transition-colors'
-                >
-                  Forgot password?
-                </a>
-              </div>
-              <div className='relative'>
-                <Input
-                  id='password'
-                  type={showPassword ? 'text' : 'password'}
-                  value={data.password}
-                  onChange={(e) => setData('password', e.target.value)}
-                  required
-                  className='h-12 bg-background/50 border-border pr-12 rounded-xl focus:ring-primary focus:border-primary'
-                />
-                <button
-                  type='button'
-                  onClick={() => setShowPassword(!showPassword)}
-                  className='absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors'
-                >
-                  {showPassword ? (
-                    <EyeOff className='h-5 w-5' />
-                  ) : (
-                    <Eye className='h-5 w-5' />
+            {step === 1 ? (
+              <>
+                <div className='space-y-2'>
+                  <Label
+                    htmlFor='email'
+                    className='text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1'
+                  >
+                    Email Address
+                  </Label>
+                  <Input
+                    id='email'
+                    type='email'
+                    placeholder='admin@morphic.cms'
+                    value={data.email}
+                    onChange={(e) => setData('email', e.target.value)}
+                    required
+                    className='h-12 bg-background/50 border-border focus:ring-primary focus:border-primary rounded-xl'
+                  />
+                  {errors.email && (
+                    <p className='text-xs font-bold text-destructive px-1'>
+                      {errors.email}
+                    </p>
                   )}
-                </button>
+                </div>
+
+                <div className='space-y-2'>
+                  <div className='flex items-center justify-between ml-1'>
+                    <Label
+                      htmlFor='password'
+                      title='password'
+                      className='text-sm font-bold uppercase tracking-wider text-muted-foreground'
+                    >
+                      Password
+                    </Label>
+                    <a
+                      href='/forgot-password'
+                      className='text-xs font-bold text-primary hover:text-primary/80 transition-colors'
+                    >
+                      Forgot password?
+                    </a>
+                  </div>
+                  <div className='relative'>
+                    <Input
+                      id='password'
+                      type={showPassword ? 'text' : 'password'}
+                      value={data.password}
+                      onChange={(e) => setData('password', e.target.value)}
+                      required
+                      className='h-12 bg-background/50 border-border pr-12 rounded-xl focus:ring-primary focus:border-primary'
+                    />
+                    <button
+                      type='button'
+                      onClick={() => setShowPassword(!showPassword)}
+                      className='absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors'
+                    >
+                      {showPassword ? (
+                        <EyeOff className='h-5 w-5' />
+                      ) : (
+                        <Eye className='h-5 w-5' />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='code'
+                  className='text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1'
+                >
+                  Authentication Code
+                </Label>
+                <Input
+                  id='code'
+                  type='text'
+                  placeholder='6-digit TOTP or Recovery Code'
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                  className='h-12 bg-background/50 border-border focus:ring-primary focus:border-primary rounded-xl text-center tracking-widest font-mono text-lg'
+                />
+                <p className='text-xs text-muted-foreground ml-1 mt-2'>
+                  Enter the code from your authenticator app or one of your recovery codes.
+                </p>
+                {errors.email && (
+                  <p className='text-xs font-bold text-destructive px-1 mt-2'>
+                    {errors.email}
+                  </p>
+                )}
               </div>
-            </div>
+            )}
 
             <Button
               type='submit'

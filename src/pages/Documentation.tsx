@@ -14,6 +14,7 @@ import {
   FileCheck,
   Key,
   Layers,
+  Mail,
   Server,
   Shield,
   Terminal,
@@ -139,6 +140,7 @@ export default function Documentation({ user }: { user: any }) {
     { id: 'api-reference', label: 'API Reference', icon: Terminal },
     { id: 'auth', label: 'Authentication', icon: Shield },
     { id: 'storage', label: 'Storage', icon: Cloud },
+    { id: 'email', label: 'Email', icon: Mail },
     { id: 'webhooks', label: 'Webhooks', icon: Webhook },
     { id: 'hosting', label: 'Deployment', icon: Server },
   ]
@@ -554,42 +556,60 @@ export default function Documentation({ user }: { user: any }) {
 
       <Section id='storage' title='Storage' icon={Cloud}>
         <p>
-          Morphic CMS uses <strong>Cloudinary</strong> to store and serve your
-          media files (images, videos) and documents. This ensures your assets
-          are optimized and delivered via a high-performance CDN.
+          Morphic CMS supports multiple storage providers for your media files and documents. By default, it uses <strong>Cloudinary</strong> for optimized media delivery, but it can be configured to use <strong>Amazon S3</strong> for a 100% AWS-native stack.
         </p>
         <div className='bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl flex items-start space-x-3 mt-6'>
           <Layers className='w-5 h-5 text-blue-500 mt-0.5' />
           <div className='text-sm space-y-2'>
             <p className='font-bold text-blue-800 dark:text-blue-400'>
-              Required Environment Variables
+              Storage Service Configuration
             </p>
-            <ul className='list-disc list-inside text-blue-700/80 dark:text-blue-500/80'>
+            <ul className='list-disc list-inside text-blue-700/80 dark:text-blue-500/80 space-y-1 mt-2'>
               <li>
-                <code>CLOUDINARY_API_KEY</code>: Your Cloudinary API key.
+                <code>STORAGE_SERVICE</code>: Set to <code>CLOUDINARY</code> (default) or <code>S3</code>.
               </li>
               <li>
-                <code>CLOUDINARY_API_SECRET</code>: Your Cloudinary API secret.
+                <strong>Cloudinary</strong> (if used): Provide <code>CLOUDINARY_API_KEY</code>, <code>CLOUDINARY_API_SECRET</code>, <code>CLOUDINARY_CLOUD_NAME</code>, and <code>CLOUDINARY_UPLOAD_PRESET</code>.
               </li>
               <li>
-                <code>CLOUDINARY_CLOUD_NAME</code>: Your unique cloud name from
-                Cloudinary dashboard.
+                <strong>Amazon S3</strong> (if used): Provide <code>AWS_S3_BUCKET</code>, <code>AWS_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>, and <code>AWS_SECRET_ACCESS_KEY</code>.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </Section>
+
+      <Section id='email' title='Email' icon={Mail}>
+        <p>
+          Morphic CMS supports multiple email providers for transactional emails. By default, it uses the{' '}
+          <a
+            href='https://resend.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-primary underline hover:text-primary/80'
+          >
+            <strong>Resend</strong>
+          </a>{' '}
+          REST API, but it can be configured to use <strong>Amazon SES</strong> for a 100% AWS-native stack.
+        </p>
+        <div className='bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start space-x-3 mt-6'>
+          <Mail className='w-5 h-5 text-primary mt-0.5' />
+          <div className='text-sm space-y-2'>
+            <p className='font-bold text-primary'>
+              Email Service Configuration
+            </p>
+            <ul className='list-disc list-inside text-muted-foreground'>
+              <li>
+                <code>EMAIL_SERVICE</code>: Set to <code>RESEND</code> (default) or <code>SES</code>.
               </li>
               <li>
-                <code>CLOUDINARY_UPLOAD_PRESET</code>: An unsigned upload preset
-                configured in your Cloudinary settings.{' '}
-                <a
-                  href='https://cloudinary.com/documentation/upload_images#landingpage'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='underline hover:text-blue-600'
-                >
-                  Learn more
-                </a>
+                <code>RESEND_API_KEY</code>: Required if using Resend.
               </li>
               <li>
-                <code>SIMPLE_HOMEPAGE</code>: Set to <code>1</code> to show a
-                minimal landing page instead of the full marketing site.
+                <code>AWS_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>: Required if using Amazon SES.
+              </li>
+              <li>
+                <code>EMAIL_FROM</code>: The sender address (e.g., <code>"Morphic CMS &lt;onboarding@resend.dev&gt;"</code>).
               </li>
             </ul>
           </div>

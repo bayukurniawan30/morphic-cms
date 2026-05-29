@@ -17,6 +17,8 @@ import {
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
+import { generateSecret, generateURI, verifySync } from 'otplib'
+import QRCode from 'qrcode'
 import { db } from '../db/index.js'
 import {
   abilities,
@@ -29,17 +31,16 @@ import {
   forms,
   locales,
   media,
-  mediaFolders,
   tenants,
   users,
   usersToTenants,
   webhooks,
 } from '../db/schema.js'
-import { triggerWebhooks } from '../lib/webhooks.js'
 import type { FieldDefinition } from '../lib/dynamic-schema.js'
 import { buildZodSchema } from '../lib/dynamic-schema.js'
 import { sendEmail } from '../lib/email.js'
 import { inertia } from '../lib/inertia.js'
+import { triggerWebhooks } from '../lib/webhooks.js'
 import apiDocuments from './documents.js'
 import { createGraphQLHandler } from './graphql.js'
 import apiMedia from './media.js'
@@ -107,9 +108,9 @@ app.use('/vite.svg', serveStatic({ root: distPath }))
 // Serve the Landing Page at root
 app.get('/', async (c) => {
   const isSimple = process.env.SIMPLE_HOMEPAGE === '1'
-  return c.get('inertia')('Home', { 
+  return c.get('inertia')('Home', {
     title: 'Morphic CMS',
-    isSimpleHomepage: isSimple
+    isSimpleHomepage: isSimple,
   })
 })
 
@@ -191,6 +192,7 @@ app.use('*', async (c, next) => {
           name: dbUser.name || dbUser.username,
           email: dbUser.email,
           role: dbUser.role,
+          apiKey: dbUser.apiKey,
         }
       }
     } catch (e) {
@@ -211,6 +213,7 @@ app.use('*', async (c, next) => {
           name: dbUser.name || dbUser.username,
           email: dbUser.email,
           role: dbUser.role,
+          apiKey: dbUser.apiKey,
         }
       }
     } catch (e) {
@@ -420,7 +423,10 @@ app.get('/webhooks/edit/:id', requireAuth, async (c) => {
     return c.redirect('/webhooks')
   }
 
-  const webhookResult = await db.select().from(webhooks).where(eq(webhooks.id, id))
+  const webhookResult = await db
+    .select()
+    .from(webhooks)
+    .where(eq(webhooks.id, id))
   const webhook = webhookResult[0]
 
   if (!webhook) return c.redirect('/webhooks')
@@ -1566,7 +1572,7 @@ api.use('*', async (c, next) => {
 // Webhook CRUD
 api.get('/webhooks', async (c) => {
   const tenantId = c.get('tenantId')
-  
+
   const query = db
     .select({
       id: webhooks.id,
@@ -1588,7 +1594,7 @@ api.get('/webhooks', async (c) => {
   }
 
   const allWebhooks = await query.orderBy(desc(webhooks.createdAt))
-  
+
   return c.json({ webhooks: allWebhooks })
 })
 
@@ -1596,20 +1602,22 @@ api.post('/webhooks', async (c) => {
   try {
     const { id, name, url, secret, events, isActive } = await c.req.json()
     const tenantId = c.get('tenantId')
-    
+
     if (!name || !url) {
       return c.json({ error: 'Name and URL are required' }, 400)
     }
 
     if (id) {
       // Update
-      await db.update(webhooks)
+      await db
+        .update(webhooks)
         .set({ name, url, secret, events, isActive, updatedAt: new Date() })
         .where(eq(webhooks.id, id))
       return c.json({ success: true })
     } else {
       // Create
-      const newWebhook = await db.insert(webhooks)
+      const newWebhook = await db
+        .insert(webhooks)
         .values({ name, url, secret, events, isActive, tenantId })
         .returning()
       return c.json({ success: true, webhook: newWebhook[0] })
@@ -1623,10 +1631,10 @@ api.post('/webhooks', async (c) => {
 api.delete('/webhooks/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10)
   const tenantId = c.get('tenantId')
-  
+
   const whereClause = [eq(webhooks.id, id)]
   if (tenantId) whereClause.push(eq(webhooks.tenantId, tenantId))
-  
+
   await db.delete(webhooks).where(and(...whereClause))
   return c.json({ success: true })
 })
@@ -2277,8 +2285,21 @@ api.post('/auth/login', async (c) => {
       return c.json({ error: 'Invalid credentials' }, 401)
     }
 
-    // Create JWT Token (1 week expiration)
     const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
+
+    if (user.isTwoFactorEnabled) {
+      const tempToken = await sign(
+        {
+          id: user.id,
+          is2faPending: true,
+          exp: Math.floor(Date.now() / 1000) + 300,
+        }, // 5 mins
+        secret
+      )
+      return c.json({ requires2fa: true, tempToken })
+    }
+
+    // Create JWT Token (1 week expiration)
     const expiresInDays = parseInt(process.env.JWT_EXPIRES_IN_DAYS || '7', 10)
     const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * expiresInDays
 
@@ -2311,6 +2332,169 @@ api.post('/auth/login', async (c) => {
     console.error('Login error:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
+})
+
+api.post('/auth/login/2fa', async (c) => {
+  try {
+    const { tempToken, code } = await c.req.json()
+    if (!tempToken || !code)
+      return c.json({ error: 'Token and code are required' }, 400)
+
+    const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
+    let decoded: any
+    try {
+      decoded = await verify(tempToken, secret, 'HS256')
+    } catch (e) {
+      return c.json({ error: 'Invalid or expired temporary token' }, 401)
+    }
+
+    if (!decoded.is2faPending || !decoded.id) {
+      return c.json({ error: 'Invalid token payload' }, 401)
+    }
+
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, decoded.id))
+      .limit(1)
+    const user = userResult[0]
+    if (!user || !user.isTwoFactorEnabled)
+      return c.json({ error: 'Invalid user or 2FA not enabled' }, 400)
+
+    let isValid = false
+    let isRecoveryCode = false
+
+    if (user.twoFactorSecret) {
+      isValid = verifySync({
+        token: code,
+        secret: user.twoFactorSecret,
+        strategy: 'totp',
+      }).valid
+    }
+
+    if (
+      !isValid &&
+      Array.isArray(user.recoveryCodes) &&
+      user.recoveryCodes.includes(code)
+    ) {
+      isValid = true
+      isRecoveryCode = true
+    }
+
+    if (!isValid) {
+      return c.json({ error: 'Invalid authentication code' }, 401)
+    }
+
+    if (isRecoveryCode) {
+      const newRecoveryCodes = (user.recoveryCodes as string[]).filter(
+        (c) => c !== code
+      )
+      await db
+        .update(users)
+        .set({ recoveryCodes: newRecoveryCodes })
+        .where(eq(users.id, user.id))
+    }
+
+    const expiresInDays = parseInt(process.env.JWT_EXPIRES_IN_DAYS || '7', 10)
+    const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * expiresInDays
+    const token = await sign({ id: user.id, role: user.role, exp }, secret)
+
+    setCookie(c, 'morphic_token', token, {
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * expiresInDays,
+      sameSite: 'Lax',
+    })
+
+    await db
+      .update(users)
+      .set({ lastLogin: new Date() })
+      .where(eq(users.id, user.id))
+
+    return c.json({ success: true })
+  } catch (err) {
+    console.error('2FA Login error:', err)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+api.post('/auth/2fa/generate', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const userResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userData.id))
+    .limit(1)
+  const user = userResult[0]
+  if (!user) return c.json({ error: 'User not found' }, 404)
+  if (user.isTwoFactorEnabled)
+    return c.json({ error: '2FA is already enabled' }, 400)
+
+  const secret = generateSecret()
+  const otpauthUrl = generateURI({
+    secret,
+    issuer: 'Morphic CMS',
+    label: user.email,
+    strategy: 'totp',
+  })
+  const qrCode = await QRCode.toDataURL(otpauthUrl)
+
+  const recoveryCodes = Array.from({ length: 10 }, () =>
+    crypto.randomBytes(4).toString('hex')
+  )
+
+  return c.json({ secret, qrCode, recoveryCodes })
+})
+
+api.post('/auth/2fa/verify-setup', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const { secret, code, recoveryCodes } = await c.req.json()
+
+  if (!secret || !code || !recoveryCodes) {
+    return c.json({ error: 'Missing parameters' }, 400)
+  }
+
+  const isValid = verifySync({ token: code, secret, strategy: 'totp' }).valid
+  if (!isValid) return c.json({ error: 'Invalid code' }, 400)
+
+  await db
+    .update(users)
+    .set({
+      isTwoFactorEnabled: true,
+      twoFactorSecret: secret,
+      recoveryCodes,
+    })
+    .where(eq(users.id, userData.id))
+
+  return c.json({ success: true })
+})
+
+api.post('/auth/2fa/disable', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const { password } = await c.req.json()
+
+  const userResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userData.id))
+    .limit(1)
+  const user = userResult[0]
+  if (!user) return c.json({ error: 'User not found' }, 404)
+
+  const isValid = await bcrypt.compare(password, user.password)
+  if (!isValid) return c.json({ error: 'Incorrect password' }, 401)
+
+  await db
+    .update(users)
+    .set({
+      isTwoFactorEnabled: false,
+      twoFactorSecret: null,
+      recoveryCodes: [],
+    })
+    .where(eq(users.id, userData.id))
+
+  return c.json({ success: true })
 })
 
 api.post('/auth/forgot-password', async (c) => {
@@ -2868,6 +3052,19 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const totalCount = Number(countResult[0].count)
     const totalPages = Math.ceil(totalCount / limit)
 
+    const sortByParam = c.req.query('sortBy')
+    const sortDirParam = c.req.query('sortDir')
+    let orderClause = desc(entries.createdAt)
+
+    if (sortByParam === 'id') {
+      orderClause = sortDirParam === 'asc' ? asc(entries.id) : desc(entries.id)
+    } else if (sortByParam === 'createdAt') {
+      orderClause =
+        sortDirParam === 'asc'
+          ? asc(entries.createdAt)
+          : desc(entries.createdAt)
+    }
+
     const result = await db
       .select({
         entry: entries,
@@ -2876,7 +3073,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .from(entries)
       .leftJoin(users, eq(entries.updatedById, users.id))
       .where(whereClause)
-      .orderBy(desc(entries.createdAt))
+      .orderBy(orderClause)
       .limit(limit)
       .offset(offset)
 
@@ -2981,7 +3178,7 @@ api.post('/collections/:id/entries', async (c) => {
           const res = await tx.insert(entries).values(entryData).returning()
           const newEntry = res[0]
           inserted.push(newEntry)
-          
+
           // Trigger webhooks in background
           triggerWebhooks(tenantId, 'entry.created', { entry: newEntry })
           if (newEntry.status === 'published') {
@@ -3023,7 +3220,7 @@ api.post('/collections/:id/entries', async (c) => {
       .returning()
 
     const primaryEntry = insertResult[0]
-    
+
     // Trigger webhooks
     triggerWebhooks(tenantId, 'entry.created', { entry: primaryEntry })
     if (primaryEntry.status === 'published') {
@@ -3202,7 +3399,7 @@ api.put('/entries/:id', async (c) => {
       .returning()
 
     const updatedEntry = updated[0]
-    
+
     // Trigger webhooks
     triggerWebhooks(tenantId, 'entry.updated', { entry: updatedEntry })
     if (updatedEntry.status === 'published' && entry.status !== 'published') {
@@ -3261,10 +3458,10 @@ api.delete('/entries/:id', async (c) => {
         .where(and(...entryConditions))
         .returning()
       if (updated.length === 0) return c.json({ error: 'Entry not found' }, 404)
-      
+
       // Trigger webhooks
       triggerWebhooks(tenantId, 'entry.deleted', { entry: updated[0] })
-      
+
       return c.json({ success: true, message: 'Entry moved to trash' })
     } else {
       const deleted = await db
@@ -3272,10 +3469,10 @@ api.delete('/entries/:id', async (c) => {
         .where(and(...entryConditions))
         .returning()
       if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
-      
+
       // Trigger webhooks
       triggerWebhooks(tenantId, 'entry.deleted', { entry: deleted[0] })
-      
+
       return c.json({ success: true })
     }
   } catch (err) {
@@ -3696,13 +3893,10 @@ api.delete('/forms/:slug/entries/:entryId', async (c) => {
       const deleted = await db
         .delete(formEntries)
         .where(
-          and(
-            eq(formEntries.id, entryId),
-            eq(formEntries.formId, form.id)
-          )
+          and(eq(formEntries.id, entryId), eq(formEntries.formId, form.id))
         )
         .returning()
-      
+
       if (deleted.length === 0) return c.json({ error: 'Entry not found' }, 404)
       return c.json({ success: true })
     }
@@ -3730,7 +3924,7 @@ api.post('/forms/:slug/submit', async (c) => {
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 
     const form = formResult[0]
-    
+
     let body: Record<string, any> = {}
     try {
       const contentType = c.req.header('content-type') || ''
@@ -3773,16 +3967,19 @@ api.post('/forms/:slug/submit', async (c) => {
     // For simplicity, we just save it now.
 
     if (form.storageType === 'internal') {
-      const result = await db.insert(formEntries).values({
-        formId: form.id,
-        data: body,
-        tenantId: form.tenantId, // Ensure entry gets the same tenant as the form
-      }).returning()
+      const result = await db
+        .insert(formEntries)
+        .values({
+          formId: form.id,
+          data: body,
+          tenantId: form.tenantId, // Ensure entry gets the same tenant as the form
+        })
+        .returning()
 
       // Trigger webhooks
-      triggerWebhooks(form.tenantId, 'form.submitted', { 
+      triggerWebhooks(form.tenantId, 'form.submitted', {
         form: { id: form.id, name: form.name },
-        submission: result[0]
+        submission: result[0],
       })
 
       return c.json({
@@ -3808,9 +4005,9 @@ api.post('/forms/:slug/submit', async (c) => {
       }
 
       // Trigger webhooks even for external (optional, but consistent)
-      triggerWebhooks(form.tenantId, 'form.submitted', { 
+      triggerWebhooks(form.tenantId, 'form.submitted', {
         form: { id: form.id, name: form.name },
-        submission: body
+        submission: body,
       })
 
       return c.json({

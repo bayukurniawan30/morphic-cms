@@ -9,6 +9,11 @@ import {
   deleteFromCloudinary,
   uploadBufferToCloudinary,
 } from '../lib/cloudinary.js'
+import {
+  createS3Folder,
+  deleteFromS3,
+  uploadBufferToS3,
+} from '../lib/s3.js'
 
 import { triggerWebhooks } from '../lib/webhooks.js'
 
@@ -257,13 +262,25 @@ apiMedia.post('/upload', async (c) => {
       if (tenantData.length > 0) {
         // Nest the tenant folder inside the preset folder
         folderPath = `${uploadPreset}/${tenantData[0].slug}`
-        // Ensure the nested folder exists via Admin API
-        await createCloudinaryFolder(folderPath)
+        
+        const storageService = process.env.STORAGE_SERVICE?.toUpperCase()
+        if (storageService === 'S3') {
+          await createS3Folder(folderPath)
+        } else {
+          // Ensure the nested folder exists via Admin API
+          await createCloudinaryFolder(folderPath)
+        }
       }
     }
 
-    // Pass the buffer, original filename, and the combined path
-    const result = await uploadBufferToCloudinary(buffer, file.name, folderPath)
+    const storageService = process.env.STORAGE_SERVICE?.toUpperCase()
+    let result: any
+
+    if (storageService === 'S3') {
+      result = await uploadBufferToS3(buffer, file.name, folderPath, file.type)
+    } else {
+      result = await uploadBufferToCloudinary(buffer, file.name, folderPath)
+    }
 
     const newMedia = await db
       .insert(media)
@@ -318,12 +335,18 @@ apiMedia.delete('/:id', async (c) => {
 
     const mediaItem = item[0]
 
-    // 2. Delete from Cloudinary
+    // 2. Delete from Storage Provider
+    const storageService = process.env.STORAGE_SERVICE?.toUpperCase()
+    
     if (mediaItem.publicId) {
-      await deleteFromCloudinary(
-        mediaItem.publicId,
-        mediaItem.resourceType || 'image'
-      )
+      if (storageService === 'S3') {
+        await deleteFromS3(mediaItem.publicId)
+      } else {
+        await deleteFromCloudinary(
+          mediaItem.publicId,
+          mediaItem.resourceType || 'image'
+        )
+      }
     }
 
     // 3. Delete from database
