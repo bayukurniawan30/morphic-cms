@@ -330,23 +330,23 @@ export default function AddForm({ user }: AddProps) {
                         />
                       </div>
 
-                      <div className='md:col-span-2 flex items-center space-x-2 pb-3'>
-                        <Switch
-                          id={`req-${field.id}`}
-                          checked={field.required}
-                          onCheckedChange={(val) =>
-                            updateField(index, { required: val })
-                          }
-                        />
-                        <Label
-                          htmlFor={`req-${field.id}`}
-                          className='cursor-pointer text-xs'
-                        >
-                          Required
-                        </Label>
-                      </div>
+                      <div className='col-span-1 md:col-span-4 flex items-center justify-between pb-1 md:pb-2'>
+                        <div className='flex items-center space-x-2 pb-1.5 mt-1.5'>
+                          <Switch
+                            id={`req-${field.id}`}
+                            checked={field.required}
+                            onCheckedChange={(val) =>
+                              updateField(index, { required: val })
+                            }
+                          />
+                          <Label
+                            htmlFor={`req-${field.id}`}
+                            className='cursor-pointer text-xs'
+                          >
+                            Required
+                          </Label>
+                        </div>
 
-                      <div className='md:col-span-2 flex justify-end pb-1'>
                         <Button
                           type='button'
                           variant='ghost'
@@ -497,6 +497,21 @@ export default function AddForm({ user }: AddProps) {
                     </div>
                   </div>
                 ))}
+
+                {data.fields.length >= 3 && (
+                  <div className='flex justify-center pt-2'>
+                    <Button
+                      type='button'
+                      onClick={addField}
+                      size='sm'
+                      variant='outline'
+                      className='w-full max-w-xs border-dashed'
+                    >
+                      <PlusIcon className='w-4 h-4 mr-2' />
+                      Add Field
+                    </Button>
+                  </div>
+                )}
 
                 {data.fields.length === 0 && (
                   <div className='text-center p-12 border-2 border-dashed rounded-xl'>

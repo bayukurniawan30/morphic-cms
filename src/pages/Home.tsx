@@ -140,7 +140,10 @@ export default function Home({
           property='og:description'
           content='The Edge-Ready, High-Performance Headless CMS for Modern Developers.'
         />
-        <meta property='og:image' content='/dashboard.png' />
+        <meta
+          property='og:image'
+          content={typeof window !== 'undefined' ? `${window.location.origin}/dashboard.png` : '/dashboard.png'}
+        />
 
         {/* Twitter */}
         <meta property='twitter:card' content='summary_large_image' />
@@ -156,7 +159,10 @@ export default function Home({
           property='twitter:description'
           content='The Edge-Ready, High-Performance Headless CMS for Modern Developers.'
         />
-        <meta property='twitter:image' content='/dashboard.png' />
+        <meta
+          property='twitter:image'
+          content={typeof window !== 'undefined' ? `${window.location.origin}/dashboard.png` : '/dashboard.png'}
+        />
       </Head>
 
       {/* Background Glow */}

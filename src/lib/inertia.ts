@@ -114,6 +114,21 @@ export const inertia = (viewFile: string = 'index.html') => {
         <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <meta name="description" content="Morphic CMS is a high-performance, multi-tenant headless CMS built for the edge." />
+            <meta name="keywords" content="headless cms, edge-ready, multi-tenant, react cms, modern cms" />
+            
+            <!-- Fallback Open Graph / Social Media Meta Tags (Visible to crawlers without JavaScript) -->
+            <meta property="og:type" content="website" />
+            <meta property="og:url" content="${c.req.url}" />
+            <meta property="og:title" content="Morphic CMS - Modern Headless CMS" />
+            <meta property="og:description" content="The Edge-Ready, High-Performance Headless CMS for Modern Developers." />
+            <meta property="og:image" content="${new URL(c.req.url).origin}/dashboard.png" />
+            <meta property="og:logo" content="${new URL(c.req.url).origin}/favicon.png" />
+            <meta property="twitter:card" content="summary_large_image" />
+            <meta property="twitter:url" content="${c.req.url}" />
+            <meta property="twitter:title" content="Morphic CMS - Modern Headless CMS" />
+            <meta property="twitter:description" content="The Edge-Ready, High-Performance Headless CMS for Modern Developers." />
+
             <script>
               window.addEventListener('error', function(e) {
                 console.error('Global Runtime Error:', e.message, 'at', e.lineno, ':', e.colno);

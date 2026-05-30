@@ -883,7 +883,7 @@ export default function EntriesForm({
       title={`${mode === 'create' ? 'Add' : 'Edit'} ${collection.name} Entry | Morphic`}
     >
       <div className='space-y-6 pb-12'>
-        <div className='flex items-center justify-between'>
+        <div className='flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0'>
           <div className='flex items-center space-x-4'>
             <Button
               variant='ghost'
@@ -899,7 +899,7 @@ export default function EntriesForm({
               <h1 className='text-3xl font-bold tracking-tight'>
                 {mode === 'create' ? 'Add Entry' : 'Edit Entry'}
               </h1>
-              <div className='flex items-center space-x-4 mt-1'>
+              <div className='flex flex-col md:flex-row md:items-center space-y-1.5 md:space-y-0 md:space-x-4 mt-1'>
                 <p className='text-muted-foreground text-sm'>
                   Collection:{' '}
                   <span className='font-semibold text-foreground'>
@@ -908,7 +908,7 @@ export default function EntriesForm({
                 </p>
                 {mode === 'edit' && updatedBy && (
                   <>
-                    <span className='text-muted-foreground/30'>•</span>
+                    <span className='hidden md:inline text-muted-foreground/30'>•</span>
                     <div className='flex items-center text-xs text-muted-foreground'>
                       <User className='w-3 h-3 mr-1' />
                       Last updated by{' '}
@@ -923,7 +923,7 @@ export default function EntriesForm({
           </div>
 
           {mode === 'edit' && (
-            <div className='flex items-center space-x-2'>
+            <div className='flex flex-wrap items-center gap-2 w-full md:w-auto'>
               <Dialog
                 open={isApiPreviewOpen}
                 onOpenChange={setIsApiPreviewOpen}
@@ -1005,8 +1005,10 @@ export default function EntriesForm({
                                   size='sm'
                                   className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
                                   onClick={() => {
-                                    const tenantId = activeTenant?.id || 'YOUR_TENANT_ID'
-                                    const apiKey = user?.apiKey || 'YOUR_API_KEY'
+                                    const tenantId =
+                                      activeTenant?.id || 'YOUR_TENANT_ID'
+                                    const apiKey =
+                                      user?.apiKey || 'YOUR_API_KEY'
                                     const url = `${window.location.origin}/api/entries/${entry?.id}`
                                     const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
                                     navigator.clipboard.writeText(curlCmd)
@@ -1150,6 +1152,7 @@ export default function EntriesForm({
                 size='sm'
                 onClick={() => setIsDetailsVisible(!isDetailsVisible)}
                 title={isDetailsVisible ? 'Hide Details' : 'Show Details'}
+                className='ml-auto md:ml-0'
               >
                 {isDetailsVisible ? (
                   <PanelRightClose className='w-4 h-4' />

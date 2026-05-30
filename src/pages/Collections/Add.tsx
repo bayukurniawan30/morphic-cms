@@ -473,7 +473,7 @@ export default function AddCollection({ user }: AddProps) {
                     </div>
 
                     <div className='col-span-1 md:col-span-5 flex items-center justify-between pb-1 md:pb-2'>
-                      <div className='flex items-center space-x-2 pb-1.5'>
+                      <div className='flex items-center space-x-2 pb-1.5 mt-1.5'>
                         <Switch
                           id={`req-${field.id}`}
                           checked={field.required}
