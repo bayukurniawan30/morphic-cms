@@ -57,8 +57,21 @@ const CodeBlock = ({
           )}
         </Button>
       </div>
-      <pre className='bg-slate-950 text-slate-300 p-6 rounded-xl overflow-x-auto font-mono text-sm border border-slate-800 shadow-xl'>
-        <code>{code}</code>
+      <pre
+        className='bg-slate-950 text-slate-300 p-6 rounded-xl overflow-x-auto text-sm border border-slate-800 shadow-xl'
+        style={{
+          fontFamily:
+            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace',
+        }}
+      >
+        <code
+          style={{
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace',
+          }}
+        >
+          {code}
+        </code>
       </pre>
     </div>
   )
@@ -216,15 +229,217 @@ export default function Documentation({ user }: { user: any }) {
       </div>
 
       <Section id='intro' title='Introduction' icon={Book}>
-        <p>
+        <p className='mb-6'>
           Morphic CMS is a developer-first headless content management system.
           It provides a flexible way to model your data, a beautiful UI for
           content editors, and instant REST APIs for your frontend.
         </p>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-8'>
+
+        <div className='space-y-6 my-8 p-6 rounded-2xl border bg-muted/30 backdrop-blur-sm'>
+          <h3 className='text-lg font-bold tracking-tight text-foreground'>
+            What is a Headless CMS?
+          </h3>
+          <p className='text-sm text-muted-foreground leading-relaxed'>
+            A <strong>Headless CMS</strong> is a back-end-only content
+            management system built from the ground up as a content repository.
+            Unlike a traditional CMS (like WordPress) which tightly couples the
+            content database to a specific front-end presentation template, a
+            headless CMS remains entirely decoupled.
+          </p>
+          <p className='text-sm text-muted-foreground leading-relaxed'>
+            In a headless architecture, the "head" (the presentation layer,
+            e.g., a React website, iOS app, or smartwatch interface) is
+            separated from the "body" (the database and content management
+            backend). Content is created and managed once in the CMS, and then
+            delivered seamlessly via a high-performance{' '}
+            <strong>REST API</strong> to any device or platform.
+          </p>
+        </div>
+
+        <div className='my-8 space-y-4'>
+          <h3 className='text-lg font-bold tracking-tight text-foreground'>
+            Headless CMS vs Traditional CMS
+          </h3>
+          <div className='overflow-x-auto rounded-xl border border-border bg-card shadow-sm'>
+            <table className='w-full text-left border-collapse text-sm'>
+              <thead>
+                <tr className='border-b border-border bg-muted/40 font-semibold text-foreground'>
+                  <th className='p-4 font-bold'>Feature</th>
+                  <th className='p-4 font-bold text-primary'>
+                    Headless CMS (e.g., Morphic)
+                  </th>
+                  <th className='p-4 font-bold text-muted-foreground'>
+                    Traditional CMS (e.g., WordPress)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-border/60 text-muted-foreground'>
+                <tr className='hover:bg-muted/20 transition-colors'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Architecture
+                  </td>
+                  <td className='p-4 text-foreground/90'>
+                    Decoupled API-first (frontend is independent)
+                  </td>
+                  <td className='p-4'>
+                    Monolithic & coupled (frontend & database tied together)
+                  </td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors bg-muted/20'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Frontend Flexibility
+                  </td>
+                  <td className='p-4 text-foreground/90'>
+                    100% freedom (React, Next.js, Vue, mobile apps, IoT)
+                  </td>
+                  <td className='p-4'>
+                    Restricted to CMS templates, themes, and PHP
+                  </td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Performance
+                  </td>
+                  <td className='p-4 text-foreground/90'>
+                    Ultra-fast (static generation, edge caching, light payloads)
+                  </td>
+                  <td className='p-4'>
+                    Slower (server-side database queries on every load)
+                  </td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors bg-muted/20'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Security
+                  </td>
+                  <td className='p-4 text-foreground/90'>
+                    High (no direct DB access, static host, immune to SQL
+                    injections)
+                  </td>
+                  <td className='p-4'>
+                    Lower (large attack surface via database, plugins, and PHP
+                    vulnerabilities)
+                  </td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Omnichannel Delivery
+                  </td>
+                  <td className='p-4 text-foreground/90'>
+                    Yes (publish once, distribute to web, apps, voice, and
+                    print)
+                  </td>
+                  <td className='p-4'>
+                    No (primarily built and optimized only for websites)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className='my-8 space-y-4'>
+          <h3 className='text-lg font-bold tracking-tight text-foreground'>
+            Morphic CMS vs Other Headless CMSs
+          </h3>
+          <p>
+            See how Morphic CMS measures up against other leading enterprise
+            Headless CMS platforms in the industry:
+          </p>
+          <div className='overflow-x-auto rounded-xl border border-border bg-card shadow-sm'>
+            <table className='w-full text-left border-collapse text-xs md:text-sm'>
+              <thead>
+                <tr className='border-b border-border bg-muted/40 font-semibold text-foreground'>
+                  <th className='p-4 font-bold'>Feature</th>
+                  <th className='p-4 font-bold text-primary bg-primary/5'>
+                    Morphic CMS
+                  </th>
+                  <th className='p-4 font-bold text-muted-foreground'>
+                    Strapi
+                  </th>
+                  <th className='p-4 font-bold text-muted-foreground'>
+                    Contentful
+                  </th>
+                  <th className='p-4 font-bold text-muted-foreground'>
+                    Sanity
+                  </th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-border/60 text-muted-foreground'>
+                <tr className='hover:bg-muted/20 transition-colors'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Pricing & License
+                  </td>
+                  <td className='p-4 text-foreground/90 font-medium bg-primary/5'>
+                    Open-Source (100% Free Self-Host)
+                  </td>
+                  <td className='p-4'>Open-Source (Enterprise limits/paid)</td>
+                  <td className='p-4'>
+                    Closed-Source (SaaS pricing, scales high)
+                  </td>
+                  <td className='p-4'>
+                    Proprietary Studio (SaaS limits & pay-per-use)
+                  </td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors bg-muted/20'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Database Model
+                  </td>
+                  <td className='p-4 text-foreground/90 font-medium bg-primary/5'>
+                    Database-First (Drizzle & native Postgres)
+                  </td>
+                  <td className='p-4'>Abstract ORM (Multiple DB support)</td>
+                  <td className='p-4'>
+                    Proprietary internal DB (No direct access)
+                  </td>
+                  <td className='p-4'>Document Store (GROQ / JSON-based)</td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Native Multi-Tenancy
+                  </td>
+                  <td className='p-4 text-foreground/90 font-medium bg-primary/5'>
+                    Built-in (Isolated organizations native)
+                  </td>
+                  <td className='p-4'>Enterprise Tier only (Paid)</td>
+                  <td className='p-4'>Enterprise Tier only (Paid)</td>
+                  <td className='p-4'>Enterprise Tier only (Paid)</td>
+                </tr>
+                <tr className='hover:bg-muted/20 transition-colors bg-muted/20'>
+                  <td className='p-4 font-semibold text-foreground'>
+                    Hosting Flexibility
+                  </td>
+                  <td className='p-4 text-foreground/90 font-medium bg-primary/5'>
+                    Self-Host anywhere (Vercel, VPS, AWS)
+                  </td>
+                  <td className='p-4'>
+                    Self-Host or Cloud (Heavy Node.js server)
+                  </td>
+                  <td className='p-4'>SaaS Hosting only</td>
+                  <td className='p-4'>
+                    SaaS Hosting (Studio can be self-hosted)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className='mt-12 space-y-4'>
+          <h3 className='text-lg font-bold tracking-tight text-foreground'>
+            Core Architecture Pillars
+          </h3>
+          <p>
+            Morphic CMS couples modern software patterns with high-performance
+            data architecture. The core capabilities of the system are built
+            upon two foundational concepts:
+          </p>
+        </div>
+
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-6'>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
-              <Database className='w-4 h-4 mr-2 text-slate-400' /> Database First
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 flex items-center mb-2'>
+              <Database className='w-4 h-4 mr-2 text-slate-400' /> Database
+              First
             </h4>
             <p className='text-sm'>
               Built on top of Drizzle ORM and Postgres. We recommend using{' '}
@@ -240,13 +455,93 @@ export default function Documentation({ user }: { user: any }) {
             </p>
           </div>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 flex items-center mb-2'>
               <Zap className='w-4 h-4 mr-2 text-slate-400' /> Instant APIs
             </h4>
             <p className='text-sm'>
               Define a collection and get a production-ready REST API
               immediately.
             </p>
+          </div>
+        </div>
+
+        <div className='my-8 space-y-6'>
+          <h3 className='text-lg font-bold tracking-tight text-foreground'>
+            System Architecture Flow
+          </h3>
+          <p>
+            Understand the complete lifecycle of how requests route through
+            Morphic CMS to fetch and store tenant content:
+          </p>
+
+          <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 relative items-stretch mt-6'>
+            {/* Step 1 */}
+            <div className='flex flex-col items-center p-5 rounded-2xl border bg-card/60 shadow-sm relative group hover:border-primary/40 transition-all'>
+              <div className='p-3 rounded-xl bg-primary/10 text-primary mb-3'>
+                <Terminal className='w-6 h-6' />
+              </div>
+              <h4 className='font-bold text-sm text-foreground mb-1 text-center'>
+                Request Origin
+              </h4>
+              <p className='text-xs text-muted-foreground text-center leading-relaxed'>
+                Admin Dashboard (Inertia) or external REST clients passing API
+                Keys + <code>X-Tenant-ID</code>.
+              </p>
+              {/* Desktop connector arrow */}
+              <div className='hidden lg:block absolute left-full top-1/2 -translate-y-1/2 w-6 h-0.5 bg-border group-hover:bg-primary/30 transition-colors z-10'>
+                <div className='absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 border-t-2 border-r-2 border-border group-hover:border-primary/40 rotate-45 transform' />
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className='flex flex-col items-center p-5 rounded-2xl border bg-card/60 shadow-sm relative group hover:border-primary/40 transition-all'>
+              <div className='p-3 rounded-xl bg-primary/10 text-primary mb-3'>
+                <Server className='w-6 h-6' />
+              </div>
+              <h4 className='font-bold text-sm text-foreground mb-1 text-center'>
+                Hono Engine
+              </h4>
+              <p className='text-xs text-muted-foreground text-center leading-relaxed'>
+                Hono routes the request, runs validation middlewares, and
+                verifies tenant access rights.
+              </p>
+              {/* Desktop connector arrow */}
+              <div className='hidden lg:block absolute left-full top-1/2 -translate-y-1/2 w-6 h-0.5 bg-border group-hover:bg-primary/30 transition-colors z-10'>
+                <div className='absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 border-t-2 border-r-2 border-border group-hover:border-primary/40 rotate-45 transform' />
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className='flex flex-col items-center p-5 rounded-2xl border bg-card/60 shadow-sm relative group hover:border-primary/40 transition-all'>
+              <div className='p-3 rounded-xl bg-primary/10 text-primary mb-3'>
+                <Layers className='w-6 h-6' />
+              </div>
+              <h4 className='font-bold text-sm text-foreground mb-1 text-center'>
+                Drizzle ORM
+              </h4>
+              <p className='text-xs text-muted-foreground text-center leading-relaxed'>
+                Drizzle generates high-efficiency PostgreSQL queries matching
+                the dynamic collections structure.
+              </p>
+              {/* Desktop connector arrow */}
+              <div className='hidden lg:block absolute left-full top-1/2 -translate-y-1/2 w-6 h-0.5 bg-border group-hover:bg-primary/30 transition-colors z-10'>
+                <div className='absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 border-t-2 border-r-2 border-border group-hover:border-primary/40 rotate-45 transform' />
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className='flex flex-col items-center p-5 rounded-2xl border bg-card/60 shadow-sm relative group hover:border-primary/40 transition-all'>
+              <div className='p-3 rounded-xl bg-primary/10 text-primary mb-3'>
+                <Database className='w-4 h-4' />
+              </div>
+              <h4 className='font-bold text-sm text-foreground mb-1 text-center'>
+                Neon Postgres
+              </h4>
+              <p className='text-xs text-muted-foreground text-center leading-relaxed'>
+                Serverless server clusters process secure scoped actions,
+                isolating organizational schema sets.
+              </p>
+            </div>
           </div>
         </div>
       </Section>
@@ -260,8 +555,9 @@ export default function Documentation({ user }: { user: any }) {
         </p>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
-              <Shield className='w-4 h-4 mr-2 text-slate-400' /> Complete Isolation
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 flex items-center mb-2'>
+              <Shield className='w-4 h-4 mr-2 text-slate-400' /> Complete
+              Isolation
             </h4>
             <p className='text-sm'>
               Every collection, entry, and media asset is scoped to a specific
@@ -270,8 +566,9 @@ export default function Documentation({ user }: { user: any }) {
             </p>
           </div>
           <div className='p-4 rounded-xl border bg-muted/30'>
-            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 flex items-center mb-2'>
-              <Layers className='w-4 h-4 mr-2 text-slate-400' /> Shared Architecture
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 flex items-center mb-2'>
+              <Layers className='w-4 h-4 mr-2 text-slate-400' /> Shared
+              Architecture
             </h4>
             <p className='text-sm'>
               While data is isolated, the underlying infrastructure is shared. A
@@ -281,7 +578,9 @@ export default function Documentation({ user }: { user: any }) {
           </div>
         </div>
         <div className='mt-8 space-y-4'>
-          <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500'>Super Admin Roles</h4>
+          <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+            Super Admin Roles
+          </h4>
           <p>
             Super Admins have platform-wide access and can switch between any
             workspace using the <strong>Tenant Switcher</strong> in the sidebar.
@@ -315,7 +614,6 @@ export default function Documentation({ user }: { user: any }) {
             <code>DATABASE_URL</code>.
           </p>
           <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4 mt-4'>
-            <Database className='w-5 h-5 text-primary shrink-0' />
             <div className='text-sm space-y-2 w-full flex-1'>
               <p className='font-bold'>Recommended: Neon Database</p>
               <p className='text-muted-foreground'>
@@ -371,7 +669,7 @@ export default function Documentation({ user }: { user: any }) {
           {fieldTypes.map((f) => (
             <div
               key={f.type}
-              className='group p-6 rounded-2xl border bg-card hover:border-primary/50 transition-all'
+              className='group p-6 rounded-2xl border bg-primary/5 hover:border-primary/50 transition-all'
             >
               <div className='flex items-center justify-between mb-2'>
                 <code className='text-primary font-bold text-sm bg-primary/5 px-2 py-1 rounded'>
@@ -379,7 +677,13 @@ export default function Documentation({ user }: { user: any }) {
                 </code>
               </div>
               <p className='text-sm font-medium mb-4'>{f.description}</p>
-              <div className='bg-zinc-950 p-4 rounded-lg font-mono text-xs text-zinc-400 border border-zinc-800'>
+              <div
+                className='bg-primary/5 border border-primary/20 p-4 rounded-lg text-xs text-primary font-semibold'
+                style={{
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace',
+                }}
+              >
                 {f.example}
               </div>
             </div>
@@ -394,7 +698,7 @@ export default function Documentation({ user }: { user: any }) {
         </p>
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
-            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               Handling Submissions
             </h4>
             <p className='mb-4'>
@@ -405,7 +709,7 @@ export default function Documentation({ user }: { user: any }) {
             />
           </div>
           <div className='bg-primary/5 border border-primary/20 p-8 rounded-2xl overflow-hidden'>
-            <h4 className='font-bold text-sm uppercase tracking-widest text-slate-500 mb-4 flex items-center'>
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 mb-4 flex items-center'>
               <div className='w-2 h-2 rounded-full bg-slate-400 mr-2' />
               Frontend Example (Fetch)
             </h4>
@@ -429,19 +733,144 @@ export default function Documentation({ user }: { user: any }) {
 
       <Section id='api-reference' title='API Reference' icon={Terminal}>
         <p>Morphic generates predictable, resource-oriented REST APIs.</p>
+        <div className='bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start space-x-3 my-6'>
+          <Shield className='w-5 h-5 text-red-500 mt-0.5 shrink-0' />
+          <p className='text-sm text-red-800 dark:text-red-400'>
+            <strong>Mandatory Header:</strong> For all external REST API
+            requests, the <code>X-Tenant-ID</code> header <strong>must</strong>{' '}
+            be included. Requests without a valid tenant header will be rejected
+            with a <code>403 Forbidden</code> status to ensure complete data
+            isolation.
+          </p>
+        </div>
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Collections
             </h4>
             <CodeBlock code={`GET /api/collections`} />
-            <p className='mb-4'>
+            <p className='mb-2'>
               Retrieve a list of all your defined collections.
             </p>
+            <p className='text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-4'>
+              Typical Response Payload
+            </p>
+            <CodeBlock
+              language='json'
+              code={`{
+  "collections": [
+    {
+      "id": 12,
+      "tenantId": 1,
+      "name": "Posts",
+      "slug": "posts",
+      "type": "collection",
+      "enableTrash": false,
+      "localized": false,
+      "fields": [
+        {
+          "id": "2ap5xm1yi",
+          "name": "title",
+          "type": "text",
+          "label": "Title",
+          "required": true,
+          "validation": {
+            "minLength": 10
+          }
+        },
+        {
+          "id": "pylhgnhbx",
+          "name": "slug",
+          "type": "slug",
+          "label": "Slug",
+          "required": true,
+          "slugSourceField": "title"
+        },
+        {
+          "id": "7zps91cur",
+          "name": "category",
+          "type": "relation",
+          "label": "Category",
+          "required": true,
+          "relationLabelField": "name",
+          "relationCollectionId": 11
+        },
+        {
+          "id": "e2r72fo4k",
+          "name": "content",
+          "type": "rich-text",
+          "label": "Content",
+          "required": true
+        }
+      ],
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-04-23T13:33:37.110Z",
+      "updatedAt": "2026-04-23T13:39:24.074Z",
+      "createdBy": {
+        "id": 1,
+        "name": "Bayu Kurniawan"
+      }
+    },
+    {
+      "id": 11,
+      "tenantId": 1,
+      "name": "Category",
+      "slug": "category",
+      "type": "collection",
+      "enableTrash": false,
+      "localized": false,
+      "fields": [
+        {
+          "id": "ngj1y2of2",
+          "name": "name",
+          "type": "text",
+          "label": "Name",
+          "required": true
+        },
+        {
+          "id": "q1agi6b1e",
+          "name": "slug",
+          "type": "slug",
+          "label": "Slug",
+          "required": true,
+          "slugSourceField": "name"
+        },
+        {
+          "id": "gevvqojfh",
+          "name": "category_status",
+          "type": "select",
+          "label": "Category Status",
+          "options": [
+            {
+              "label": "Publish",
+              "value": "publish"
+            },
+            {
+              "label": "Draft",
+              "value": "draft"
+            }
+          ],
+          "required": false
+        }
+      ],
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-04-23T01:48:29.832Z",
+      "updatedAt": "2026-04-23T02:54:38.114Z",
+      "createdBy": {
+        "id": 1,
+        "name": "Bayu Kurniawan"
+      }
+    }
+  ]
+}`}
+            />
           </div>
+
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Entries
             </h4>
@@ -449,11 +878,10 @@ export default function Documentation({ user }: { user: any }) {
               code={`GET /api/collections/:slug/entries?page=1&limit=10`}
             />
             <p className='mb-4'>
-              Returns a paginated list of entries for the given collection slug
-              or ID.
+              Returns a paginated list of entries for the given collection slug.
             </p>
 
-            <div className='bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800 space-y-3'>
+            <div className='bg-muted/30 p-4 rounded-xl border border-border/50 space-y-3'>
               <h5 className='text-xs font-bold uppercase tracking-wider text-slate-400'>
                 Query Parameters
               </h5>
@@ -479,8 +907,10 @@ export default function Documentation({ user }: { user: any }) {
                     locale
                   </code>
                   <span className='text-slate-600 dark:text-slate-400'>
-                    Filter by language code (e.g. <code>en</code>, <code>id</code>
-                    ). Set to <code>_all</code> to retrieve all localized versions.
+                    Filter by language code (e.g. <code>en</code>,{' '}
+                    <code>id</code>
+                    ). Set to <code>_all</code> to retrieve all localized
+                    versions.
                   </span>
                 </li>
                 <li className='flex items-start'>
@@ -494,17 +924,124 @@ export default function Documentation({ user }: { user: any }) {
                 </li>
               </ul>
             </div>
+
+            <p className='text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-4'>
+              Typical Response Payload
+            </p>
+            <CodeBlock
+              language='json'
+              code={`{
+  "type": "collection",
+  "entries": [
+    {
+      "id": 35,
+      "tenantId": 1,
+      "collectionId": 12,
+      "content": {
+        "slug": "gitops-vs-clickops-why-your-infrastructure-deserves-a-repository",
+        "title": "GitOps vs. ClickOps: Why Your Infrastructure Deserves a Repository",
+        "content": "<p>...</p>",
+        "category": {
+          "id": 33,
+          "name": "Dev Ops",
+          "slug": "dev-ops",
+          "category_status": "publish"
+        }
+      },
+      "updatedById": 1,
+      "status": "published",
+      "locale": "en",
+      "translationGroupId": "a6e2e240-0535-4b5b-adf2-8d95574b5c4e",
+      "createdAt": "2026-04-23T13:47:54.491Z",
+      "updatedAt": "2026-04-23T13:47:54.491Z",
+      "deletedAt": null,
+      "updatedBy": {
+        "id": 1,
+        "name": "Bayu Kurniawan"
+      }
+    },
+    {
+      "id": 34,
+      "tenantId": 1,
+      "collectionId": 12,
+      "content": {
+        "slug": "the-rise-of-edge-native-architecture-why-the-cloud-is-moving-closer-to-the-user",
+        "title": "The Rise of Edge-Native Architecture: Why the Cloud is Moving Closer to the User",
+        "content": "<p>...</p>",
+        "category": {
+          "id": 32,
+          "name": "Tech News",
+          "slug": "tech-news",
+          "category_status": "publish"
+        }
+      },
+      "updatedById": 1,
+      "status": "published",
+      "locale": "en",
+      "translationGroupId": "3d7258f9-1147-4ddc-b212-6eb30d5110fe",
+      "createdAt": "2026-04-23T13:40:27.417Z",
+      "updatedAt": "2026-04-23T13:40:27.417Z",
+      "deletedAt": null,
+      "updatedBy": {
+        "id": 1,
+        "name": "Bayu Kurniawan"
+      }
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 1,
+    "totalCount": 2,
+    "limit": 10
+  }
+}`}
+            />
           </div>
+
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
               Get Single Entry
             </h4>
             <CodeBlock code={`GET /api/entries/:id`} />
-            <p className='mb-4'>Fetch a specific entry by its ID.</p>
+            <p className='mb-2'>Fetch a specific entry by its ID.</p>
+            <p className='text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-4'>
+              Typical Response Payload
+            </p>
+            <CodeBlock
+              language='json'
+              code={`{
+  "id": 35,
+  "tenantId": 1,
+  "collectionId": 12,
+  "content": {
+    "slug": "gitops-vs-clickops-why-your-infrastructure-deserves-a-repository",
+    "title": "GitOps vs. ClickOps: Why Your Infrastructure Deserves a Repository",
+    "content": "<p>In the fast-paced world of modern deployment, the era of <strong>\\\"ClickOps\\\"</strong>—manually configuring servers and databases via a GUI—is rapidly coming to an end. As systems grow in complexity, the risk of \\\"configuration drift\\\" increases, leading to environments that are impossible to replicate and difficult to debug. Enter GitOps: an operational framework that takes the best practices of software development and applies them to infrastructure.</p><p>By treating your infrastructure as code (IaC) and using a Git repository as the single source of truth, teams can automate their entire delivery pipeline. When a change is pushed to the repository, automated tools detect the difference between the desired state and the actual state, reconciling them instantly. This doesn't just improve security and auditability; it empowers developers to deploy with confidence, knowing that every change is documented, peer-reviewed, and easily reversible. In 2026, if your infrastructure isn't in a repo, it isn't truly production-ready.</p>",
+    "category": {
+      "id": 33,
+      "name": "Dev Ops",
+      "slug": "dev-ops",
+      "category_status": "publish"
+    }
+  },
+  "updatedById": 1,
+  "status": "published",
+  "locale": "en",
+  "translationGroupId": "a6e2e240-0535-4b5b-adf2-8d95574b5c4e",
+  "createdAt": "2026-04-23T13:47:54.491Z",
+  "updatedAt": "2026-04-23T13:47:54.491Z",
+  "deletedAt": null,
+  "updatedBy": {
+    "id": 1,
+    "name": "Bayu Kurniawan"
+  }
+}`}
+            />
           </div>
+
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               <span className='w-1.5 h-1.5 rounded-full bg-blue-500 mr-2' />
               Create Entry
             </h4>
@@ -516,7 +1053,7 @@ export default function Documentation({ user }: { user: any }) {
             </p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               <span className='w-1.5 h-1.5 rounded-full bg-amber-500 mr-2' />
               Update Entry
             </h4>
@@ -526,7 +1063,7 @@ export default function Documentation({ user }: { user: any }) {
             <p className='mb-4'>Update an existing entry by its ID.</p>
           </div>
           <div className='space-y-4'>
-            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-slate-500'>
+            <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               <span className='w-1.5 h-1.5 rounded-full bg-red-500 mr-2' />
               Delete Entry
             </h4>
@@ -556,7 +1093,10 @@ export default function Documentation({ user }: { user: any }) {
 
       <Section id='storage' title='Storage' icon={Cloud}>
         <p>
-          Morphic CMS supports multiple storage providers for your media files and documents. By default, it uses <strong>Cloudinary</strong> for optimized media delivery, but it can be configured to use <strong>Amazon S3</strong> for a 100% AWS-native stack.
+          Morphic CMS supports multiple storage providers for your media files
+          and documents. By default, it uses <strong>Cloudinary</strong> for
+          optimized media delivery, but it can be configured to use{' '}
+          <strong>Amazon S3</strong> for a 100% AWS-native stack.
         </p>
         <div className='bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl flex items-start space-x-3 mt-6'>
           <Layers className='w-5 h-5 text-blue-500 mt-0.5' />
@@ -566,13 +1106,21 @@ export default function Documentation({ user }: { user: any }) {
             </p>
             <ul className='list-disc list-inside text-blue-700/80 dark:text-blue-500/80 space-y-1 mt-2'>
               <li>
-                <code>STORAGE_SERVICE</code>: Set to <code>CLOUDINARY</code> (default) or <code>S3</code>.
+                <code>STORAGE_SERVICE</code>: Set to <code>CLOUDINARY</code>{' '}
+                (default) or <code>S3</code>.
               </li>
               <li>
-                <strong>Cloudinary</strong> (if used): Provide <code>CLOUDINARY_API_KEY</code>, <code>CLOUDINARY_API_SECRET</code>, <code>CLOUDINARY_CLOUD_NAME</code>, and <code>CLOUDINARY_UPLOAD_PRESET</code>.
+                <strong>Cloudinary</strong> (if used): Provide{' '}
+                <code>CLOUDINARY_API_KEY</code>,{' '}
+                <code>CLOUDINARY_API_SECRET</code>,{' '}
+                <code>CLOUDINARY_CLOUD_NAME</code>, and{' '}
+                <code>CLOUDINARY_UPLOAD_PRESET</code>.
               </li>
               <li>
-                <strong>Amazon S3</strong> (if used): Provide <code>AWS_S3_BUCKET</code>, <code>AWS_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>, and <code>AWS_SECRET_ACCESS_KEY</code>.
+                <strong>Amazon S3</strong> (if used): Provide{' '}
+                <code>AWS_S3_BUCKET</code>, <code>AWS_REGION</code>,{' '}
+                <code>AWS_ACCESS_KEY_ID</code>, and{' '}
+                <code>AWS_SECRET_ACCESS_KEY</code>.
               </li>
             </ul>
           </div>
@@ -581,7 +1129,8 @@ export default function Documentation({ user }: { user: any }) {
 
       <Section id='email' title='Email' icon={Mail}>
         <p>
-          Morphic CMS supports multiple email providers for transactional emails. By default, it uses the{' '}
+          Morphic CMS supports multiple email providers for transactional
+          emails. By default, it uses the{' '}
           <a
             href='https://resend.com/'
             target='_blank'
@@ -590,7 +1139,8 @@ export default function Documentation({ user }: { user: any }) {
           >
             <strong>Resend</strong>
           </a>{' '}
-          REST API, but it can be configured to use <strong>Amazon SES</strong> for a 100% AWS-native stack.
+          REST API, but it can be configured to use <strong>Amazon SES</strong>{' '}
+          for a 100% AWS-native stack.
         </p>
         <div className='bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start space-x-3 mt-6'>
           <Mail className='w-5 h-5 text-primary mt-0.5' />
@@ -600,16 +1150,20 @@ export default function Documentation({ user }: { user: any }) {
             </p>
             <ul className='list-disc list-inside text-muted-foreground'>
               <li>
-                <code>EMAIL_SERVICE</code>: Set to <code>RESEND</code> (default) or <code>SES</code>.
+                <code>EMAIL_SERVICE</code>: Set to <code>RESEND</code> (default)
+                or <code>SES</code>.
               </li>
               <li>
                 <code>RESEND_API_KEY</code>: Required if using Resend.
               </li>
               <li>
-                <code>AWS_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>: Required if using Amazon SES.
+                <code>AWS_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>,{' '}
+                <code>AWS_SECRET_ACCESS_KEY</code>: Required if using Amazon
+                SES.
               </li>
               <li>
-                <code>EMAIL_FROM</code>: The sender address (e.g., <code>"Morphic CMS &lt;onboarding@resend.dev&gt;"</code>).
+                <code>EMAIL_FROM</code>: The sender address (e.g.,{' '}
+                <code>"Morphic CMS &lt;onboarding@resend.dev&gt;"</code>).
               </li>
             </ul>
           </div>
@@ -625,9 +1179,11 @@ export default function Documentation({ user }: { user: any }) {
 
         <div className='space-y-8 mt-8'>
           <div>
-            <h3 className='font-bold text-sm uppercase tracking-widest text-slate-500 mb-3'>Available Events</h3>
+            <h3 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 mb-3'>
+              Available Events
+            </h3>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div className='p-4 bg-muted/50 rounded-xl border'>
+              <div className='p-4 bg-primary/5 rounded-xl border'>
                 <p className='font-mono text-sm font-bold text-primary mb-1'>
                   entry.*
                 </p>
@@ -636,7 +1192,7 @@ export default function Documentation({ user }: { user: any }) {
                   deleted (including trash).
                 </p>
               </div>
-              <div className='p-4 bg-muted/50 rounded-xl border'>
+              <div className='p-4 bg-primary/5 rounded-xl border'>
                 <p className='font-mono text-sm font-bold text-primary mb-1'>
                   media.*
                 </p>
@@ -645,7 +1201,7 @@ export default function Documentation({ user }: { user: any }) {
                   library.
                 </p>
               </div>
-              <div className='p-4 bg-muted/50 rounded-xl border'>
+              <div className='p-4 bg-primary/5 rounded-xl border'>
                 <p className='font-mono text-sm font-bold text-primary mb-1'>
                   form.submitted
                 </p>
@@ -658,20 +1214,29 @@ export default function Documentation({ user }: { user: any }) {
           </div>
 
           <div>
-            <h3 className='font-bold text-sm uppercase tracking-widest text-slate-500 mb-3'>Security & Verification</h3>
+            <h3 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 mb-3'>
+              Security & Verification
+            </h3>
             <p className='mb-4'>
-              If you provide a <strong>Secret Key</strong> for a webhook, Morphic
-              CMS will sign each request using HMAC SHA256. You should verify
-              this signature on your server to ensure the request is authentic.
+              If you provide a <strong>Secret Key</strong> for a webhook,
+              Morphic CMS will sign each request using HMAC SHA256. You should
+              verify this signature on your server to ensure the request is
+              authentic.
             </p>
-            <div className='bg-card border rounded-xl p-4 space-y-3'>
+            <div className='bg-muted/40 border border-border rounded-xl p-4 space-y-3 shadow-sm'>
               <div className='flex items-center space-x-2'>
                 <Key className='w-4 h-4 text-primary' />
-                <span className='font-mono text-xs font-bold uppercase tracking-wider'>
+                <span className='font-mono text-xs font-bold uppercase tracking-wider text-foreground'>
                   Signature Header
                 </span>
               </div>
-              <code className='block bg-muted p-2 rounded text-xs'>
+              <code
+                className='block bg-slate-950 text-slate-200 border border-slate-800/80 p-3 rounded-lg text-xs font-semibold'
+                style={{
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace',
+                }}
+              >
                 X-Morphic-Signature: [sha256-hmac-signature]
               </code>
             </div>
@@ -693,24 +1258,158 @@ function verifyWebhook(payload, signature, secret) {
       </Section>
 
       <Section id='hosting' title='Deployment' icon={Server}>
-        <p>
-          Morphic is optimized for Vercel but can be hosted anywhere that
-          supports Node.js.
+        <p className='mb-8'>
+          Morphic is optimized for edge hosting like Vercel but is built to be
+          extremely portable, supporting containerized setups via Docker and
+          native serverless configurations on AWS.
         </p>
-        <div className='space-y-4 mt-4'>
-          <p className='text-sm'>1. Push your code to GitHub.</p>
-          <p className='text-sm'>2. Connect to Vercel.</p>
-          <p className='text-sm'>
-            3. Set environment variables (<code>DATABASE_URL</code>,{' '}
-            <code>JWT_SECRET</code>, <code>JWT_EXPIRES_IN_DAYS</code>,{' '}
-            <code>CLOUDINARY_API_KEY</code>, <code>CLOUDINARY_API_SECRET</code>,{' '}
-            <code>CLOUDINARY_CLOUD_NAME</code>,{' '}
-            <code>CLOUDINARY_UPLOAD_PRESET</code>, <code>RESEND_API_KEY</code>,{' '}
-            <code>EMAIL_FROM</code>, <code>SIMPLE_HOMEPAGE</code>).
-          </p>
-          <p className='text-sm font-bold text-primary'>
-            Done! Automated deployments on every push.
-          </p>
+
+        <div className='space-y-8'>
+          {/* Vercel */}
+          <div className='p-6 rounded-2xl border bg-card/60 space-y-4 shadow-sm hover:border-primary/40 transition-all group'>
+            <h3 className='text-lg font-bold flex items-center text-foreground'>
+              <span className='w-2 h-2 rounded-full bg-green-500 mr-2' />
+              Vercel Deployment (Recommended / Edge-First)
+            </h3>
+            <p className='text-sm text-muted-foreground leading-relaxed'>
+              Automated git-integrated edge deployment. Optimized for maximum
+              performance and zero server management overhead.
+            </p>
+            <div className='space-y-3 pl-4 border-l-2 border-primary/20 text-sm'>
+              <p>
+                1. Push your repository code to GitHub, GitLab, or Bitbucket.
+              </p>
+              <p>
+                2. Create a new project on Vercel and connect your repository.
+              </p>
+              <p>3. Configure environment variables in Vercel settings:</p>
+              <div
+                className='bg-muted/40 p-4 rounded-xl font-mono text-xs text-muted-foreground border border-border/40 mt-2 leading-relaxed'
+                style={{
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                }}
+              >
+                DATABASE_URL, JWT_SECRET, JWT_EXPIRES_IN_DAYS, STORAGE_SERVICE,
+                CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
+                CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, EMAIL_SERVICE,
+                RESEND_API_KEY, EMAIL_FROM, SIMPLE_HOMEPAGE
+              </div>
+            </div>
+          </div>
+
+          {/* Docker */}
+          <div className='p-6 rounded-2xl border bg-card/60 space-y-4 shadow-sm hover:border-primary/40 transition-all group'>
+            <h3 className='text-lg font-bold flex items-center text-foreground'>
+              <span className='w-2 h-2 rounded-full bg-blue-500 mr-2' />
+              Docker Deployment (VPS Setup)
+            </h3>
+            <p className='text-sm text-muted-foreground leading-relaxed'>
+              Deploy easily to any virtual private server (DigitalOcean,
+              Hetzner, AWS EC2, Linode) using the pre-configured{' '}
+              <code>Dockerfile</code> and <code>docker-compose.yml</code>.
+            </p>
+            <div className='space-y-4 pl-4 border-l-2 border-blue-500/20 text-sm'>
+              <div>
+                <p className='font-bold mb-2 text-foreground'>
+                  1. Clone on your host server:
+                </p>
+                <CodeBlock
+                  code={`git clone https://github.com/bayukurniawan30/morphic-cms.git\ncd morphic-cms`}
+                />
+              </div>
+              <div>
+                <p className='font-bold mb-2 text-foreground'>
+                  2. Configure Environment:
+                </p>
+                <p className='text-muted-foreground mb-2 leading-relaxed text-xs'>
+                  Open <code>docker-compose.yml</code> and declare your
+                  environment values under the <code>environment</code> property
+                  of the service.
+                </p>
+              </div>
+              <div>
+                <p className='font-bold mb-2 text-foreground'>
+                  3. Build and launch:
+                </p>
+                <CodeBlock code={`docker compose up -d`} />
+              </div>
+              <div>
+                <p className='font-bold mb-2 text-foreground'>
+                  4. Initialize Database Schema & Seed Admin:
+                </p>
+                <CodeBlock
+                  code={`docker compose exec morphic pnpm run db:push\ndocker compose exec morphic pnpm run db:seed`}
+                />
+              </div>
+              <p className='text-xs text-muted-foreground mt-2 leading-relaxed'>
+                Your CMS will be live on <code>http://your-server-ip:3000</code>
+                . We recommend setting up an Nginx reverse proxy with Let's
+                Encrypt SSL.
+              </p>
+            </div>
+          </div>
+
+          {/* AWS Serverless */}
+          <div className='p-6 rounded-2xl border bg-card/60 space-y-4 shadow-sm hover:border-primary/40 transition-all group'>
+            <h3 className='text-lg font-bold flex items-center text-foreground'>
+              <span className='w-2 h-2 rounded-full bg-amber-500 mr-2' />
+              AWS Deployment (Serverless / Native AWS Stack)
+            </h3>
+            <p className='text-sm text-muted-foreground leading-relaxed'>
+              Build a 100% serverless, infinitely scalable platform utilizing
+              AWS Lambda, Aurora Serverless Postgres, and Amazon S3.
+            </p>
+            <div className='space-y-4 pl-4 border-l-2 border-amber-500/20 text-sm'>
+              <div className='space-y-1'>
+                <p className='font-bold text-foreground'>
+                  1. Database (Amazon Aurora PostgreSQL):
+                </p>
+                <p className='text-muted-foreground text-xs leading-relaxed'>
+                  Provision an <strong>Amazon Aurora Serverless v2</strong>{' '}
+                  database. Assign its connection URI parameter to{' '}
+                  <code>DATABASE_URL</code>.
+                </p>
+              </div>
+              <div className='space-y-2'>
+                <p className='font-bold text-foreground'>
+                  2. API (AWS Lambda with Hono):
+                </p>
+                <p className='text-muted-foreground text-xs leading-relaxed'>
+                  Morphic includes native Hono integration which supports AWS
+                  Lambda out-of-the-box. Wrap the main app file using the{' '}
+                  <code>hono/aws-lambda</code> adapter and package via CDK, SAM,
+                  or Serverless Framework.
+                </p>
+                <CodeBlock code={`pnpm add hono/aws-lambda`} />
+              </div>
+              <div className='space-y-2'>
+                <p className='font-bold text-foreground'>
+                  3. Frontend Assets (S3 + CloudFront):
+                </p>
+                <p className='text-muted-foreground text-xs leading-relaxed'>
+                  Run <code>pnpm run build</code> and upload the generated{' '}
+                  <code>./dist</code> static build objects into an Amazon S3
+                  bucket. Configure an Amazon CloudFront distribution routing
+                  static content requests to the bucket, and dynamic{' '}
+                  <code>/api/*</code> operations back to the API Gateway/Lambda
+                  trigger URL.
+                </p>
+              </div>
+              <div className='space-y-1'>
+                <p className='font-bold text-foreground'>
+                  4. Serverless Storage & Email Gateways:
+                </p>
+                <p className='text-muted-foreground text-xs leading-relaxed'>
+                  Configure <code>STORAGE_SERVICE=S3</code> and{' '}
+                  <code>EMAIL_SERVICE=SES</code> using AWS Credentials (
+                  <code>AWS_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>,{' '}
+                  <code>AWS_SECRET_ACCESS_KEY</code>) to create a fully native,
+                  robust AWS-native ecosystem.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </Section>
     </div>
@@ -756,7 +1455,7 @@ function verifyWebhook(payload, signature, secret) {
           <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
             {/* Menu Drawer */}
             {isMobileMenuOpen && (
-              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-300'>
+              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300'>
                 <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
                   Documentation Sections
                 </div>
@@ -770,7 +1469,7 @@ function verifyWebhook(payload, signature, secret) {
                         'flex items-center space-x-3 px-4 py-2.5 transition-all',
                         activeHash === `#${item.id}`
                           ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:hover:bg-slate-800/50'
                       )}
                     >
                       <item.icon className='w-4 h-4' />
@@ -784,7 +1483,7 @@ function verifyWebhook(payload, signature, secret) {
             {/* Bottom Toggle Bar */}
             <Button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-6 bg-white/90 backdrop-blur-md border-t border-border hover:bg-slate-50 transition-all group rounded-none text-foreground'
+              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.4)] flex items-center justify-between px-6 bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-t border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group rounded-none text-foreground'
               variant='ghost'
             >
               <div className='flex items-center space-x-3'>
@@ -796,7 +1495,7 @@ function verifyWebhook(payload, signature, secret) {
                     On this page:
                   </span>
                   <span className='text-xs font-bold'>
-                    {menuItems.find((m) => `#m.id` === activeHash)?.label ||
+                    {menuItems.find((m) => `#${m.id}` === activeHash)?.label ||
                       'Introduction'}
                   </span>
                 </div>
@@ -833,7 +1532,7 @@ function verifyWebhook(payload, signature, secret) {
           <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
             {/* Menu Drawer */}
             {isMobileMenuOpen && (
-              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-300'>
+              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300'>
                 <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
                   Documentation Sections
                 </div>
@@ -847,7 +1546,7 @@ function verifyWebhook(payload, signature, secret) {
                         'flex items-center space-x-3 px-4 py-2.5 transition-all',
                         activeHash === `#${item.id}`
                           ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:hover:bg-slate-800/50'
                       )}
                     >
                       <item.icon className='w-4 h-4' />
@@ -861,7 +1560,7 @@ function verifyWebhook(payload, signature, secret) {
             {/* Bottom Toggle Bar */}
             <Button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-6 bg-white/90 backdrop-blur-md border-t border-border hover:bg-slate-50 transition-all group rounded-none text-foreground'
+              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.4)] flex items-center justify-between px-6 bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-t border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group rounded-none text-foreground'
               variant='ghost'
             >
               <div className='flex items-center space-x-3'>

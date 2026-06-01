@@ -1566,6 +1566,22 @@ api.use('*', async (c, next) => {
     } as any)
   }
 
+  // Enforce tenant isolation for non-super-admins
+  const tenantId = c.get('tenantId')
+  const userRole = fullUser?.role || userData.role
+
+  if (
+    !tenantId &&
+    userRole !== 'super_admin' &&
+    !path.startsWith('/api/tenants') &&
+    !path.startsWith('/api/users')
+  ) {
+    return c.json(
+      { error: 'Valid X-Tenant-ID header is required for this request' },
+      403
+    )
+  }
+
   await next()
 })
 
