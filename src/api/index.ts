@@ -15,6 +15,7 @@ import {
   sql,
 } from 'drizzle-orm'
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 import { generateSecret, generateURI, verifySync } from 'otplib'
@@ -1464,6 +1465,16 @@ app.get('/api-docs', requireAuth, async (c) => {
 
 // Set up the API routes
 const api = new Hono<{ Variables: Variables }>()
+
+api.use(
+  '*',
+  cors({
+    origin: (origin) => origin,
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID', 'X-Morphic-Test'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  })
+)
 
 // API Logging Middleware
 api.use('*', async (c, next) => {

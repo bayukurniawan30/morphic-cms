@@ -5,7 +5,7 @@
  * This can be used in the PDF footer, Dashboard, or any other part of the UI.
  */
 
-export const APP_VERSION = '1.2.3'
+export const APP_VERSION = '1.2.4'
 export const APP_NAME = 'Morphic CMS'
 
 /**

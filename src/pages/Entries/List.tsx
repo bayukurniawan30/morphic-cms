@@ -271,15 +271,39 @@ export default function EntriesList({
       return <span className='text-muted-foreground italic'>empty</span>
 
     switch (field.type) {
-      case 'media':
-        if (Array.isArray(value)) {
-          return `${value.length} files`
+      case 'media': {
+        const mediaArray = Array.isArray(value) ? value : value ? [value] : []
+        if (mediaArray.length === 0) {
+          return <span className='text-muted-foreground italic'>empty</span>
         }
+
+        const maxVisible = 3
+        const visibleMedia = mediaArray.slice(0, maxVisible)
+        const extraCount = mediaArray.length - maxVisible
+
         return (
-          <span className='truncate max-w-[150px] inline-block'>
-            File selected
-          </span>
+          <div className='flex items-center space-x-1'>
+            {visibleMedia.map((m: any, idx: number) => {
+              const url = m.resourceType === 'video'
+                ? m.secureUrl?.replace(/\.[^/.]+$/, '.jpg')
+                : m.secureUrl
+              return (
+                <img
+                  key={idx}
+                  src={url}
+                  alt={m.filename || 'media'}
+                  className='w-8 h-8 object-cover rounded border bg-muted'
+                />
+              )
+            })}
+            {extraCount > 0 && (
+              <span className='text-xs font-semibold text-muted-foreground pl-1'>
+                +{extraCount}
+              </span>
+            )}
+          </div>
         )
+      }
       case 'rich-text':
         return (
           <span className='truncate max-w-[200px] inline-block opacity-70 italic text-xs'>
