@@ -3,6 +3,7 @@ import MediaPicker from '@/components/MediaPicker'
 import RichTextEditor from '@/components/RichTextEditor'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -124,7 +125,11 @@ const FieldInput = ({
   error?: string
   relationData: Record<number, any[]>
   availableDocuments: any[]
-  onMediaPickerOpen: (name: string) => void
+  onMediaPickerOpen: (
+    name: string,
+    multiple?: boolean,
+    customSelect?: (items: any[]) => void
+  ) => void
 }) => {
   const handleValueChange = (val: any) => {
     onChange(val)
@@ -169,6 +174,20 @@ const FieldInput = ({
           value={value || ''}
           onChange={(val) => handleValueChange(val)}
         />
+      )
+
+    case 'boolean':
+      return (
+        <div className='flex items-center space-x-2 pt-2'>
+          <Switch
+            id={field.id}
+            checked={!!value}
+            onCheckedChange={(checked) => handleValueChange(checked)}
+          />
+          <Label htmlFor={field.id} className='text-xs text-muted-foreground font-normal cursor-pointer select-none'>
+            {value ? 'Active / Yes' : 'Inactive / No'}
+          </Label>
+        </div>
       )
 
     case 'number':
@@ -343,7 +362,7 @@ const FieldInput = ({
             {(field.multiple || mediaArray.length === 0) && (
               <button
                 type='button'
-                onClick={() => onMediaPickerOpen(field.name)}
+                onClick={() => onMediaPickerOpen(field.name, field.multiple)}
                 className='flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg hover:border-primary hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group'
               >
                 <ImagePlus className='w-4 h-4 mb-1' />
@@ -474,7 +493,17 @@ const FieldInput = ({
                       error={undefined} // could pass errors if we have deep mapping
                       relationData={relationData}
                       availableDocuments={availableDocuments}
-                      onMediaPickerOpen={onMediaPickerOpen}
+                      onMediaPickerOpen={(name, multiple, customSelect) => {
+                        onMediaPickerOpen(name, multiple, (mediaItems) => {
+                          const val = multiple ? mediaItems : mediaItems[0]
+                          const nextItems = [...items]
+                          nextItems[itemIndex] = {
+                            ...nextItems[itemIndex],
+                            [childField.name]: val,
+                          }
+                          handleValueChange(nextItems)
+                        })
+                      }}
                     />
                   </div>
                 ))}
@@ -558,6 +587,18 @@ export default function EntriesForm({
   const [activeMediaPickerField, setActiveMediaPickerField] = useState<
     string | null
   >(null)
+  const [mediaPickerMultiple, setMediaPickerMultiple] = useState<boolean>(false)
+  const [customMediaSelect, setCustomMediaSelect] = useState<((items: any[]) => void) | null>(null)
+
+  const handleMediaPickerOpen = (
+    name: string,
+    multiple?: boolean,
+    customSelect?: (items: any[]) => void
+  ) => {
+    setActiveMediaPickerField(name)
+    setMediaPickerMultiple(!!multiple)
+    setCustomMediaSelect(() => customSelect || null)
+  }
   const [versions, setVersions] = useState<any[]>([])
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [isDetailsVisible, setIsDetailsVisible] = useState(true)
@@ -857,6 +898,13 @@ export default function EntriesForm({
   }, [collection.fields])
 
   const handleMediaSelect = (mediaItems: any[]) => {
+    if (customMediaSelect) {
+      customMediaSelect(mediaItems)
+      setCustomMediaSelect(null)
+      setActiveMediaPickerField(null)
+      return
+    }
+
     if (!activeMediaPickerField) return
 
     const field = collection.fields.find(
@@ -1345,7 +1393,7 @@ export default function EntriesForm({
                       }
                       relationData={relationData}
                       availableDocuments={availableDocuments}
-                      onMediaPickerOpen={setActiveMediaPickerField}
+                      onMediaPickerOpen={handleMediaPickerOpen}
                     />
                     {field.type === 'media' && field.multiple && (
                       <p className='text-[10px] text-muted-foreground italic'>
@@ -1587,10 +1635,7 @@ export default function EntriesForm({
         open={!!activeMediaPickerField}
         onOpenChange={(open) => !open && setActiveMediaPickerField(null)}
         onSelectMedia={handleMediaSelect}
-        multiple={
-          collection.fields.find((f) => f.name === activeMediaPickerField)
-            ?.multiple
-        }
+        multiple={mediaPickerMultiple}
       />
     </Layout>
   )

@@ -170,29 +170,65 @@ export default function MediaIndex({ user }: { user: any }) {
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const selectedFiles = Array.from(e.target.files || [])
+    if (selectedFiles.length === 0) return
 
-    const formData = new FormData()
-    formData.append('file', file)
-    if (currentFolderId) {
-      formData.append('folderId', currentFolderId.toString())
+    if (selectedFiles.length > 5) {
+      toast.error('You can only upload a maximum of 5 files at once.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
     }
 
     setLoading(true)
+    const uploadedMedia: MediaFile[] = []
+    let failedCount = 0
+
     try {
-      const res = await fetch('/api/media/upload', {
-        method: 'POST',
-        body: formData,
-      })
+      await Promise.all(
+        selectedFiles.map(async (file) => {
+          const formData = new FormData()
+          formData.append('file', file)
+          if (currentFolderId) {
+            formData.append('folderId', currentFolderId.toString())
+          }
 
-      if (!res.ok) throw new Error('Upload failed')
+          try {
+            const res = await fetch('/api/media/upload', {
+              method: 'POST',
+              body: formData,
+            })
 
-      const data = await res.json()
-      setFiles([data.media, ...files])
-      toast.success('File uploaded successfully.')
+            if (!res.ok) throw new Error('Upload failed')
+
+            const data = await res.json()
+            uploadedMedia.push(data.media)
+          } catch (err) {
+            failedCount++
+            console.error(`Failed to upload ${file.name}:`, err)
+          }
+        })
+      )
+
+      if (uploadedMedia.length > 0) {
+        setFiles((prevFiles) => [...uploadedMedia, ...prevFiles])
+        if (failedCount === 0) {
+          toast.success(
+            selectedFiles.length === 1
+              ? 'File uploaded successfully.'
+              : `All ${selectedFiles.length} files uploaded successfully.`
+          )
+        } else {
+          toast.success(
+            `Uploaded ${uploadedMedia.length} of ${selectedFiles.length} files.`
+          )
+        }
+      }
+
+      if (failedCount > 0) {
+        toast.error(`Failed to upload ${failedCount} file(s).`)
+      }
     } catch (err) {
-      toast.error('Failed to upload file.')
+      toast.error('Failed to upload files.')
       console.error(err)
     } finally {
       setLoading(false)
@@ -269,11 +305,11 @@ export default function MediaIndex({ user }: { user: any }) {
             </p>
           </div>
           <div className='flex space-x-2'>
-            <Button variant='outline' onClick={() => setIsNewFolderOpen(true)}>
+            <Button variant='outline' onClick={() => setIsNewFolderOpen(true)} disabled={loading}>
               <PlusIcon className='w-4 h-4 mr-2' />
               New Folder
             </Button>
-            <Button onClick={handleUploadClick}>
+            <Button onClick={handleUploadClick} disabled={loading}>
               <UploadIcon className='w-4 h-4 mr-2' />
               Upload
             </Button>
@@ -568,6 +604,7 @@ export default function MediaIndex({ user }: { user: any }) {
         onChange={handleFileChange}
         className='hidden'
         accept='image/*,video/*'
+        multiple
       />
     </Layout>
   )
