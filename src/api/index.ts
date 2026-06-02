@@ -1526,6 +1526,7 @@ api.use('*', async (c, next) => {
   const path = c.req.path
   if (
     path === '/api/auth/login' ||
+    path === '/api/auth/login/2fa' ||
     path === '/api/auth/forgot-password' ||
     path === '/api/auth/reset-password' ||
     path === '/api/test' ||
