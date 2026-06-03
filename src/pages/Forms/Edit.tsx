@@ -25,6 +25,7 @@ import {
   ChevronUpIcon,
   GlobeIcon,
   HelpCircleIcon,
+  MailIcon,
   PlusIcon,
   Settings2Icon,
   ShieldCheckIcon,
@@ -51,6 +52,7 @@ export default function EditForm({ form, user }: EditProps) {
     allowedOrigins: form.allowedOrigins || '',
     honeypotField: form.honeypotField || '',
     collectionId: form.collectionId || (null as number | null),
+    emailNotifications: !!form.emailNotifications,
   })
 
   const [collectionsList, setCollectionsList] = useState<any[]>([])
@@ -817,6 +819,29 @@ export default function EditForm({ form, user }: EditProps) {
                   Add this field to your HTML form and hide it with CSS (e.g.
                   display:none).
                 </p>
+              </div>
+            </div>
+
+            {/* Email Notifications */}
+            <div className='bg-card p-6 rounded-xl border shadow-sm space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <MailIcon className='w-4 h-4 text-primary' />
+                Email Notifications
+              </h3>
+              <div className='flex items-center justify-between space-x-2 pt-2'>
+                <div className='space-y-0.5'>
+                  <Label htmlFor='emailNotifications' className='text-sm font-medium cursor-pointer'>
+                    Notify Workspace Users
+                  </Label>
+                  <p className='text-xs text-muted-foreground'>
+                    Send an email notification to all users in this tenant/workspace when a new form is submitted.
+                  </p>
+                </div>
+                <Switch
+                  id='emailNotifications'
+                  checked={data.emailNotifications}
+                  onCheckedChange={(checked) => setData('emailNotifications', checked)}
+                />
               </div>
             </div>
 

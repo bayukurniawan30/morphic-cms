@@ -764,6 +764,7 @@ app.get('/forms/:slug/entries', requireAuth, async (c) => {
       allowedOrigins: forms.allowedOrigins,
       honeypotField: forms.honeypotField,
       collectionId: forms.collectionId,
+      emailNotifications: forms.emailNotifications,
       collectionName: collections.name,
     })
     .from(forms)
@@ -3747,6 +3748,7 @@ api.post('/forms', async (c) => {
       allowedOrigins,
       honeypotField,
       collectionId,
+      emailNotifications,
     } = body
 
     if (!name || !slug) {
@@ -3772,6 +3774,7 @@ api.post('/forms', async (c) => {
         honeypotField: honeypotField || null,
         collectionId: collectionId || null,
         tenantId,
+        emailNotifications: emailNotifications || false,
       })
       .returning()
 
@@ -3801,6 +3804,7 @@ api.put('/forms/:id', async (c) => {
       allowedOrigins,
       honeypotField,
       collectionId,
+      emailNotifications,
     } = body
 
     const whereClause = [eq(forms.id, id)]
@@ -3819,6 +3823,7 @@ api.put('/forms/:id', async (c) => {
         allowedOrigins: allowedOrigins || null,
         honeypotField: honeypotField || null,
         collectionId: collectionId || null,
+        emailNotifications: emailNotifications ?? false,
         updatedAt: new Date(),
       })
       .where(and(...whereClause))
@@ -4001,6 +4006,79 @@ api.post('/forms/:slug/submit', async (c) => {
 
     // Validate body against form fields (optional but recommended)
     // For simplicity, we just save it now.
+
+    // 3. Email Notification Check
+    if (form.emailNotifications && form.tenantId) {
+      try {
+        const tenantUsers = await db
+          .select({
+            email: users.email,
+          })
+          .from(usersToTenants)
+          .innerJoin(users, eq(usersToTenants.userId, users.id))
+          .where(
+            and(
+              eq(usersToTenants.tenantId, form.tenantId),
+              isNull(users.deletedAt)
+            )
+          )
+
+        const emails = tenantUsers.map((u) => u.email).filter(Boolean)
+        if (emails.length > 0) {
+          const submittedFieldsHtml = Object.entries(body)
+            .map(([key, val]) => {
+              const displayVal =
+                typeof val === 'object' ? JSON.stringify(val) : String(val)
+              return `
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #514849; width: 150px; text-transform: capitalize; vertical-align: top;">${key.replace(/_/g, ' ')}</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee; color: #555; vertical-align: top; white-space: pre-wrap;">${displayVal}</td>
+                </tr>
+              `
+            })
+            .join('')
+
+          const htmlContent = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+              <h1 style="color: #87787a; border-bottom: 2px solid #514849; padding-bottom: 10px; font-size: 24px; margin: 0 0 20px 0;">New Form Submission</h1>
+              <p style="font-size: 16px; line-height: 1.6; color: #555; margin-bottom: 20px;">
+                A new submission has been received for the form <strong>${form.name}</strong>. Below is the submitted content:
+              </p>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #514849;">
+                    <th style="padding: 10px; text-align: left; font-size: 14px; font-weight: bold; color: #87787a; width: 150px;">Field</th>
+                    <th style="padding: 10px; text-align: left; font-size: 14px; font-weight: bold; color: #87787a;">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${submittedFieldsHtml}
+                </tbody>
+              </table>
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border-left: 4px solid #514849; margin: 20px 0; font-size: 14px; color: #555;">
+                <p style="margin: 0;"><strong>Submitted At:</strong> ${new Date().toLocaleString()}</p>
+              </div>
+              <footer style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; text-align: center;">
+                <p style="margin: 5px 0;">This email is sent automatically from Morphic CMS.</p>
+                <p style="margin: 5px 0;">Workspace: Tenant ID ${form.tenantId}</p>
+              </footer>
+            </div>
+          `
+
+          await Promise.all(
+            emails.map((email) =>
+              sendEmail({
+                to: email,
+                subject: `New Form Submission: ${form.name}`,
+                html: htmlContent,
+              })
+            )
+          )
+        }
+      } catch (err) {
+        console.error('Failed to send submission email notifications:', err)
+      }
+    }
 
     if (form.storageType === 'internal') {
       const result = await db

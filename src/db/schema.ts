@@ -215,6 +215,7 @@ export const forms = pgTable('forms', {
   allowedOrigins: varchar('allowed_origins', { length: 1024 }), // Comma-separated list of domains
   honeypotField: varchar('honeypot_field', { length: 255 }), // Field name for honeypot
   collectionId: integer('collection_id').references(() => collections.id),
+  emailNotifications: boolean('email_notifications').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
