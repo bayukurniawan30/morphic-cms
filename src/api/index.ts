@@ -226,7 +226,7 @@ app.use('*', async (c, next) => {
 
   // --- Tenant Detection ---
   const activeTenantId =
-    getCookie(c, 'morphic_active_tenant') || c.req.header('X-Tenant-ID')
+    c.req.header('X-Tenant-ID') || getCookie(c, 'morphic_active_tenant')
   let currentTenant: any = null
   let tenantId: number | null = null
   let tenantRole: string | null = null
@@ -2871,6 +2871,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
   try {
     const tenantId = c.get('tenantId')
     const idOrSlug = c.req.param('idOrSlug')
+    console.log(`[Entries API] Request for: ${idOrSlug}, Tenant ID (Context): ${tenantId}, X-Tenant-ID Header: ${c.req.header('X-Tenant-ID')}`)
     let id: number | null = null
 
     const colConditions = []
