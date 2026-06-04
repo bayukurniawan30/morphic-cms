@@ -4039,13 +4039,17 @@ api.post('/forms/:slug/submit', async (c) => {
 
         const emails = tenantUsers.map((u) => u.email).filter(Boolean)
         if (emails.length > 0) {
+          const formFieldMap = new Map((form.fields as any[] || []).map((f: any) => [f.name, f]))
           const submittedFieldsHtml = Object.entries(body)
+            .filter(([key]) => formFieldMap.has(key))
             .map(([key, val]) => {
+              const field = formFieldMap.get(key)
+              const displayName = field?.label || key.replace(/_/g, ' ')
               const displayVal =
                 typeof val === 'object' ? JSON.stringify(val) : String(val)
               return `
                 <tr>
-                  <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #514849; width: 150px; text-transform: capitalize; vertical-align: top;">${key.replace(/_/g, ' ')}</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #514849; width: 150px; text-transform: capitalize; vertical-align: top;">${displayName}</td>
                   <td style="padding: 10px; border-bottom: 1px solid #eee; color: #555; vertical-align: top; white-space: pre-wrap;">${displayVal}</td>
                 </tr>
               `
