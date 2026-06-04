@@ -43,6 +43,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CircleDot,
   Clock,
   CopyIcon,
@@ -456,18 +457,50 @@ const FieldInput = ({
                 <span className='text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-50'>
                   {field.label || field.name} #{itemIndex + 1}
                 </span>
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  className='h-8 w-8 text-destructive hover:bg-destructive/10'
-                  onClick={() => {
-                    const next = items.filter((_, i) => i !== itemIndex)
-                    handleValueChange(next)
-                  }}
-                >
-                  <XIcon className='w-4 h-4' />
-                </Button>
+                <div className='flex items-center space-x-1'>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='h-8 w-8 hover:bg-muted'
+                    onClick={() => {
+                      if (itemIndex === 0) return
+                      const next = [...items]
+                      ;[next[itemIndex], next[itemIndex - 1]] = [next[itemIndex - 1], next[itemIndex]]
+                      handleValueChange(next)
+                    }}
+                    disabled={itemIndex === 0}
+                  >
+                    <ChevronUp className='w-4 h-4' />
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='h-8 w-8 hover:bg-muted'
+                    onClick={() => {
+                      if (itemIndex === items.length - 1) return
+                      const next = [...items]
+                      ;[next[itemIndex], next[itemIndex + 1]] = [next[itemIndex + 1], next[itemIndex]]
+                      handleValueChange(next)
+                    }}
+                    disabled={itemIndex === items.length - 1}
+                  >
+                    <ChevronDown className='w-4 h-4' />
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='h-8 w-8 text-destructive hover:bg-destructive/10'
+                    onClick={() => {
+                      const next = items.filter((_, i) => i !== itemIndex)
+                      handleValueChange(next)
+                    }}
+                  >
+                    <XIcon className='w-4 h-4' />
+                  </Button>
+                </div>
               </div>
 
               <div className='space-y-6'>
