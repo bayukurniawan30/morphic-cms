@@ -176,6 +176,7 @@ export default function Index({ title }: { title: string }) {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   required
+                  autoFocus
                   className='h-12 bg-background/50 border-border focus:ring-primary focus:border-primary rounded-xl text-center tracking-widest font-mono text-lg'
                 />
                 <p className='text-xs text-muted-foreground ml-1 mt-2'>

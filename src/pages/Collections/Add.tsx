@@ -262,6 +262,25 @@ export default function AddCollection({ user }: AddProps) {
     setData('fields', fields)
   }
 
+  const moveChildField = (
+    parentIndex: number,
+    childIndex: number,
+    direction: 'up' | 'down'
+  ) => {
+    if (direction === 'up' && childIndex === 0) return
+    const fields = [...data.fields]
+    const childFields = [...(fields[parentIndex].fields || [])]
+    if (direction === 'down' && childIndex === childFields.length - 1) return
+
+    const targetIndex = direction === 'up' ? childIndex - 1 : childIndex + 1
+    ;[childFields[childIndex], childFields[targetIndex]] = [
+      childFields[targetIndex],
+      childFields[childIndex],
+    ]
+    fields[parentIndex] = { ...fields[parentIndex], fields: childFields }
+    setData('fields', fields)
+  }
+
   const fieldTypes: { value: FieldType; label: string }[] = [
     { value: 'text', label: 'Text' },
     { value: 'number', label: 'Number' },
@@ -569,6 +588,31 @@ export default function AddCollection({ user }: AddProps) {
                                 key={child.id}
                                 className='grid grid-cols-12 gap-3 items-end border-b border-muted last:border-0 pb-3 last:pb-0 text-left'
                               >
+                                <div className='col-span-1 space-y-1 flex flex-col items-center justify-center'>
+                                  <Label className='text-[10px] invisible'>Reorder</Label>
+                                  <div className='flex flex-col items-center justify-center space-y-0.5 h-8'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-4 w-4 p-0'
+                                      onClick={() => moveChildField(index, childIndex, 'up')}
+                                      disabled={childIndex === 0}
+                                    >
+                                      <ChevronUpIcon className='w-3.5 h-3.5' />
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-4 w-4 p-0'
+                                      onClick={() => moveChildField(index, childIndex, 'down')}
+                                      disabled={childIndex === (field.fields?.length || 0) - 1}
+                                    >
+                                      <ChevronDownIcon className='w-3.5 h-3.5' />
+                                    </Button>
+                                  </div>
+                                </div>
                                 <div className='col-span-3 space-y-1'>
                                   <Label className='text-[10px]'>Label</Label>
                                   <Input
@@ -587,7 +631,7 @@ export default function AddCollection({ user }: AddProps) {
                                     }}
                                   />
                                 </div>
-                                <div className='col-span-3 space-y-1'>
+                                <div className='col-span-2 space-y-1'>
                                   <Label className='text-[10px]'>
                                     Name (Slug)
                                   </Label>
@@ -624,35 +668,41 @@ export default function AddCollection({ user }: AddProps) {
                                     disabledTypes={['array']}
                                   />
                                 </div>
-                                <div className='col-span-2 flex items-center space-x-2 pt-1 h-8'>
-                                  <Switch
-                                    id={`req-${child.id}`}
-                                    checked={child.required}
-                                    onCheckedChange={(val) =>
-                                      updateChildField(index, childIndex, {
-                                        required: val,
-                                      })
-                                    }
-                                  />
-                                  <Label
-                                    htmlFor={`req-${child.id}`}
-                                    className='text-[10px] cursor-pointer'
-                                  >
-                                    Required
-                                  </Label>
+                                <div className='col-span-2 space-y-1'>
+                                  <Label className='text-[10px] invisible'>Required</Label>
+                                  <div className='flex items-center space-x-2 h-8'>
+                                    <Switch
+                                      id={`req-${child.id}`}
+                                      checked={child.required}
+                                      onCheckedChange={(val) =>
+                                        updateChildField(index, childIndex, {
+                                          required: val,
+                                        })
+                                      }
+                                    />
+                                    <Label
+                                      htmlFor={`req-${child.id}`}
+                                      className='text-[10px] cursor-pointer'
+                                    >
+                                      Required
+                                    </Label>
+                                  </div>
                                 </div>
-                                <div className='col-span-1 flex justify-end'>
-                                  <Button
-                                    type='button'
-                                    variant='ghost'
-                                    size='icon'
-                                    className='h-7 w-7 text-destructive'
-                                    onClick={() =>
-                                      removeChildField(index, childIndex)
-                                    }
-                                  >
-                                    <TrashIcon className='w-3.5 h-3.5' />
-                                  </Button>
+                                <div className='col-span-1 space-y-1 flex flex-col items-end'>
+                                  <Label className='text-[10px] invisible'>Delete</Label>
+                                  <div className='flex items-center justify-end h-8'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-7 w-7 text-destructive'
+                                      onClick={() =>
+                                        removeChildField(index, childIndex)
+                                      }
+                                    >
+                                      <TrashIcon className='w-3.5 h-3.5' />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             ))}

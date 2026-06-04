@@ -4010,6 +4010,13 @@ api.post('/forms/:slug/submit', async (c) => {
     // 3. Email Notification Check
     if (form.emailNotifications && form.tenantId) {
       try {
+        const tenantData = await db
+          .select({ name: tenants.name })
+          .from(tenants)
+          .where(eq(tenants.id, form.tenantId))
+          .limit(1)
+        const tenantName = tenantData[0]?.name || 'Unknown'
+
         const tenantUsers = await db
           .select({
             email: users.email,
@@ -4056,11 +4063,11 @@ api.post('/forms/:slug/submit', async (c) => {
                 </tbody>
               </table>
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border-left: 4px solid #514849; margin: 20px 0; font-size: 14px; color: #555;">
-                <p style="margin: 0;"><strong>Submitted At:</strong> ${new Date().toLocaleString()}</p>
+                <p style="margin: 0;"><strong>Submitted At:</strong> ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'long' })}</p>
               </div>
               <footer style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; text-align: center;">
                 <p style="margin: 5px 0;">This email is sent automatically from Morphic CMS.</p>
-                <p style="margin: 5px 0;">Workspace: Tenant ID ${form.tenantId}</p>
+                <p style="margin: 5px 0;">Workspace: ${tenantName} #${form.tenantId}</p>
               </footer>
             </div>
           `
