@@ -2873,16 +2873,22 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const idOrSlug = c.req.param('idOrSlug')
     let id: number | null = null
 
+    const colConditions = []
     if (/^\d+$/.test(idOrSlug)) {
-      id = parseInt(idOrSlug, 10)
+      colConditions.push(eq(collections.id, parseInt(idOrSlug, 10)))
     } else {
-      const col = await db
-        .select({ id: collections.id })
-        .from(collections)
-        .where(eq(collections.slug, idOrSlug))
-        .limit(1)
-      if (col.length > 0) id = col[0].id
+      colConditions.push(eq(collections.slug, idOrSlug))
     }
+    if (tenantId) {
+      colConditions.push(eq(collections.tenantId, tenantId))
+    }
+
+    const collectionLookup = await db
+      .select({ id: collections.id })
+      .from(collections)
+      .where(and(...colConditions))
+      .limit(1)
+    if (collectionLookup.length > 0) id = collectionLookup[0].id
 
     if (!id) return c.json({ error: 'Collection not found' }, 404)
 
