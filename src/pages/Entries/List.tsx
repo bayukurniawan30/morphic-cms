@@ -35,9 +35,9 @@ import {
   CopyIcon,
   DatabaseIcon,
   FileCheckIcon,
+  MoreVertical,
   PlusIcon,
   TerminalIcon,
-  MoreVertical,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
@@ -284,9 +284,10 @@ export default function EntriesList({
         return (
           <div className='flex items-center space-x-1'>
             {visibleMedia.map((m: any, idx: number) => {
-              const url = m.resourceType === 'video'
-                ? m.secureUrl?.replace(/\.[^/.]+$/, '.jpg')
-                : m.secureUrl
+              const url =
+                m.resourceType === 'video'
+                  ? m.secureUrl?.replace(/\.[^/.]+$/, '.jpg')
+                  : m.secureUrl
               return (
                 <img
                   key={idx}
@@ -302,6 +303,20 @@ export default function EntriesList({
               </span>
             )}
           </div>
+        )
+      }
+      case 'array': {
+        const arrayItems = Array.isArray(value) ? value : []
+        const count = arrayItems.length
+        if (count === 0) {
+          return (
+            <span className='text-muted-foreground italic text-xs'>Empty</span>
+          )
+        }
+        return (
+          <span className='truncate max-w-[200px] inline-block opacity-70 italic text-xs'>
+            {count} {count === 1 ? 'item' : 'items'}
+          </span>
         )
       }
       case 'rich-text':
@@ -499,7 +514,9 @@ export default function EntriesList({
                               <SelectValue placeholder='Sort by' />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='createdAt'>Created At</SelectItem>
+                              <SelectItem value='createdAt'>
+                                Created At
+                              </SelectItem>
                               <SelectItem value='id'>ID</SelectItem>
                             </SelectContent>
                           </Select>
@@ -736,12 +753,16 @@ export default function EntriesList({
                                       ].includes(f.type)
                                     )
                                       type = 'string'
-                                    if (['number'].includes(f.type)) type = 'number'
-                                    if (['boolean', 'checkbox'].includes(f.type))
+                                    if (['number'].includes(f.type))
+                                      type = 'number'
+                                    if (
+                                      ['boolean', 'checkbox'].includes(f.type)
+                                    )
                                       type = 'boolean'
                                     if (f.type === 'array') type = 'any[]'
                                     if (f.type === 'relation')
-                                      type = '{ id: number; [key: string]: any }'
+                                      type =
+                                        '{ id: number; [key: string]: any }'
 
                                     fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
                                   })
