@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { verify } from 'hono/jwt'
@@ -63,6 +63,8 @@ apiDocuments.get('/', async (c) => {
     const page = parseInt(c.req.query('page') || '1', 10)
     const limit = parseInt(c.req.query('limit') || '10', 10)
     const search = c.req.query('search') || ''
+    const sortBy = c.req.query('sortBy') || 'createdAt'
+    const sortDir = c.req.query('sortDir') || 'desc'
     const offset = (page - 1) * limit
 
     const conditions: any[] = []
@@ -82,10 +84,19 @@ apiDocuments.get('/', async (c) => {
     const totalCount = Number(countResult[0].count)
     const totalPages = Math.ceil(totalCount / limit)
 
+    let orderClause = desc(documents.createdAt)
+    if (sortBy === 'createdAt') {
+      orderClause = sortDir === 'asc' ? asc(documents.createdAt) : desc(documents.createdAt)
+    } else if (sortBy === 'filename') {
+      orderClause = sortDir === 'asc' ? asc(documents.filename) : desc(documents.filename)
+    } else if (sortBy === 'size') {
+      orderClause = sortDir === 'asc' ? asc(documents.size) : desc(documents.size)
+    }
+
     const filesQuery = db
       .select()
       .from(documents)
-      .orderBy(desc(documents.createdAt))
+      .orderBy(orderClause)
       .limit(limit)
       .offset(offset)
 

@@ -27,7 +27,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { Link, router, usePage } from '@inertiajs/react'
 import {
+  ArrowDown,
   ArrowLeftIcon,
+  ArrowUp,
   CalendarIcon,
   ChevronLeft,
   ChevronRight,
@@ -88,6 +90,8 @@ interface ListProps {
     type?: string
     trash?: boolean
     locale?: string
+    sort?: string
+    dir?: string
   }
   allLocales?: { id: number; code: string; name: string; isDefault: boolean }[]
   connectedForms?: any[]
@@ -152,11 +156,41 @@ export default function EntriesList({
     }
   }
 
+  const currentSort = filters?.sort || 'createdAt'
+  const currentDir = filters?.dir || 'desc'
+
+  const updateFilters = (newFilters: any) => {
+    const finalFilters = {
+      trash: isTrash,
+      locale: filters?.locale || '',
+      sort: currentSort,
+      dir: currentDir,
+      page: pagination?.currentPage || 1,
+      ...newFilters,
+    }
+
+    router.get(`/entries/${collection.id}`, finalFilters, {
+      preserveState: true,
+      preserveScroll: true,
+    })
+  }
+
   const handlePageChange = (page: number) => {
-    router.get(
-      `/entries/${collection.id}`,
-      { page, trash: isTrash, locale: filters?.locale },
-      { preserveState: true }
+    updateFilters({ page })
+  }
+
+  const toggleSort = (field: string) => {
+    const newDir =
+      currentSort === field && currentDir === 'asc' ? 'desc' : 'asc'
+    updateFilters({ sort: field, dir: newDir, page: 1 })
+  }
+
+  const renderSortIcon = (field: string) => {
+    if (currentSort !== field) return null
+    return currentDir === 'asc' ? (
+      <ArrowUp className='ml-1 h-4 w-4' />
+    ) : (
+      <ArrowDown className='ml-1 h-4 w-4' />
     )
   }
 
@@ -970,26 +1004,14 @@ export default function EntriesList({
             <Button
               variant={!isTrash ? 'secondary' : 'ghost'}
               size='sm'
-              onClick={() =>
-                router.get(
-                  `/entries/${collection.id}`,
-                  { trash: false },
-                  { preserveState: true }
-                )
-              }
+              onClick={() => updateFilters({ trash: false, page: 1 })}
             >
               Active
             </Button>
             <Button
               variant={isTrash ? 'secondary' : 'ghost'}
               size='sm'
-              onClick={() =>
-                router.get(
-                  `/entries/${collection.id}`,
-                  { trash: true },
-                  { preserveState: true }
-                )
-              }
+              onClick={() => updateFilters({ trash: true, page: 1 })}
               className={isTrash ? '' : 'text-muted-foreground'}
             >
               Trash
@@ -1002,13 +1024,7 @@ export default function EntriesList({
             <Button
               variant={!filters?.locale ? 'secondary' : 'ghost'}
               size='sm'
-              onClick={() =>
-                router.get(
-                  `/entries/${collection.id}`,
-                  { locale: '' },
-                  { preserveState: true }
-                )
-              }
+              onClick={() => updateFilters({ locale: '', page: 1 })}
               className='h-8 text-xs'
             >
               All Languages
@@ -1018,13 +1034,7 @@ export default function EntriesList({
                 key={l.id}
                 variant={filters?.locale === l.code ? 'secondary' : 'ghost'}
                 size='sm'
-                onClick={() =>
-                  router.get(
-                    `/entries/${collection.id}`,
-                    { locale: l.code },
-                    { preserveState: true }
-                  )
-                }
+                onClick={() => updateFilters({ locale: l.code, page: 1 })}
                 className='h-8 text-xs gap-2'
               >
                 <span className='font-mono uppercase text-[10px]'>
@@ -1052,8 +1062,14 @@ export default function EntriesList({
                       {field.label}
                     </th>
                   ))}
-                  <th className='px-6 py-4 font-medium uppercase tracking-wider'>
-                    Created
+                  <th
+                    className='px-6 py-4 font-medium uppercase tracking-wider cursor-pointer hover:bg-muted/60 transition-colors'
+                    onClick={() => toggleSort('createdAt')}
+                  >
+                    <div className='flex items-center'>
+                      Created
+                      {renderSortIcon('createdAt')}
+                    </div>
                   </th>
                   {collection.localized && (
                     <th className='px-6 py-4 font-medium uppercase tracking-wider'>

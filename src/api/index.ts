@@ -1195,6 +1195,8 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
   const page = parseInt(c.req.query('page') || '1', 10)
   const limit = parseInt(c.req.query('limit') || '10', 10)
   const offset = (page - 1) * limit
+  const sort = c.req.query('sort') || 'createdAt'
+  const dir = c.req.query('dir') || 'desc'
 
   const isTrash = c.req.query('trash') === 'true'
   let whereClause = and(
@@ -1221,6 +1223,18 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
   const totalCount = Number(countResult[0].count)
   const totalPages = Math.ceil(totalCount / limit)
 
+  let orderClause = desc(entries.createdAt)
+  if (sort === 'createdAt') {
+    orderClause =
+      dir === 'asc' ? asc(entries.createdAt) : desc(entries.createdAt)
+  } else if (sort === 'id') {
+    orderClause = dir === 'asc' ? asc(entries.id) : desc(entries.id)
+  } else if (sort === 'status') {
+    orderClause = dir === 'asc' ? asc(entries.status) : desc(entries.status)
+  } else if (sort === 'locale') {
+    orderClause = dir === 'asc' ? asc(entries.locale) : desc(entries.locale)
+  }
+
   const entriesList = await db
     .select({
       entry: entries,
@@ -1232,7 +1246,7 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
     .from(entries)
     .leftJoin(users, eq(entries.updatedById, users.id))
     .where(whereClause)
-    .orderBy(desc(entries.createdAt))
+    .orderBy(orderClause)
     .limit(limit)
     .offset(offset)
 
@@ -1265,6 +1279,8 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
     filters: {
       trash: isTrash,
       locale: localeFilter || null,
+      sort,
+      dir,
     },
   })
 })

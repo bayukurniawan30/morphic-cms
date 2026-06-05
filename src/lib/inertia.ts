@@ -59,44 +59,50 @@ export const inertia = (viewFile: string = 'index.html') => {
 
     const isInertiaRequest = getHeader('X-Inertia') === 'true'
 
-    c.set('inertia', (component: string, props: any = {}, options: { status?: number } = {}) => {
-      const status = options.status || 200
-      // Merge shared props if they exist in context
-      const sharedProps = c.get('inertiaSharedProps' as any) || {}
-      const mergedProps = { ...sharedProps, ...props }
+    c.set(
+      'inertia',
+      (
+        component: string,
+        props: any = {},
+        options: { status?: number } = {}
+      ) => {
+        const status = options.status || 200
+        // Merge shared props if they exist in context
+        const sharedProps = c.get('inertiaSharedProps' as any) || {}
+        const mergedProps = { ...sharedProps, ...props }
 
-      const inertiaProps = {
-        component,
-        props: mergedProps,
-        url: c.req.url,
-        version: null,
-      }
+        const inertiaProps = {
+          component,
+          props: mergedProps,
+          url: c.req.url,
+          version: null,
+        }
 
-      if (isInertiaRequest) {
-        return c.json(inertiaProps, status as any, {
-          'X-Inertia': 'true',
-          Vary: 'Accept',
-        })
-      }
+        if (isInertiaRequest) {
+          return c.json(inertiaProps, status as any, {
+            'X-Inertia': 'true',
+            Vary: 'Accept',
+          })
+        }
 
-      // Determine asset paths
-      let jsPath = '/src/client.tsx'
-      let cssTags = ''
+        // Determine asset paths
+        let jsPath = '/src/client.tsx'
+        let cssTags = ''
 
-      if (!isDev && manifest) {
-        const entry = manifest['index.html']
-        if (entry) {
-          jsPath = `/${entry.file}`
-          if (entry.css) {
-            cssTags = entry.css
-              .map((css: string) => `<link rel="stylesheet" href="/${css}">`)
-              .join('\n')
+        if (!isDev && manifest) {
+          const entry = manifest['index.html']
+          if (entry) {
+            jsPath = `/${entry.file}`
+            if (entry.css) {
+              cssTags = entry.css
+                .map((css: string) => `<link rel="stylesheet" href="/${css}">`)
+                .join('\n')
+            }
           }
         }
-      }
 
-      const vitePreamble = isDev
-        ? `
+        const vitePreamble = isDev
+          ? `
         <script type="module">
           import RefreshRuntime from "/@react-refresh"
           RefreshRuntime.injectIntoGlobalHook(window)
@@ -106,21 +112,22 @@ export const inertia = (viewFile: string = 'index.html') => {
         </script>
         <script type="module" src="/@vite/client"></script>
       `
-        : ''
+          : ''
 
-      // Serve HTML with data-page attribute for initial load
-      const html = `<!DOCTYPE html>
+        // Serve HTML with data-page attribute for initial load
+        const html = `<!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <meta name="description" content="Morphic CMS is a high-performance, multi-tenant headless CMS built for the edge." />
             <meta name="keywords" content="headless cms, edge-ready, multi-tenant, react cms, modern cms" />
+            <link rel="icon" type="image/png" href="${new URL(c.req.url).origin}/favicon.png" />
             
             <!-- Fallback Open Graph / Social Media Meta Tags (Visible to crawlers without JavaScript) -->
             <meta property="og:type" content="website" />
             <meta property="og:url" content="${c.req.url}" />
-            <meta property="og:title" content="Morphic CMS - Modern Headless CMS" />
+            <meta property="og:tgitle" content="Morphic CMS - Modern Headless CMS" />
             <meta property="og:description" content="The Edge-Ready, High-Performance Headless CMS for Modern Developers." />
             <meta property="og:image" content="${new URL(c.req.url).origin}/dashboard.png" />
             <meta property="og:logo" content="${new URL(c.req.url).origin}/favicon.png" />
@@ -186,8 +193,9 @@ export const inertia = (viewFile: string = 'index.html') => {
         </body>
         </html>`
 
-      return c.html(html, status as any)
-    })
+        return c.html(html, status as any)
+      }
+    )
 
     await next()
   }
@@ -195,6 +203,10 @@ export const inertia = (viewFile: string = 'index.html') => {
 
 declare module 'hono' {
   interface ContextVariableMap {
-    inertia: (component: string, props?: any, options?: { status?: number }) => Response | Promise<Response>
+    inertia: (
+      component: string,
+      props?: any,
+      options?: { status?: number }
+    ) => Response | Promise<Response>
   }
 }

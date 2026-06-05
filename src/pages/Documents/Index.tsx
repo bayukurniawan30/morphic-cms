@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LoadingState } from '@/components/ui/loader'
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronLeft,
   ChevronRight,
   CopyIcon,
@@ -48,13 +50,15 @@ export default function DocumentsIndex({ user }: IndexProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortDir, setSortDir] = useState('desc')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const fetchDocuments = async (page = 1, search = '') => {
+  const fetchDocuments = async (page = 1, search = '', activeSortBy = 'createdAt', activeSortDir = 'desc') => {
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/documents?page=${page}&limit=10&search=${encodeURIComponent(search)}`
+        `/api/documents?page=${page}&limit=10&search=${encodeURIComponent(search)}&sortBy=${activeSortBy}&sortDir=${activeSortDir}`
       )
       if (!res.ok) throw new Error('Failed to fetch documents')
       const data = await res.json()
@@ -70,11 +74,27 @@ export default function DocumentsIndex({ user }: IndexProps) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchDocuments(currentPage, searchQuery)
+      fetchDocuments(currentPage, searchQuery, sortBy, sortDir)
     }, 300) // Debounce search
 
     return () => clearTimeout(timer)
-  }, [currentPage, searchQuery])
+  }, [currentPage, searchQuery, sortBy, sortDir])
+
+  const toggleSort = (field: string) => {
+    const newDir = sortBy === field && sortDir === 'asc' ? 'desc' : 'asc'
+    setSortBy(field)
+    setSortDir(newDir)
+    setCurrentPage(1)
+  }
+
+  const renderSortIcon = (field: string) => {
+    if (sortBy !== field) return null
+    return sortDir === 'asc' ? (
+      <ArrowUp className='ml-1 h-4 w-4' />
+    ) : (
+      <ArrowDown className='ml-1 h-4 w-4' />
+    )
+  }
 
   const handleUploadClick = () => {
     fileInputRef.current?.click()
@@ -190,13 +210,37 @@ export default function DocumentsIndex({ user }: IndexProps) {
             <table className='w-full text-sm text-left'>
               <thead className='text-xs text-muted-foreground uppercase bg-muted/50 border-b'>
                 <tr>
-                  <th className='px-6 py-4 font-medium'>Filename</th>
+                  <th
+                    className='px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors'
+                    onClick={() => toggleSort('filename')}
+                  >
+                    <div className='flex items-center'>
+                      Filename
+                      {renderSortIcon('filename')}
+                    </div>
+                  </th>
                   <th className='px-6 py-4 font-medium'>Type</th>
-                  <th className='px-6 py-4 font-medium'>Size</th>
+                  <th
+                    className='px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors'
+                    onClick={() => toggleSort('size')}
+                  >
+                    <div className='flex items-center'>
+                      Size
+                      {renderSortIcon('size')}
+                    </div>
+                  </th>
                   {isSystemGlobal && (
                     <th className='px-6 py-4 font-medium'>Tenant</th>
                   )}
-                  <th className='px-6 py-4 font-medium'>Uploaded At</th>
+                  <th
+                    className='px-6 py-4 font-medium cursor-pointer hover:bg-muted/60 transition-colors'
+                    onClick={() => toggleSort('createdAt')}
+                  >
+                    <div className='flex items-center'>
+                      Uploaded At
+                      {renderSortIcon('createdAt')}
+                    </div>
+                  </th>
                   <th className='px-6 py-4 font-medium text-right'>Actions</th>
                 </tr>
               </thead>
