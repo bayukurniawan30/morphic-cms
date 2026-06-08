@@ -280,6 +280,7 @@ export default function EditCollection({
     { value: 'slug', label: 'Slug' },
     { value: 'email', label: 'Email' },
     { value: 'array', label: 'Array (Repeater)' },
+    { value: 'group', label: 'Group' },
   ]
 
   const [availableCollections, setAvailableCollections] = useState<any[]>([])
@@ -940,11 +941,11 @@ export default function EditCollection({
                         </div>
                       )}
 
-                      {field.type === 'array' && (
+                      {(field.type === 'array' || field.type === 'group') && (
                         <div className='space-y-4'>
                           <div className='flex justify-between items-center'>
                             <Label className='text-xs font-semibold'>
-                              Nested Fields (Repeater)
+                              {field.type === 'array' ? 'Nested Fields (Repeater)' : 'Nested Fields (Group)'}
                             </Label>
                             <Button
                               type='button'
@@ -1039,7 +1040,7 @@ export default function EditCollection({
                                         type: val,
                                       })
                                     }
-                                    disabledTypes={['array']}
+                                    disabledTypes={['array', 'group']}
                                   />
                                 </div>
                                 <div className='col-span-2 space-y-1'>

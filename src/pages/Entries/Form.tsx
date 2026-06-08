@@ -3,7 +3,6 @@ import MediaPicker from '@/components/MediaPicker'
 import RichTextEditor from '@/components/RichTextEditor'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { FieldDefinition } from '@/lib/dynamic-schema'
@@ -111,6 +111,200 @@ interface FormProps {
   sourceEntry?: Entry
 }
 
+const fieldTypeColors: Record<string, string> = {
+  text: 'text-blue-600 bg-blue-50/50 border-blue-200/50 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/30',
+  textarea:
+    'text-indigo-600 bg-indigo-50/50 border-indigo-200/50 dark:text-indigo-400 dark:bg-indigo-950/20 dark:border-indigo-900/30',
+  email:
+    'text-sky-600 bg-sky-50/50 border-sky-200/50 dark:text-sky-400 dark:bg-sky-950/20 dark:border-sky-900/30',
+  number:
+    'text-emerald-600 bg-emerald-50/50 border-emerald-200/50 dark:text-emerald-400 dark:bg-emerald-950/20 dark:border-emerald-900/30',
+  select:
+    'text-orange-600 bg-orange-50/50 border-orange-200/50 dark:text-orange-400 dark:bg-orange-950/20 dark:border-orange-900/30',
+  checkbox:
+    'text-amber-600 bg-amber-50/50 border-amber-200/50 dark:text-amber-400 dark:bg-amber-950/20 dark:border-amber-900/30',
+  radio:
+    'text-orange-700 bg-orange-100/50 border-orange-200/50 dark:text-orange-400 dark:bg-orange-950/20 dark:border-orange-900/30',
+  boolean:
+    'text-green-700 bg-green-100/50 border-green-200/50 dark:text-green-400 dark:bg-green-950/20 dark:border-green-900/30',
+  date: 'text-purple-600 bg-purple-50/50 border-purple-200/50 dark:text-purple-400 dark:bg-purple-950/20 dark:border-purple-900/30',
+  datetime:
+    'text-fuchsia-600 bg-fuchsia-50/50 border-fuchsia-200/50 dark:text-fuchsia-400 dark:bg-fuchsia-950/20 dark:border-fuchsia-900/30',
+  time: 'text-violet-600 bg-violet-50/50 border-violet-200/50 dark:text-violet-400 dark:bg-violet-950/20 dark:border-violet-900/30',
+  media:
+    'text-pink-600 bg-pink-50/50 border-pink-200/50 dark:text-pink-400 dark:bg-pink-950/20 dark:border-pink-900/30',
+  documents:
+    'text-rose-600 bg-rose-50/50 border-rose-200/50 dark:text-rose-400 dark:bg-rose-950/20 dark:border-rose-900/30',
+  'rich-text':
+    'text-cyan-600 bg-cyan-50/50 border-cyan-200/50 dark:text-cyan-400 dark:bg-cyan-950/20 dark:border-cyan-900/30',
+  relation:
+    'text-teal-600 bg-teal-50/50 border-teal-200/50 dark:text-teal-400 dark:bg-teal-950/20 dark:border-teal-900/30',
+  slug: 'text-blue-700 bg-blue-100/50 border-blue-200/50 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/30',
+  array:
+    'text-amber-700 bg-amber-100/50 border-amber-200/50 dark:text-amber-400 dark:bg-amber-950/20 dark:border-amber-900/30',
+  group:
+    'text-violet-700 bg-violet-100/50 border-violet-200/50 dark:text-violet-400 dark:bg-violet-950/20 dark:border-violet-900/30',
+}
+
+const GroupFieldInput = ({
+  field,
+  value,
+  onChange,
+  error,
+  relationData,
+  availableDocuments,
+  onMediaPickerOpen,
+}: {
+  field: FieldDefinition
+  value: any
+  onChange: (val: any) => void
+  error?: any
+  relationData: Record<number, any[]>
+  availableDocuments: any[]
+  onMediaPickerOpen: (
+    name: string,
+    multiple?: boolean,
+    customSelect?: (items: any[]) => void
+  ) => void
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const groupValue = value || {}
+
+  return (
+    <div className='border border-border/80 rounded-xl overflow-hidden shadow-sm bg-card space-y-0 animate-in fade-in slide-in-from-top-1 duration-200'>
+      {/* Header Bar */}
+      <div
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className='flex items-center justify-between px-8 py-4 bg-muted/40 border-b border-border/50 cursor-pointer select-none hover:bg-muted/60 transition-colors'
+      >
+        <div className='flex items-center gap-2.5'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            className='h-6 w-6 p-0 hover:bg-transparent text-muted-foreground/80'
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsCollapsed(!isCollapsed)
+            }}
+          >
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 transition-transform duration-200',
+                isCollapsed && '-rotate-90'
+              )}
+            />
+          </Button>
+          <Label className='text-xs font-bold uppercase tracking-widest text-foreground/90 cursor-pointer'>
+            {field.label || field.name}
+          </Label>
+          {field.required && (
+            <span className='text-destructive text-sm font-bold'>*</span>
+          )}
+        </div>
+        <div
+          className={cn(
+            'flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase tracking-wider border transition-colors',
+            fieldTypeColors.group
+          )}
+        >
+          <Layers className='w-3 h-3' />
+          <span>Group</span>
+        </div>
+      </div>
+
+      {/* Child Fields Container */}
+      {!isCollapsed && (
+        <div className='p-8 space-y-8 bg-card animate-in fade-in slide-in-from-top-1 duration-200'>
+          {field.fields?.map((childField) => {
+            const childError = error
+              ? (error as any)[childField.name]?._errors?.[0]
+              : undefined
+            return (
+              <div key={childField.id} className='space-y-2 text-left'>
+                <div className='flex items-center justify-between border-b border-border/30 pb-1'>
+                  <Label className='text-xs font-bold uppercase tracking-widest text-muted-foreground/80'>
+                    {childField.label || childField.name}{' '}
+                    {childField.required && (
+                      <span className='text-destructive'>*</span>
+                    )}
+                  </Label>
+                  <div
+                    className={cn(
+                      'flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase tracking-wider border transition-colors',
+                      fieldTypeColors[childField.type] ||
+                        'text-muted-foreground bg-muted border-border'
+                    )}
+                  >
+                    {(() => {
+                      const icons: Record<string, any> = {
+                        text: Type,
+                        textarea: AlignLeft,
+                        email: Mail,
+                        number: Hash,
+                        select: List,
+                        checkbox: CheckSquare,
+                        radio: CircleDot,
+                        boolean: CheckCircle2,
+                        date: Calendar,
+                        datetime: Clock,
+                        time: Clock,
+                        media: ImageIcon,
+                        documents: FileText,
+                        'rich-text': FileJson,
+                        relation: LinkIcon,
+                        slug: Fingerprint,
+                        array: Layers,
+                        group: Layers,
+                      }
+                      const Icon = icons[childField.type] || Type
+                      return <Icon className='w-3 h-3' />
+                    })()}
+                    <span>
+                      {childField.type === 'rich-text'
+                        ? 'Rich Text'
+                        : childField.type}
+                    </span>
+                  </div>
+                </div>
+                <FieldInput
+                  field={childField}
+                  value={groupValue[childField.name]}
+                  onChange={(val) => {
+                    const nextValue = {
+                      ...groupValue,
+                      [childField.name]: val,
+                    }
+                    onChange(nextValue)
+                  }}
+                  error={childError}
+                  relationData={relationData}
+                  availableDocuments={availableDocuments}
+                  onMediaPickerOpen={(name, multiple, customSelect) => {
+                    onMediaPickerOpen(name, multiple, (mediaItems) => {
+                      const val = multiple ? mediaItems : mediaItems[0]
+                      const nextValue = {
+                        ...groupValue,
+                        [childField.name]: val,
+                      }
+                      onChange(nextValue)
+                    })
+                  }}
+                />
+                {childError && (
+                  <p className='text-xs font-medium text-destructive mt-1'>
+                    {childError}
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const FieldInput = ({
   field,
   value,
@@ -123,7 +317,7 @@ const FieldInput = ({
   field: FieldDefinition
   value: any
   onChange: (val: any) => void
-  error?: string
+  error?: any
   relationData: Record<number, any[]>
   availableDocuments: any[]
   onMediaPickerOpen: (
@@ -185,7 +379,10 @@ const FieldInput = ({
             checked={!!value}
             onCheckedChange={(checked) => handleValueChange(checked)}
           />
-          <Label htmlFor={field.id} className='text-xs text-muted-foreground font-normal cursor-pointer select-none'>
+          <Label
+            htmlFor={field.id}
+            className='text-xs text-muted-foreground font-normal cursor-pointer select-none'
+          >
             {value ? 'Active / Yes' : 'Inactive / No'}
           </Label>
         </div>
@@ -466,7 +663,10 @@ const FieldInput = ({
                     onClick={() => {
                       if (itemIndex === 0) return
                       const next = [...items]
-                      ;[next[itemIndex], next[itemIndex - 1]] = [next[itemIndex - 1], next[itemIndex]]
+                      ;[next[itemIndex], next[itemIndex - 1]] = [
+                        next[itemIndex - 1],
+                        next[itemIndex],
+                      ]
                       handleValueChange(next)
                     }}
                     disabled={itemIndex === 0}
@@ -481,7 +681,10 @@ const FieldInput = ({
                     onClick={() => {
                       if (itemIndex === items.length - 1) return
                       const next = [...items]
-                      ;[next[itemIndex], next[itemIndex + 1]] = [next[itemIndex + 1], next[itemIndex]]
+                      ;[next[itemIndex], next[itemIndex + 1]] = [
+                        next[itemIndex + 1],
+                        next[itemIndex],
+                      ]
                       handleValueChange(next)
                     }}
                     disabled={itemIndex === items.length - 1}
@@ -570,6 +773,20 @@ const FieldInput = ({
       )
     }
 
+    case 'group': {
+      return (
+        <GroupFieldInput
+          field={field}
+          value={value}
+          onChange={onChange}
+          error={error}
+          relationData={relationData}
+          availableDocuments={availableDocuments}
+          onMediaPickerOpen={onMediaPickerOpen}
+        />
+      )
+    }
+
     default:
       return (
         <p className='text-xs text-destructive'>
@@ -621,7 +838,9 @@ export default function EntriesForm({
     string | null
   >(null)
   const [mediaPickerMultiple, setMediaPickerMultiple] = useState<boolean>(false)
-  const [customMediaSelect, setCustomMediaSelect] = useState<((items: any[]) => void) | null>(null)
+  const [customMediaSelect, setCustomMediaSelect] = useState<
+    ((items: any[]) => void) | null
+  >(null)
 
   const handleMediaPickerOpen = (
     name: string,
@@ -787,9 +1006,10 @@ export default function EntriesForm({
       return next
     })
     // Clear error for this field
-    if (errors[name]) {
+    if (errors[currentLocale] && errors[currentLocale][name]) {
       const newErrors = { ...errors }
-      delete newErrors[name]
+      newErrors[currentLocale] = { ...newErrors[currentLocale] }
+      delete newErrors[currentLocale][name]
       setErrors(newErrors)
     }
   }
@@ -843,14 +1063,9 @@ export default function EntriesForm({
             setErrors(result.details)
             toast.error('Validation failed in one or more languages')
           } else {
-            const fieldErrors: Record<string, string> = {}
-            Object.keys(result.details).forEach((key) => {
-              if (key !== '_errors') {
-                fieldErrors[key] =
-                  result.details[key]._errors?.[0] || 'Invalid value'
-              }
+            setErrors({
+              [currentLocale]: result.details,
             })
-            setErrors(fieldErrors)
             toast.error('Please check the form for errors')
           }
         } else {
@@ -989,7 +1204,9 @@ export default function EntriesForm({
                 </p>
                 {mode === 'edit' && updatedBy && (
                   <>
-                    <span className='hidden md:inline text-muted-foreground/30'>•</span>
+                    <span className='hidden md:inline text-muted-foreground/30'>
+                      •
+                    </span>
                     <div className='flex items-center text-xs text-muted-foreground'>
                       <User className='w-3 h-3 mr-1' />
                       Last updated by{' '}
@@ -1049,68 +1266,81 @@ export default function EntriesForm({
                       value='rest'
                       className='flex-1 flex flex-col overflow-hidden m-0'
                     >
-                      <ScrollArea className='h-[450px] bg-zinc-950 rounded-xl border border-white/10 p-4 font-mono text-sm text-zinc-300'>
-                        {isFetchingPreview ? (
-                          <div className='h-full flex items-center justify-center text-zinc-500'>
-                            <Loader2Icon className='w-6 h-6 animate-spin mr-2' />
-                            Loading preview...
-                          </div>
-                        ) : apiPreviewData ? (
-                          <div>
-                            <div className='flex items-center justify-between mb-4 border-b border-white/5 pb-2'>
-                              <div className='flex items-center space-x-2'>
-                                <span className='px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold'>
-                                  GET
-                                </span>
-                                <code className='text-[10px] text-zinc-400'>
-                                  /api/entries/{entry?.id}
-                                </code>
+                      <div className='relative overflow-hidden rounded-xl border border-white/10 bg-zinc-950 group h-[450px] flex flex-col'>
+                        {/* Decorative Glow */}
+                        <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-blue-500/30 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
+
+                        <ScrollArea className='flex-1 p-4 font-mono text-sm text-zinc-300 bg-transparent'>
+                          <div className='relative z-10'>
+                            {isFetchingPreview ? (
+                              <div className='h-[416px] flex items-center justify-center text-zinc-500'>
+                                <Loader2Icon className='w-6 h-6 animate-spin mr-2' />
+                                Loading preview...
                               </div>
-                              <div className='flex items-center space-x-2'>
-                                <Button
-                                  variant='ghost'
-                                  size='sm'
-                                  className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(
-                                      JSON.stringify(apiPreviewData, null, 2)
-                                    )
-                                    toast.success('Copied to clipboard')
-                                  }}
-                                >
-                                  <CopyIcon className='w-3 h-3 mr-1.5' />
-                                  Copy JSON
-                                </Button>
-                                <Button
-                                  variant='ghost'
-                                  size='sm'
-                                  className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
-                                  onClick={() => {
-                                    const tenantId =
-                                      activeTenant?.id || 'YOUR_TENANT_ID'
-                                    const apiKey =
-                                      user?.apiKey || 'YOUR_API_KEY'
-                                    const url = `${window.location.origin}/api/entries/${entry?.id}`
-                                    const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
-                                    navigator.clipboard.writeText(curlCmd)
-                                    toast.success('cURL copied to clipboard')
-                                  }}
-                                >
-                                  <TerminalIcon className='w-3 h-3 mr-1.5' />
-                                  Copy cURL
-                                </Button>
+                            ) : apiPreviewData ? (
+                              <div>
+                                <div className='flex items-center justify-between mb-4 border-b border-white/5 pb-2'>
+                                  <div className='flex items-center space-x-2'>
+                                    <span className='px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold'>
+                                      GET
+                                    </span>
+                                    <code className='text-[10px] text-zinc-400'>
+                                      /api/entries/{entry?.id}
+                                    </code>
+                                  </div>
+                                  <div className='flex items-center space-x-2'>
+                                    <Button
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(
+                                          JSON.stringify(
+                                            apiPreviewData,
+                                            null,
+                                            2
+                                          )
+                                        )
+                                        toast.success('Copied to clipboard')
+                                      }}
+                                    >
+                                      <CopyIcon className='w-3 h-3 mr-1.5' />
+                                      Copy JSON
+                                    </Button>
+                                    <Button
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 text-[10px] text-zinc-400 hover:text-white hover:bg-white/5'
+                                      onClick={() => {
+                                        const tenantId =
+                                          activeTenant?.id || 'YOUR_TENANT_ID'
+                                        const apiKey =
+                                          user?.apiKey || 'YOUR_API_KEY'
+                                        const url = `${window.location.origin}/api/entries/${entry?.id}`
+                                        const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
+                                        navigator.clipboard.writeText(curlCmd)
+                                        toast.success(
+                                          'cURL copied to clipboard'
+                                        )
+                                      }}
+                                    >
+                                      <TerminalIcon className='w-3 h-3 mr-1.5' />
+                                      Copy cURL
+                                    </Button>
+                                  </div>
+                                </div>
+                                <pre className='whitespace-pre-wrap break-all'>
+                                  {JSON.stringify(apiPreviewData, null, 2)}
+                                </pre>
                               </div>
-                            </div>
-                            <pre className='whitespace-pre-wrap break-all'>
-                              {JSON.stringify(apiPreviewData, null, 2)}
-                            </pre>
+                            ) : (
+                              <div className='h-[416px] flex items-center justify-center text-zinc-500'>
+                                No data available
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className='h-full flex items-center justify-center text-zinc-500'>
-                            No data available
-                          </div>
-                        )}
-                      </ScrollArea>
+                        </ScrollArea>
+                      </div>
                     </TabsContent>
 
                     <TabsContent
@@ -1165,30 +1395,62 @@ export default function EntriesForm({
                               Copy Query
                             </Button>
                           </div>
-                          <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-400'>
-                            <pre className='whitespace-pre'>
-                              {`query {\n  entry(id: ${entry?.id}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
-                            </pre>
-                          </ScrollArea>
+                          <div className='relative overflow-hidden rounded-md border bg-zinc-950 group flex-1 flex flex-col min-h-0'>
+                            {/* Decorative Glow */}
+                            <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-purple-500/30 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
+
+                            <ScrollArea className='flex-1 p-4 font-mono text-[11px] text-zinc-400 bg-transparent'>
+                              <div className='relative z-10'>
+                                <pre className='whitespace-pre'>
+                                  {`query {\n  entry(id: ${entry?.id}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
+                                </pre>
+                              </div>
+                            </ScrollArea>
+                          </div>
                         </div>
 
-                        <div className='flex flex-col space-y-2 overflow-hidden'>
+                        <div className='flex flex-col space-y-2 overflow-hidden flex-1'>
                           <div className='flex items-center justify-between'>
                             <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
                               Data Response
                             </label>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              className='h-7 px-2 text-[10px]'
+                              onClick={() => {
+                                const json = JSON.stringify(
+                                  { data: { entry: apiPreviewData || {} } },
+                                  null,
+                                  2
+                                )
+                                navigator.clipboard.writeText(json)
+                                toast.success('JSON copied to clipboard')
+                              }}
+                            >
+                              <CopyIcon className='w-3 h-3 mr-1.5' />
+                              Copy JSON
+                            </Button>
                           </div>
-                          <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-300'>
-                            <pre className='whitespace-pre'>
-                              {apiPreviewData
-                                ? JSON.stringify(
-                                    { data: { entry: apiPreviewData } },
-                                    null,
-                                    2
-                                  )
-                                : '// Requesting data...'}
-                            </pre>
-                          </ScrollArea>
+
+                          <div className='relative overflow-hidden rounded-md border bg-zinc-950 group flex-1 flex flex-col min-h-0'>
+                            {/* Decorative Glow */}
+                            <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-blue-500/30 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
+
+                            <ScrollArea className='flex-1 p-4 font-mono text-[11px] text-zinc-300 bg-transparent'>
+                              <div className='relative z-10'>
+                                <pre className='whitespace-pre'>
+                                  {apiPreviewData
+                                    ? JSON.stringify(
+                                        { data: { entry: apiPreviewData } },
+                                        null,
+                                        2
+                                      )
+                                    : '// Requesting data...'}
+                                </pre>
+                              </div>
+                            </ScrollArea>
+                          </div>
                         </div>
                       </div>
                     </TabsContent>
@@ -1374,78 +1636,164 @@ export default function EntriesForm({
             )}
           >
             <form onSubmit={handleSubmit} className='space-y-6'>
-              <div
-                className={`bg-card p-8 rounded-xl border shadow-sm space-y-8 ${isPreviewingVersion ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}
-              >
-                {collection.fields.map((field) => (
-                  <div key={field.id} className='space-y-2'>
-                    <div className='flex items-center justify-between border-b border-border/30 pb-1'>
-                      <Label className='text-xs font-bold uppercase tracking-widest text-muted-foreground/80'>
-                        {field.label || field.name}{' '}
-                        {field.required && (
-                          <span className='text-destructive'>*</span>
-                        )}
-                      </Label>
-                      <div className='flex items-center gap-1.5 opacity-40'>
-                        {(() => {
-                          const icons: Record<string, any> = {
-                            text: Type,
-                            textarea: AlignLeft,
-                            email: Mail,
-                            number: Hash,
-                            select: List,
-                            checkbox: CheckSquare,
-                            radio: CircleDot,
-                            boolean: CheckCircle2,
-                            date: Calendar,
-                            datetime: Clock,
-                            time: Clock,
-                            media: ImageIcon,
-                            documents: FileText,
-                            'rich-text': FileJson,
-                            relation: LinkIcon,
-                            slug: Fingerprint,
-                            array: Layers,
-                          }
-                          const Icon = icons[field.type] || Type
-                          return <Icon className='w-3 h-3' />
-                        })()}
-                        <span className='text-[10px] font-mono'>
-                          {field.type}
-                        </span>
+              {(() => {
+                interface FormSegment {
+                  type: 'normal' | 'group'
+                  fields?: FieldDefinition[]
+                  field?: FieldDefinition
+                }
+
+                const segments: FormSegment[] = []
+                let currentNormalFields: FieldDefinition[] = []
+
+                for (const field of collection.fields) {
+                  if (field.type === 'group') {
+                    if (currentNormalFields.length > 0) {
+                      segments.push({
+                        type: 'normal',
+                        fields: currentNormalFields,
+                      })
+                      currentNormalFields = []
+                    }
+                    segments.push({ type: 'group', field })
+                  } else {
+                    currentNormalFields.push(field)
+                  }
+                }
+
+                if (currentNormalFields.length > 0) {
+                  segments.push({ type: 'normal', fields: currentNormalFields })
+                }
+
+                return segments.map((segment, segmentIndex) => {
+                  if (segment.type === 'normal' && segment.fields) {
+                    return (
+                      <div
+                        key={`segment-normal-${segmentIndex}`}
+                        className={`bg-card p-8 rounded-xl border shadow-sm space-y-8 ${isPreviewingVersion ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}
+                      >
+                        {segment.fields.map((field) => (
+                          <div key={field.id} className='space-y-2'>
+                            <div className='flex items-center justify-between border-b border-border/30 pb-1'>
+                              <Label className='text-xs font-bold uppercase tracking-widest text-muted-foreground/80'>
+                                {field.label || field.name}{' '}
+                                {field.required && (
+                                  <span className='text-destructive'>*</span>
+                                )}
+                              </Label>
+                              <div
+                                className={cn(
+                                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase tracking-wider border transition-colors',
+                                  fieldTypeColors[field.type] ||
+                                    'text-muted-foreground bg-muted border-border'
+                                )}
+                              >
+                                {(() => {
+                                  const icons: Record<string, any> = {
+                                    text: Type,
+                                    textarea: AlignLeft,
+                                    email: Mail,
+                                    number: Hash,
+                                    select: List,
+                                    checkbox: CheckSquare,
+                                    radio: CircleDot,
+                                    boolean: CheckCircle2,
+                                    date: Calendar,
+                                    datetime: Clock,
+                                    time: Clock,
+                                    media: ImageIcon,
+                                    documents: FileText,
+                                    'rich-text': FileJson,
+                                    relation: LinkIcon,
+                                    slug: Fingerprint,
+                                    array: Layers,
+                                    group: Layers,
+                                  }
+                                  const Icon = icons[field.type] || Type
+                                  return <Icon className='w-3 h-3' />
+                                })()}
+                                <span>
+                                  {field.type === 'rich-text'
+                                    ? 'Rich Text'
+                                    : field.type}
+                                </span>
+                              </div>
+                            </div>
+                            <FieldInput
+                              field={field}
+                              value={formData[field.name]}
+                              onChange={(val) =>
+                                handleFieldChange(field.name, val)
+                              }
+                              error={
+                                errors[currentLocale]
+                                  ? errors[currentLocale][field.name]
+                                      ?._errors?.[0]
+                                  : errors[field.name]
+                              }
+                              relationData={relationData}
+                              availableDocuments={availableDocuments}
+                              onMediaPickerOpen={handleMediaPickerOpen}
+                            />
+                            {field.type === 'media' && field.multiple && (
+                              <p className='text-[10px] text-muted-foreground italic'>
+                                You can select multiple files for this field and
+                                reorder them by moving their positions.
+                              </p>
+                            )}
+                            {(errors[currentLocale]
+                              ? errors[currentLocale][field.name]?._errors?.[0]
+                              : errors[field.name]) && (
+                              <p className='text-xs font-medium text-destructive mt-1'>
+                                {errors[currentLocale]
+                                  ? errors[currentLocale][field.name]
+                                      ?._errors?.[0]
+                                  : errors[field.name]}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <FieldInput
-                      field={field}
-                      value={formData[field.name]}
-                      onChange={(val) => handleFieldChange(field.name, val)}
-                      error={
-                        errors[currentLocale]
+                    )
+                  } else if (segment.type === 'group' && segment.field) {
+                    const field = segment.field
+                    return (
+                      <div
+                        key={`segment-group-${field.id}`}
+                        className={
+                          isPreviewingVersion
+                            ? 'opacity-50 pointer-events-none grayscale-[0.5]'
+                            : ''
+                        }
+                      >
+                        <FieldInput
+                          field={field}
+                          value={formData[field.name]}
+                          onChange={(val) => handleFieldChange(field.name, val)}
+                          error={
+                            errors[currentLocale]
+                              ? errors[currentLocale][field.name]
+                              : undefined
+                          }
+                          relationData={relationData}
+                          availableDocuments={availableDocuments}
+                          onMediaPickerOpen={handleMediaPickerOpen}
+                        />
+                        {(errors[currentLocale]
                           ? errors[currentLocale][field.name]?._errors?.[0]
-                          : errors[field.name]
-                      }
-                      relationData={relationData}
-                      availableDocuments={availableDocuments}
-                      onMediaPickerOpen={handleMediaPickerOpen}
-                    />
-                    {field.type === 'media' && field.multiple && (
-                      <p className='text-[10px] text-muted-foreground italic'>
-                        You can select multiple files for this field and reorder
-                        them by moving their positions.
-                      </p>
-                    )}
-                    {(errors[currentLocale]
-                      ? errors[currentLocale][field.name]?._errors?.[0]
-                      : errors[field.name]) && (
-                      <p className='text-xs font-medium text-destructive mt-1'>
-                        {errors[currentLocale]
-                          ? errors[currentLocale][field.name]?._errors?.[0]
-                          : errors[field.name]}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                          : errors[field.name]) && (
+                          <p className='text-xs font-medium text-destructive mt-1'>
+                            {errors[currentLocale]
+                              ? errors[currentLocale][field.name]?._errors?.[0]
+                              : errors[field.name]}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  }
+                  return null
+                })
+              })()}
 
               <div className='flex justify-end space-x-4'>
                 <Button type='button' variant='outline' asChild>

@@ -282,14 +282,14 @@ curl -X GET "${baseUrl}/api/collections/blog-posts/entries?page=1&limit=10" \\
                 Create Entry
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Add a new entry to a collection. Fields must match the
-                collection schema.
+                Add a new entry to a collection using its ID or slug. Fields
+                must match the collection schema.
               </p>
               <CodeBlock
                 id='post-entry'
                 copiedId={copied}
                 onCopy={copyToClipboard}
-                code={`curl -X POST "${baseUrl}/api/collections/1/entries" \\
+                code={`curl -X POST "${baseUrl}/api/collections/blog-posts/entries" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -413,25 +413,157 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
             <div className='bg-pink-500/10 p-2 rounded-lg'>
               <ImageIcon className='w-6 h-6 text-pink-500' />
             </div>
-            <h2 className='text-2xl font-bold'>Media & Documents</h2>
+            <h2 className='text-2xl font-bold'>Media & Documents API</h2>
           </div>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-            <div className='space-y-2'>
-              <p className='font-semibold text-sm'>Media Library</p>
+          
+          <div className='space-y-10'>
+            {/* Media Library */}
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-green-500/10 text-green-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  GET
+                </span>
+                List Media Assets
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Retrieve list of folders and media files for a tenant. Pass <code>folderId=null</code> or omit it to fetch the root folder.
+              </p>
               <CodeBlock
                 id='get-media'
                 copiedId={copied}
                 onCopy={copyToClipboard}
-                code={`curl "${baseUrl}/api/media"`}
+                code={`curl -X GET "${baseUrl}/api/media?folderId=123" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID"`}
               />
             </div>
-            <div className='space-y-2'>
-              <p className='font-semibold text-sm'>Document Library</p>
+
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  POST
+                </span>
+                Upload Media File
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Upload a new image or video asset. Requires an API key with a super_admin or tenant owner role.
+              </p>
+              <CodeBlock
+                id='upload-media'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X POST "${baseUrl}/api/media/upload" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID" \\
+  -F "file=@/path/to/image.jpg" \\
+  -F "folderId=123"`}
+              />
+            </div>
+
+            <div className='space-y-4 border-t border-border/30 pt-6'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  POST
+                </span>
+                Create Media Folder
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Create a new media folder. Requires an API key with a super_admin or tenant owner role.
+              </p>
+              <CodeBlock
+                id='create-folder'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X POST "${baseUrl}/api/media/folders" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "New Folder",
+    "parentId": 123
+  }'`}
+              />
+            </div>
+
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-red-500/10 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  DELETE
+                </span>
+                Delete Media Folder
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Permanently delete a folder by its ID. The folder must be empty; if it contains subfolders or files, the API returns a <code>400 Bad Request</code> with <code>{"{ \"error\": \"Cannot delete folder because it is not empty\" }"}</code>. Requires an API key with a super_admin or tenant owner role.
+              </p>
+              <CodeBlock
+                id='delete-folder'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X DELETE "${baseUrl}/api/media/folders/123" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID"`}
+              />
+            </div>
+
+            {/* Document Library */}
+            <div className='space-y-4 border-t border-border/30 pt-6'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-green-500/10 text-green-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  GET
+                </span>
+                List Documents
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Fetch a paginated list of uploaded documents, with optional search and sorting capabilities.
+              </p>
               <CodeBlock
                 id='get-docs'
                 copiedId={copied}
                 onCopy={copyToClipboard}
-                code={`curl "${baseUrl}/api/documents"`}
+                code={`curl -X GET "${baseUrl}/api/documents?page=1&limit=10" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID"`}
+              />
+            </div>
+
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  POST
+                </span>
+                Upload Document File
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Upload a document file (PDF, Word, Excel, PPT, TXT). Requires an API key with a super_admin or tenant owner role.
+              </p>
+              <CodeBlock
+                id='upload-document'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X POST "${baseUrl}/api/documents/upload" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID" \\
+  -F "file=@/path/to/document.pdf"`}
+              />
+            </div>
+
+            <div className='space-y-4 border-t border-border/30 pt-6'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <span className='bg-red-500/10 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase'>
+                  DELETE
+                </span>
+                Delete Document
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                Permanently delete a document by its ID. Requires an API key with a super_admin or tenant owner role.
+              </p>
+              <CodeBlock
+                id='delete-document'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`curl -X DELETE "${baseUrl}/api/documents/123" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "X-Tenant-ID: YOUR_TENANT_ID"`}
               />
             </div>
           </div>

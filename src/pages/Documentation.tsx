@@ -215,6 +215,11 @@ export default function Documentation({ user }: { user: any }) {
       description: 'Repeater field for lists of nested objects.',
       example: '"tags": [{"name": "React"}, {"name": "Node"}]',
     },
+    {
+      type: 'group',
+      description: 'A set of nested fields grouped inside an object.',
+      example: '"hero": {"title": "Welcome", "subtitle": "Hello World"}',
+    },
   ]
 
   const MainContent = (
@@ -1046,7 +1051,7 @@ export default function Documentation({ user }: { user: any }) {
               Create Entry
             </h4>
             <CodeBlock
-              code={`POST /api/collections/:id/entries\nContent-Type: application/json\n\n{\n  "title": "New Entry",\n  "content": "..."\n}`}
+              code={`POST /api/collections/:idOrSlug/entries\nContent-Type: application/json\n\n{\n  "title": "New Entry",\n  "content": "..."\n}`}
             />
             <p className='mb-4'>
               Requires an API key with <code>create</code> permissions.
@@ -1060,7 +1065,10 @@ export default function Documentation({ user }: { user: any }) {
             <CodeBlock
               code={`PUT /api/entries/:id\nContent-Type: application/json\n\n{\n  "title": "Updated Title"\n}`}
             />
-            <p className='mb-4'>Update an existing entry by its ID.</p>
+            <p className='mb-4'>
+              Update an existing entry by its ID. Requires an API key with{' '}
+              <code>update</code> permissions.
+            </p>
           </div>
           <div className='space-y-4'>
             <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
@@ -1068,7 +1076,116 @@ export default function Documentation({ user }: { user: any }) {
               Delete Entry
             </h4>
             <CodeBlock code={`DELETE /api/entries/:id`} />
-            <p className='mb-4'>Permanently delete an entry.</p>
+            <p className='mb-4'>
+              Permanently delete an entry. Requires an API key with{' '}
+              <code>delete</code> permissions.
+            </p>
+          </div>
+
+          <div className='space-y-4 border-t border-border/30 pt-6 mt-6'>
+            <h3 className='text-lg font-bold text-foreground mb-4'>
+              Media API
+            </h3>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-blue-500 mr-2' />
+                Upload Media
+              </h4>
+              <CodeBlock
+                code={`POST /api/media/upload\nContent-Type: multipart/form-data\n\nfile: <binary_file>\nfolderId: 123 (optional)`}
+              />
+              <p className='mb-4'>
+                Upload an image or video file. Returns the media file object
+                with URLs and metadata. Requires an API key with a{' '}
+                <code>super_admin</code> or tenant owner role.
+              </p>
+            </div>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
+                Get Media Assets
+              </h4>
+              <CodeBlock code={`GET /api/media?folderId=123`} />
+              <p className='mb-4'>
+                Retrieve list of folders and media files for a tenant. Pass{' '}
+                <code>folderId=null</code> or omit it to fetch the root folder.
+              </p>
+            </div>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-blue-500 mr-2' />
+                Create Media Folder
+              </h4>
+              <CodeBlock
+                code={`POST /api/media/folders\nContent-Type: application/json\n\n{\n  "name": "New Folder",\n  "parentId": 123 (optional)\n}`}
+              />
+              <p className='mb-4'>
+                Create a new media folder. Requires an API key with a{' '}
+                <code>super_admin</code> or tenant owner role.
+              </p>
+            </div>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-red-500 mr-2' />
+                Delete Media Folder
+              </h4>
+              <CodeBlock code={`DELETE /api/media/folders/:id`} />
+              <p className='mb-4'>
+                Permanently delete a folder. The folder must be empty to be deleted; if it contains files or subfolders, the API will return a <code>400 Bad Request</code> with the error message <code>"Cannot delete folder because it is not empty"</code>. Requires an API key with a{' '}
+                <code>super_admin</code> or tenant owner role.
+              </p>
+            </div>
+          </div>
+
+          <div className='space-y-4 border-t border-border/30 pt-6 mt-6'>
+            <h3 className='text-lg font-bold text-foreground mb-4'>
+              Documents API
+            </h3>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-blue-500 mr-2' />
+                Upload Document
+              </h4>
+              <CodeBlock
+                code={`POST /api/documents/upload\nContent-Type: multipart/form-data\n\nfile: <binary_file>`}
+              />
+              <p className='mb-4'>
+                Upload a document file (PDF, Word, Excel, PPT, TXT). Returns the
+                document details. Requires an API key with a super_admin or
+                tenant owner role.
+              </p>
+            </div>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-green-500 mr-2' />
+                Get Documents
+              </h4>
+              <CodeBlock
+                code={`GET /api/documents?page=1&limit=10&search=report`}
+              />
+              <p className='mb-4'>
+                Fetch a paginated list of uploaded documents, with optional
+                search and sorting capabilities.
+              </p>
+            </div>
+
+            <div className='space-y-4'>
+              <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+                <span className='w-1.5 h-1.5 rounded-full bg-red-500 mr-2' />
+                Delete Document
+              </h4>
+              <CodeBlock code={`DELETE /api/documents/:id`} />
+              <p className='mb-4'>
+                Permanently delete a document by its ID. It deletes the record from the database and removes the underlying file from cloud storage. Requires an API key with a{' '}
+                <code>super_admin</code> or tenant owner role.
+              </p>
+            </div>
           </div>
         </div>
       </Section>

@@ -183,6 +183,14 @@ const fieldTypeOptions: FieldTypeOption[] = [
     color: 'text-amber-600 bg-amber-100',
     category: 'advanced',
   },
+  {
+    value: 'group',
+    label: 'Group',
+    description: 'A set of nested fields inside an object',
+    icon: Layers,
+    color: 'text-violet-600 bg-violet-100',
+    category: 'advanced',
+  },
 ]
 
 interface FieldTypeSelectorProps {

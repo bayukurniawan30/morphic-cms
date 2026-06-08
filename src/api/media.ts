@@ -18,15 +18,37 @@ import {
 import { triggerWebhooks } from '../lib/webhooks.js'
 
 type Variables = {
-  userId: number
+  userId?: number
+  user?: any
   tenantId: number | null
+  currentTenant?: any | null
+  tenantRole?: string | null
+  authType?: 'api_key' | 'session' | null
 }
 
 const apiMedia = new Hono<{ Variables: Variables }>()
 
-// Simple auth middleware for media routes
-// For now, require login (could restrict to editor/admin if needed)
+// Auth middleware for media routes (supports session cookies and API keys)
 apiMedia.use('*', async (c, next) => {
+  const user = c.get('user')
+
+  if (user) {
+    // For write operations, require edit/admin roles
+    if (['POST', 'PUT', 'DELETE'].includes(c.req.method)) {
+      const isAuthorized =
+        user.role === 'super_admin' ||
+        c.get('tenantRole') === 'owner'
+
+      if (!isAuthorized) {
+        return c.json({ error: 'Forbidden: Write access required for this action' }, 403)
+      }
+    }
+
+    c.set('userId', user.id)
+    return await next()
+  }
+
+  // Legacy cookie check fallback
   const getAuthToken = () => {
     try {
       return getCookie(c, 'morphic_token')
@@ -54,9 +76,9 @@ apiMedia.use('*', async (c, next) => {
 
     // Detect tenantId from cookie or header
     const cookieTenant = getCookie(c, 'morphic_active_tenant')
-    const headerTenant = c.req.header('morphic-tenant-id')
-    const tenantId = cookieTenant || headerTenant
-    c.set('tenantId', tenantId ? parseInt(tenantId, 10) : null)
+    const headerTenant = c.req.header('morphic-tenant-id') || c.req.header('X-Tenant-ID')
+    const resolvedTenantId = cookieTenant || headerTenant
+    c.set('tenantId', resolvedTenantId ? parseInt(resolvedTenantId, 10) : null)
 
     await next()
   } catch (err) {
@@ -360,6 +382,36 @@ apiMedia.delete('/:id', async (c) => {
     return c.json({ success: true })
   } catch (err) {
     console.error('Error deleting media:', err)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+// PUT /api/media/:id
+apiMedia.put('/:id', async (c) => {
+  try {
+    const mediaId = parseInt(c.req.param('id'), 10)
+    const tenantId = c.get('tenantId')
+    if (isNaN(mediaId)) return c.json({ error: 'Invalid media ID' }, 400)
+
+    const body = await c.req.json()
+    const { alt } = body
+
+    const whereClause = [eq(media.id, mediaId)]
+    if (tenantId) whereClause.push(eq(media.tenantId, tenantId))
+
+    const updated = await db
+      .update(media)
+      .set({ alt, updatedAt: new Date() })
+      .where(and(...whereClause))
+      .returning()
+
+    if (updated.length === 0) {
+      return c.json({ error: 'Media not found' }, 404)
+    }
+
+    return c.json({ success: true, media: updated[0] })
+  } catch (err) {
+    console.error('Error updating media:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
 })

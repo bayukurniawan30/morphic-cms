@@ -177,6 +177,7 @@ export const media = pgTable('media', {
   assetId: varchar('asset_id', { length: 255 }),
   resourceType: varchar('resource_type', { length: 50 }),
   folderId: integer('folder_id').references(() => mediaFolders.id),
+  alt: varchar('alt', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

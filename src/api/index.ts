@@ -54,6 +54,7 @@ type Variables = {
   tenantId: number | null
   currentTenant: any | null
   tenantRole: string | null
+  authType: 'api_key' | 'session' | null
 }
 
 // Set up the main app without a base path so it can serve the root '/'
@@ -174,8 +175,32 @@ app.use('*', async (c, next) => {
   const apiKey = apiKeyHeader || apiKeyQuery
 
   let userData: any = null
+  let authType: 'api_key' | 'session' | null = null
 
-  if (token) {
+  if (apiKey) {
+    authType = 'api_key'
+    try {
+      const userResult = await db
+        .select()
+        .from(users)
+        .where(eq(users.apiKey, apiKey))
+        .limit(1)
+      const dbUser = userResult[0]
+
+      if (dbUser) {
+        userData = {
+          id: dbUser.id,
+          name: dbUser.name || dbUser.username,
+          email: dbUser.email,
+          role: dbUser.role,
+          apiKey: dbUser.apiKey,
+        }
+      }
+    } catch (e) {
+      console.error('Failed to verify API Key:', e)
+    }
+  } else if (token) {
+    authType = 'session'
     try {
       const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
       const decoded = await verify(token, secret, 'HS256')
@@ -199,30 +224,10 @@ app.use('*', async (c, next) => {
     } catch (e) {
       console.error('Failed to verify token globally:', e)
     }
-  } else if (apiKey) {
-    try {
-      const userResult = await db
-        .select()
-        .from(users)
-        .where(eq(users.apiKey, apiKey))
-        .limit(1)
-      const dbUser = userResult[0]
-
-      if (dbUser) {
-        userData = {
-          id: dbUser.id,
-          name: dbUser.name || dbUser.username,
-          email: dbUser.email,
-          role: dbUser.role,
-          apiKey: dbUser.apiKey,
-        }
-      }
-    } catch (e) {
-      console.error('Failed to verify API Key:', e)
-    }
   }
 
   c.set('user', userData)
+  c.set('authType', authType)
 
   // --- Tenant Detection ---
   const activeTenantId =
@@ -593,6 +598,14 @@ app.get('/email-settings', requireAuth, async (c) => {
   const userData = c.get('user')
   if (userData.role !== 'super_admin') return c.redirect('/dashboard')
   return c.get('inertia')('EmailSettings', { user: userData })
+})
+
+app.get('/api-playground', requireAuth, async (c) => {
+  const userData = c.get('user')
+  return c.get('inertia')('ApiPlayground', {
+    user: userData,
+    title: 'API Playground',
+  })
 })
 
 app.get('/api-key-abilities', requireAuth, async (c) => {
@@ -1585,19 +1598,30 @@ api.use('*', async (c, next) => {
 
   const fullUser = userResult[0]
   if (fullUser) {
+    const authType = c.get('authType')
     // Inject permissions into context
     c.set('user', {
       ...userData,
       role: fullUser.role,
       abilityName: fullUser.abilityName,
       permissions:
-        fullUser.role === 'super_admin' ? '*' : fullUser.permissions || {},
+        authType === 'api_key'
+          ? (fullUser.permissions || {})
+          : (fullUser.role === 'super_admin' ? '*' : fullUser.permissions || {}),
     } as any)
   }
 
   // Enforce tenant isolation for non-super-admins
   const tenantId = c.get('tenantId')
   const userRole = fullUser?.role || userData.role
+
+  const xTenantId = c.req.header('X-Tenant-ID')
+  if (xTenantId && !tenantId) {
+    return c.json(
+      { error: 'Tenant not found or access denied for the specified X-Tenant-ID' },
+      403
+    )
+  }
 
   if (
     !tenantId &&
@@ -2154,13 +2178,19 @@ const checkPermission = (
   const user = c.get('user')
   if (!user) return false
   
+  const authType = c.get('authType')
   const tenantRole = c.get('tenantRole')
-  if (
-    user.role === 'super_admin' ||
-    user.permissions === '*' ||
-    tenantRole === 'owner'
-  ) {
-    return true
+  
+  // For standard browser sessions, super_admins and owners have full access.
+  // For API keys, we strictly enforce the ability/permissions and do not bypass for super_admins/owners.
+  if (authType !== 'api_key') {
+    if (
+      user.role === 'super_admin' ||
+      user.permissions === '*' ||
+      tenantRole === 'owner'
+    ) {
+      return true
+    }
   }
 
   // Special case for seeded "Read Access"
@@ -3157,22 +3187,29 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
   }
 })
 
-api.post('/collections/:id/entries', async (c) => {
-  const collectionId = parseInt(c.req.param('id'), 10)
+api.post('/collections/:idOrSlug/entries', async (c) => {
+  const idOrSlug = c.req.param('idOrSlug')
   const tenantId = c.get('tenantId')
-  if (isNaN(collectionId))
-    return c.json({ error: 'Invalid collection ID' }, 400)
 
-  const whereCol = [eq(collections.id, collectionId)]
-  if (tenantId) whereCol.push(eq(collections.tenantId, tenantId))
+  const colConditions = []
+  if (/^\d+$/.test(idOrSlug)) {
+    colConditions.push(eq(collections.id, parseInt(idOrSlug, 10)))
+  } else {
+    colConditions.push(eq(collections.slug, idOrSlug))
+  }
+  if (tenantId) {
+    colConditions.push(eq(collections.tenantId, tenantId))
+  }
 
   const collectionResult = await db
     .select()
     .from(collections)
-    .where(and(...whereCol))
+    .where(and(...colConditions))
     .limit(1)
   const collection = collectionResult[0]
   if (!collection) return c.json({ error: 'Collection not found' }, 404)
+
+  const collectionId = collection.id
 
   if (!checkPermission(c, collection.slug, 'create')) {
     return c.json(

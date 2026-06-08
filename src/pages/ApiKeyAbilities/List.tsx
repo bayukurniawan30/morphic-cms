@@ -129,9 +129,17 @@ export default function ApiKeyAbilities({
                         ) : (
                           Object.entries(ability.permissions).map(
                             ([slug, perms]) => {
-                              const active = Object.entries(perms)
-                                .filter(([_, v]) => v)
-                                .map(([k]) => k[0].toUpperCase())
+                              const active = (
+                                ['create', 'read', 'update', 'delete'] as const
+                              )
+                                .filter((k) => (perms as any)[k])
+                                .map((k) => {
+                                  if (k === 'create') return 'C'
+                                  if (k === 'read') return 'R'
+                                  if (k === 'update') return 'U'
+                                  if (k === 'delete') return 'D'
+                                  return ''
+                                })
                               if (active.length === 0) return null
                               return (
                                 <span
@@ -217,8 +225,10 @@ export default function ApiKeyAbilities({
               assigned to any user from the User Management page.
             </p>
             <p className='italic'>
-              Note: Super Admins always have full access regardless of their
-              assigned ability.
+              Note: Super Admins always have full access in the CMS UI
+              regardless of their assigned ability. However, for API keys, the
+              assigned ability's permissions are strictly enforced for security
+              reasons.
             </p>
           </div>
         </div>

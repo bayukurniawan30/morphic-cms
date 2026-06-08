@@ -18,6 +18,7 @@ export type FieldType =
   | 'boolean'
   | 'email'
   | 'array'
+  | 'group'
 
 export type FieldOption = {
   label: string
@@ -61,8 +62,12 @@ export function buildZodSchema(fields: FieldDefinition[]) {
       case 'textarea':
       case 'rich-text': {
         let strValidator = z.string()
-        if (field.validation?.minLength !== undefined)
-          strValidator = strValidator.min(field.validation.minLength)
+        if (field.validation?.minLength !== undefined) {
+          const minL = Math.max(field.validation.minLength, field.required ? 1 : 0)
+          strValidator = strValidator.min(minL, minL === 1 && field.required ? 'Required' : undefined)
+        } else if (field.required) {
+          strValidator = strValidator.min(1, 'Required')
+        }
         if (field.validation?.maxLength !== undefined)
           strValidator = strValidator.max(field.validation.maxLength)
         validator = strValidator
@@ -70,8 +75,12 @@ export function buildZodSchema(fields: FieldDefinition[]) {
       }
       case 'email': {
         let emailValidator = z.string().email('Invalid email address')
-        if (field.validation?.minLength !== undefined)
-          emailValidator = emailValidator.min(field.validation.minLength)
+        if (field.validation?.minLength !== undefined) {
+          const minL = Math.max(field.validation.minLength, field.required ? 1 : 0)
+          emailValidator = emailValidator.min(minL, minL === 1 && field.required ? 'Required' : undefined)
+        } else if (field.required) {
+          emailValidator = emailValidator.min(1, 'Required')
+        }
         if (field.validation?.maxLength !== undefined)
           emailValidator = emailValidator.max(field.validation.maxLength)
         validator = emailValidator
@@ -88,17 +97,54 @@ export function buildZodSchema(fields: FieldDefinition[]) {
       }
       case 'date':
       case 'datetime':
-      case 'time':
-        validator = z.string() // refined later if needed
+      case 'time': {
+        let strValidator = z.string()
+        if (field.required) {
+          strValidator = strValidator.min(1, 'Required')
+        }
+        validator = strValidator
         break
+      }
       case 'select':
-      case 'radio':
-      case 'slug':
-        validator = z.string()
+      case 'radio': {
+        const optionValues = field.options?.map((o) => o.value).filter(Boolean) || []
+        if (optionValues.length > 0) {
+          const enumValidator = z.enum(optionValues as [string, ...string[]])
+          if (field.type === 'select' && field.multiple) {
+            validator = z.array(enumValidator)
+          } else {
+            validator = enumValidator
+          }
+        } else {
+          let strValidator = z.string()
+          if (field.required) {
+            strValidator = strValidator.min(1, 'Required')
+          }
+          if (field.type === 'select' && field.multiple) {
+            validator = z.array(strValidator)
+          } else {
+            validator = strValidator
+          }
+        }
         break
-      case 'checkbox':
-        validator = z.array(z.string())
+      }
+      case 'slug': {
+        let strValidator = z.string()
+        if (field.required) {
+          strValidator = strValidator.min(1, 'Required')
+        }
+        validator = strValidator
         break
+      }
+      case 'checkbox': {
+        const optionValues = field.options?.map((o) => o.value).filter(Boolean) || []
+        if (optionValues.length > 0) {
+          validator = z.array(z.enum(optionValues as [string, ...string[]]))
+        } else {
+          validator = z.array(z.string())
+        }
+        break
+      }
       case 'media':
         validator = z.any() // could be a media ID or URL
         break
@@ -115,12 +161,24 @@ export function buildZodSchema(fields: FieldDefinition[]) {
           validator = z.array(z.any())
         }
         break
+      case 'group':
+        if (field.fields && field.fields.length > 0) {
+          validator = buildZodSchema(field.fields)
+        } else {
+          validator = z.object({})
+        }
+        break
       default:
         validator = z.any()
     }
 
-    if (!field.required) {
-      validator = validator.optional()
+    if (field.type === 'group') {
+      validator = validator.default({})
+    } else if (!field.required) {
+      validator = z.preprocess(
+        (val) => (val === '' || val === null ? undefined : val),
+        validator.optional()
+      )
     }
 
     shape[field.name] = validator

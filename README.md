@@ -9,7 +9,7 @@
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE)
 
-_Built with Hono, Drizzle, and Neon. Designed to be fast, beautiful, and effortless._
+_Built with Hono and Postgres JSONB to eliminate database schema friction entirely._
 
 </div>
 
@@ -20,6 +20,7 @@ _Built with Hono, Drizzle, and Neon. Designed to be fast, beautiful, and effortl
 Morphic CMS isn't just another content manager. It's a lightweight, developer-first platform designed to run at the **Edge**. While other CMSs feel heavy and bloated, Morphic stays agile—leveraging a serverless-first stack that ensures your API is as fast as your content delivery network.
 
 - **⚡ Blazing Fast**: Built on Hono, the ultra-lightweight web framework.
+- **🧬 Zero-Migration Architecture**: Define fields dynamically in the UI. Morphic handles storage inside a single PostgreSQL JSONB column—no rigid table schemas or risky database migrations.
 - **☁️ Serverless & Edge-Ready**: Perfect for Vercel, Cloudflare Workers, and Neon DB.
 - **🎨 Premium UI**: A sleek, dark-themed dashboard that doesn't just work—it looks incredible.
 - **🏗️ Developer Experience**: Type-safe with Drizzle ORM and built with the power of React + Inertia.js.
@@ -44,7 +45,7 @@ Morphic leverages the most cutting-edge tools in the ecosystem:
 | Layer        | Technology                               | Why?                                                           |
 | ------------ | ---------------------------------------- | -------------------------------------------------------------- |
 | **Core**     | [Hono](https://hono.dev/)                | Sub-millisecond overhead, runs on any runtime.                 |
-| **Database** | [Neon PostgreSQL](https://neon.tech/)    | Serverless, autoscaling, and branched workflows.               |
+| **Database** | [Neon PostgreSQL](https://neon.tech/)    | Serverless, autoscaling, and perfect for ultra-fast JSONB document queries. |
 | **ORM**      | [Drizzle ORM](https://orm.drizzle.team/) | TypeScript-first, zero-runtime overhead.                       |
 | **Bridge**   | [Inertia.js](https://inertiajs.com/)     | The feel of an SPA with the simplicity of server-side routing. |
 | **Styling**  | [Tailwind CSS](https://tailwindcss.com/) | Rapid, beautiful, utility-first design.                        |

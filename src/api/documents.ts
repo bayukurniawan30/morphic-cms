@@ -11,14 +11,37 @@ import {
 } from '../lib/cloudinary.js'
 
 type Variables = {
-  userId: number
+  userId?: number
+  user?: any
   tenantId: number | null
+  currentTenant?: any | null
+  tenantRole?: string | null
+  authType?: 'api_key' | 'session' | null
 }
 
 const apiDocuments = new Hono<{ Variables: Variables }>()
 
-// Simple auth middleware for document routes
+// Auth middleware for document routes (supports session cookies and API keys)
 apiDocuments.use('*', async (c, next) => {
+  const user = c.get('user')
+
+  if (user) {
+    // For write operations, require edit/admin roles
+    if (['POST', 'PUT', 'DELETE'].includes(c.req.method)) {
+      const isAuthorized =
+        user.role === 'super_admin' ||
+        c.get('tenantRole') === 'owner'
+
+      if (!isAuthorized) {
+        return c.json({ error: 'Forbidden: Write access required for this action' }, 403)
+      }
+    }
+
+    c.set('userId', user.id)
+    return await next()
+  }
+
+  // Legacy cookie check fallback
   const getAuthToken = () => {
     try {
       return getCookie(c, 'morphic_token')
@@ -46,9 +69,9 @@ apiDocuments.use('*', async (c, next) => {
 
     // Detect tenantId from cookie or header
     const cookieTenant = getCookie(c, 'morphic_active_tenant')
-    const headerTenant = c.req.header('morphic-tenant-id')
-    const tenantId = cookieTenant || headerTenant
-    c.set('tenantId', tenantId ? parseInt(tenantId, 10) : null)
+    const headerTenant = c.req.header('morphic-tenant-id') || c.req.header('X-Tenant-ID')
+    const resolvedTenantId = cookieTenant || headerTenant
+    c.set('tenantId', resolvedTenantId ? parseInt(resolvedTenantId, 10) : null)
 
     await next()
   } catch (err) {

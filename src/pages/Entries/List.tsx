@@ -37,6 +37,8 @@ import {
   CopyIcon,
   DatabaseIcon,
   FileCheckIcon,
+  Maximize2,
+  Minimize2,
   MoreVertical,
   PlusIcon,
   TerminalIcon,
@@ -49,12 +51,14 @@ interface Field {
   name: string
   label: string
   type: string
+  options?: { label: string; value: string }[]
 }
 
 interface Collection {
   id: number
   name: string
   slug: string
+  type?: 'collection' | 'global'
   enableTrash?: boolean
   fields: Field[]
 }
@@ -74,6 +78,7 @@ interface ListProps {
     id: number
     name: string
     slug: string
+    type?: 'collection' | 'global'
     localized?: boolean
     enableTrash?: boolean
     fields: Field[]
@@ -210,6 +215,7 @@ export default function EntriesList({
   const [previewLocale, setPreviewLocale] = React.useState('')
   const [previewData, setPreviewData] = React.useState<any>(null)
   const [isPreviewLoading, setIsPreviewLoading] = React.useState(false)
+  const [isPreviewExpanded, setIsPreviewExpanded] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
 
   React.useEffect(() => {
@@ -359,12 +365,35 @@ export default function EntriesList({
             Rich content...
           </span>
         )
+      case 'group': {
+        const keys =
+          value && typeof value === 'object' ? Object.keys(value) : []
+        if (keys.length === 0) {
+          return (
+            <span className='text-muted-foreground italic text-xs'>Empty</span>
+          )
+        }
+        return (
+          <span className='truncate max-w-[200px] inline-block opacity-70 italic text-xs'>
+            Group ({keys.length} fields)
+          </span>
+        )
+      }
       case 'date':
       case 'datetime':
         return format(new Date(value), field.type === 'date' ? 'PPP' : 'PPP p')
+      case 'radio':
       case 'checkbox':
       case 'select': {
-        const strValue = Array.isArray(value) ? value.join(', ') : String(value)
+        const getLabel = (val: any) => {
+          const opt = field.options?.find(
+            (o) => String(o.value) === String(val)
+          )
+          return opt ? opt.label : String(val)
+        }
+        const strValue = Array.isArray(value)
+          ? value.map(getLabel).join(', ')
+          : getLabel(value)
         return (
           <span
             className='truncate max-w-[150px] inline-block'
@@ -491,160 +520,166 @@ export default function EntriesList({
                     value='rest'
                     className='flex-1 flex flex-col overflow-hidden space-y-4 m-0'
                   >
-                    {(collection as any).type !== 'global' && (
-                      <div
-                        className={cn(
-                          'grid gap-4 bg-muted/30 p-4 rounded-lg border',
-                          collection.localized
-                            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
-                            : 'grid-cols-2 md:grid-cols-4'
-                        )}
-                      >
-                        <div className='space-y-2'>
-                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                            Page Number
-                          </label>
-                          <Input
-                            type='number'
-                            min={1}
-                            value={previewPage}
-                            onChange={(e) =>
-                              setPreviewPage(
-                                Math.max(1, parseInt(e.target.value) || 1)
-                              )
-                            }
-                            className='h-8 text-xs'
-                          />
-                        </div>
-                        <div className='space-y-2'>
-                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                            Limit per Page
-                          </label>
-                          <Input
-                            type='number'
-                            min={1}
-                            max={100}
-                            value={previewLimit}
-                            onChange={(e) =>
-                              setPreviewLimit(
-                                Math.max(
-                                  1,
-                                  Math.min(100, parseInt(e.target.value) || 10)
-                                )
-                              )
-                            }
-                            className='h-8 text-xs'
-                          />
-                        </div>
-                        <div className='space-y-2'>
-                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                            Sort By
-                          </label>
-                          <Select
-                            value={previewSortBy}
-                            onValueChange={setPreviewSortBy}
-                          >
-                            <SelectTrigger className='h-8 text-xs'>
-                              <SelectValue placeholder='Sort by' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='createdAt'>
-                                Created At
-                              </SelectItem>
-                              <SelectItem value='id'>ID</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className='space-y-2'>
-                          <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                            Sort Direction
-                          </label>
-                          <Select
-                            value={previewSortDir}
-                            onValueChange={setPreviewSortDir}
-                          >
-                            <SelectTrigger className='h-8 text-xs'>
-                              <SelectValue placeholder='Sort direction' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='desc'>Descending</SelectItem>
-                              <SelectItem value='asc'>Ascending</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {collection.localized && (
+                    {!isPreviewExpanded &&
+                      (collection as any).type !== 'global' && (
+                        <div
+                          className={cn(
+                            'grid gap-4 bg-muted/30 p-4 rounded-lg border',
+                            collection.localized
+                              ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+                              : 'grid-cols-2 md:grid-cols-4'
+                          )}
+                        >
                           <div className='space-y-2'>
                             <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                              Locale
+                              Page Number
+                            </label>
+                            <Input
+                              type='number'
+                              min={1}
+                              value={previewPage}
+                              onChange={(e) =>
+                                setPreviewPage(
+                                  Math.max(1, parseInt(e.target.value) || 1)
+                                )
+                              }
+                              className='h-8 text-xs'
+                            />
+                          </div>
+                          <div className='space-y-2'>
+                            <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                              Limit per Page
+                            </label>
+                            <Input
+                              type='number'
+                              min={1}
+                              max={100}
+                              value={previewLimit}
+                              onChange={(e) =>
+                                setPreviewLimit(
+                                  Math.max(
+                                    1,
+                                    Math.min(
+                                      100,
+                                      parseInt(e.target.value) || 10
+                                    )
+                                  )
+                                )
+                              }
+                              className='h-8 text-xs'
+                            />
+                          </div>
+                          <div className='space-y-2'>
+                            <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                              Sort By
                             </label>
                             <Select
-                              value={previewLocale}
-                              onValueChange={setPreviewLocale}
+                              value={previewSortBy}
+                              onValueChange={setPreviewSortBy}
                             >
                               <SelectTrigger className='h-8 text-xs'>
-                                <SelectValue placeholder='Select locale' />
+                                <SelectValue placeholder='Sort by' />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value='_all'>
-                                  All Languages
+                                <SelectItem value='createdAt'>
+                                  Created At
                                 </SelectItem>
-                                {allLocales.map((l) => (
-                                  <SelectItem key={l.code} value={l.code}>
-                                    {l.name} ({l.code})
-                                  </SelectItem>
-                                ))}
+                                <SelectItem value='id'>ID</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
-                        )}
+                          <div className='space-y-2'>
+                            <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                              Sort Direction
+                            </label>
+                            <Select
+                              value={previewSortDir}
+                              onValueChange={setPreviewSortDir}
+                            >
+                              <SelectTrigger className='h-8 text-xs'>
+                                <SelectValue placeholder='Sort direction' />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='desc'>Descending</SelectItem>
+                                <SelectItem value='asc'>Ascending</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {collection.localized && (
+                            <div className='space-y-2'>
+                              <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                                Locale
+                              </label>
+                              <Select
+                                value={previewLocale}
+                                onValueChange={setPreviewLocale}
+                              >
+                                <SelectTrigger className='h-8 text-xs'>
+                                  <SelectValue placeholder='Select locale' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value='_all'>
+                                    All Languages
+                                  </SelectItem>
+                                  {allLocales.map((l) => (
+                                    <SelectItem key={l.code} value={l.code}>
+                                      {l.name} ({l.code})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    {!isPreviewExpanded && (
+                      <div className='space-y-2'>
+                        <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
+                          REST Endpoint URL
+                        </label>
+                        <div className='flex space-x-2'>
+                          <Input
+                            readOnly
+                            value={(() => {
+                              let url =
+                                (collection as any).type === 'global'
+                                  ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                                  : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
+
+                              if (collection.localized && previewLocale) {
+                                url += `&locale=${previewLocale}`
+                              }
+                              return url
+                            })()}
+                            className='font-mono text-xs bg-muted/50'
+                          />
+                          <Button
+                            variant='secondary'
+                            size='icon'
+                            onClick={() => {
+                              let url =
+                                (collection as any).type === 'global'
+                                  ? `${window.location.origin}/api/collections/${collection.slug}/entries`
+                                  : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
+
+                              if (collection.localized && previewLocale) {
+                                url += `&locale=${previewLocale}`
+                              }
+
+                              navigator.clipboard.writeText(url)
+                              toast.success('URL copied to clipboard')
+                            }}
+                          >
+                            <CopyIcon className='w-4 h-4' />
+                          </Button>
+                        </div>
                       </div>
                     )}
 
-                    <div className='space-y-2'>
-                      <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
-                        REST Endpoint URL
-                      </label>
-                      <div className='flex space-x-2'>
-                        <Input
-                          readOnly
-                          value={(() => {
-                            let url =
-                              (collection as any).type === 'global'
-                                ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
-
-                            if (collection.localized && previewLocale) {
-                              url += `&locale=${previewLocale}`
-                            }
-                            return url
-                          })()}
-                          className='font-mono text-xs bg-muted/50'
-                        />
-                        <Button
-                          variant='secondary'
-                          size='icon'
-                          onClick={() => {
-                            let url =
-                              (collection as any).type === 'global'
-                                ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
-
-                            if (collection.localized && previewLocale) {
-                              url += `&locale=${previewLocale}`
-                            }
-
-                            navigator.clipboard.writeText(url)
-                            toast.success('URL copied to clipboard')
-                          }}
-                        >
-                          <CopyIcon className='w-4 h-4' />
-                        </Button>
-                      </div>
-                    </div>
-
                     <div className='flex-1 flex flex-col min-h-0 space-y-2'>
                       <div className='flex items-center justify-between'>
-                        <div className='flex items-center space-x-2'>
+                        <div className='flex items-center space-x-3'>
                           <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
                             JSON Response
                           </label>
@@ -653,6 +688,26 @@ export default function EntriesList({
                               LOADING...
                             </span>
                           )}
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-6 px-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground'
+                            onClick={() =>
+                              setIsPreviewExpanded(!isPreviewExpanded)
+                            }
+                          >
+                            {isPreviewExpanded ? (
+                              <>
+                                <Minimize2 className='w-3 h-3 mr-1' />
+                                Collapse
+                              </>
+                            ) : (
+                              <>
+                                <Maximize2 className='w-3 h-3 mr-1' />
+                                Expand
+                              </>
+                            )}
+                          </Button>
                         </div>
                         {/* Desktop Copy Buttons: Hidden on mobile, shown on desktop */}
                         <div className='hidden sm:flex items-center space-x-2'>
@@ -852,15 +907,25 @@ export default function EntriesList({
                           </DropdownMenu>
                         </div>
                       </div>
-                      <ScrollArea className='h-[350px] rounded-md border bg-zinc-950 p-4 font-mono text-xs text-zinc-300'>
-                        <div className='min-w-max'>
-                          <pre className='whitespace-pre'>
-                            {previewData
-                              ? JSON.stringify(previewData, null, 2)
-                              : '// Loading preview data...'}
-                          </pre>
-                        </div>
-                      </ScrollArea>
+                      <div className='relative overflow-hidden rounded-md border bg-zinc-950 group'>
+                        {/* Decorative Glow */}
+                        <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-blue-500/30 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
+
+                        <ScrollArea
+                          className={cn(
+                            'p-4 font-mono text-xs text-zinc-300 transition-all duration-300 bg-transparent',
+                            isPreviewExpanded ? 'h-[500px]' : 'h-[300px]'
+                          )}
+                        >
+                          <div className='min-w-max relative z-10'>
+                            <pre className='whitespace-pre'>
+                              {previewData
+                                ? JSON.stringify(previewData, null, 2)
+                                : '// Loading preview data...'}
+                            </pre>
+                          </div>
+                        </ScrollArea>
+                      </div>
                     </div>
                   </TabsContent>
 
@@ -915,11 +980,18 @@ export default function EntriesList({
                             Copy Query
                           </Button>
                         </div>
-                        <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-400'>
-                          <pre className='whitespace-pre'>
-                            {`query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}, page: ${previewPage}, sortBy: "${previewSortBy}", sortDir: "${previewSortDir}"${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
-                          </pre>
-                        </ScrollArea>
+                        <div className='relative overflow-hidden rounded-md border bg-zinc-950 group flex-1 flex flex-col min-h-0'>
+                          {/* Decorative Glow */}
+                          <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-purple-500/10 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
+
+                          <ScrollArea className='flex-1 p-4 font-mono text-[11px] text-zinc-400 bg-transparent'>
+                            <div className='relative z-10'>
+                              <pre className='whitespace-pre'>
+                                {`query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}, page: ${previewPage}, sortBy: "${previewSortBy}", sortDir: "${previewSortDir}"${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
+                              </pre>
+                            </div>
+                          </ScrollArea>
+                        </div>
                       </div>
 
                       <div className='flex flex-col space-y-2 overflow-hidden'>
@@ -927,23 +999,52 @@ export default function EntriesList({
                           <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
                             Data Response
                           </label>
-                        </div>
-                        <ScrollArea className='flex-1 rounded-md border bg-zinc-950 p-4 font-mono text-[11px] text-zinc-300'>
-                          <pre className='whitespace-pre'>
-                            {previewData
-                              ? JSON.stringify(
-                                  {
-                                    data: {
-                                      entries:
-                                        previewData.entries || previewData,
-                                    },
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 px-2 text-[10px]'
+                            onClick={() => {
+                              const json = JSON.stringify(
+                                {
+                                  data: {
+                                    entries:
+                                      previewData?.entries || previewData || [],
                                   },
-                                  null,
-                                  2
-                                )
-                              : '// Requesting data...'}
-                          </pre>
-                        </ScrollArea>
+                                },
+                                null,
+                                2
+                              )
+                              navigator.clipboard.writeText(json)
+                              toast.success('JSON copied to clipboard')
+                            }}
+                          >
+                            <CopyIcon className='w-3 h-3 mr-1.5' />
+                            Copy JSON
+                          </Button>
+                        </div>
+                        <div className='relative overflow-hidden rounded-md border bg-zinc-950 group flex-1 flex flex-col min-h-0'>
+                          {/* Decorative Glow */}
+                          <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-blue-500/10 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
+
+                          <ScrollArea className='flex-1 p-4 font-mono text-[11px] text-zinc-300 bg-transparent'>
+                            <div className='relative z-10'>
+                              <pre className='whitespace-pre'>
+                                {previewData
+                                  ? JSON.stringify(
+                                      {
+                                        data: {
+                                          entries:
+                                            previewData.entries || previewData,
+                                        },
+                                      },
+                                      null,
+                                      2
+                                    )
+                                  : '// Requesting data...'}
+                              </pre>
+                            </div>
+                          </ScrollArea>
+                        </div>
                       </div>
                     </div>
                   </TabsContent>
@@ -966,12 +1067,14 @@ export default function EntriesList({
               </DialogContent>
             </Dialog>
 
-            <Button asChild>
-              <Link href={`/entries/${collection.id}/add`}>
-                <PlusIcon className='w-4 h-4 mr-2' />
-                Add Entry
-              </Link>
-            </Button>
+            {!(collection.type === 'global' && entries.length >= 1) && (
+              <Button asChild>
+                <Link href={`/entries/${collection.id}/add`}>
+                  <PlusIcon className='w-4 h-4 mr-2' />
+                  Add Entry
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 

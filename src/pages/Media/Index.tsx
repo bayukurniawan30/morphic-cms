@@ -56,6 +56,7 @@ interface MediaFile {
   width: number | null
   height: number | null
   resourceType?: string
+  alt?: string | null
   createdAt: string
   tenant?: { id: number; name: string }
 }
@@ -75,6 +76,16 @@ export default function MediaIndex({ user }: { user: any }) {
   const [files, setFiles] = useState<MediaFile[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useState<MediaFile | null>(null)
+  const [altText, setAltText] = useState('')
+  const [isSavingAlt, setIsSavingAlt] = useState(false)
+
+  useEffect(() => {
+    if (selectedFile) {
+      setAltText(selectedFile.alt || '')
+    } else {
+      setAltText('')
+    }
+  }, [selectedFile])
 
   // Keep track of navigation history for breadcrumbs
   const [pathHistory, setPathHistory] = useState<BreadcrumbItem[]>([
@@ -247,6 +258,31 @@ export default function MediaIndex({ user }: { user: any }) {
     } catch (err) {
       toast.error('Could not delete media.')
       console.error(err)
+    }
+  }
+
+  const handleSaveAltText = async () => {
+    if (!selectedFile) return
+    setIsSavingAlt(true)
+    try {
+      const res = await fetch(`/api/media/${selectedFile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alt: altText }),
+      })
+      if (!res.ok) throw new Error('Failed to update alt text')
+
+      // Update local state
+      setFiles((prev) =>
+        prev.map((f) => (f.id === selectedFile.id ? { ...f, alt: altText } : f))
+      )
+      setSelectedFile((prev) => prev ? { ...prev, alt: altText } : null)
+      toast.success('Alt text updated successfully.')
+    } catch (err) {
+      console.error(err)
+      toast.error('Could not update alt text.')
+    } finally {
+      setIsSavingAlt(false)
     }
   }
 
@@ -428,6 +464,15 @@ export default function MediaIndex({ user }: { user: any }) {
                         Copy URL
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedFile(file)
+                        }}
+                      >
+                        <InfoIcon className='h-4 w-4 mr-2' />
+                        Edit Alt Text
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className='text-destructive focus:text-destructive'
                         onClick={(e) => {
                           e.stopPropagation()
@@ -448,7 +493,7 @@ export default function MediaIndex({ user }: { user: any }) {
                         ? file.secureUrl.replace(/\.[^/.]+$/, '.jpg')
                         : file.secureUrl
                     }
-                    alt={file.filename}
+                    alt={file.alt || file.filename}
                     className='w-full h-full object-cover rounded-md'
                   />
                 ) : (
@@ -497,25 +542,53 @@ export default function MediaIndex({ user }: { user: any }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className='flex-1 min-h-0 p-4 flex items-center justify-center bg-accent/5'>
-            {selectedFile?.secureUrl && (
-              <>
-                {selectedFile.resourceType === 'video' ? (
-                  <video
-                    src={selectedFile.secureUrl}
-                    controls
-                    className='max-w-full max-h-full rounded-sm'
-                    autoPlay
-                  />
-                ) : (
-                  <img
-                    src={selectedFile.secureUrl}
-                    alt={selectedFile.filename}
-                    className='max-w-full max-h-full object-contain rounded-sm'
-                  />
-                )}
-              </>
-            )}
+          <div className='flex-1 min-h-0 flex flex-col md:flex-row bg-accent/5'>
+            <div className='flex-1 p-4 flex items-center justify-center border-b md:border-b-0 md:border-r border-border min-h-0'>
+              {selectedFile?.secureUrl && (
+                <>
+                  {selectedFile.resourceType === 'video' ? (
+                    <video
+                      src={selectedFile.secureUrl}
+                      controls
+                      className='max-w-full max-h-full rounded-sm'
+                      autoPlay
+                    />
+                  ) : (
+                    <img
+                      src={selectedFile.secureUrl}
+                      alt={selectedFile.alt || selectedFile.filename}
+                      className='max-w-full max-h-full object-contain rounded-sm'
+                    />
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className='w-full md:w-80 p-6 flex flex-col space-y-4 bg-background overflow-y-auto border-t md:border-t-0 md:border-l border-border'>
+              <div className='space-y-2'>
+                <Label htmlFor='altText' className='text-sm font-semibold'>
+                  Alt Text (SEO)
+                </Label>
+                <textarea
+                  id='altText'
+                  placeholder='Describe this image...'
+                  value={altText}
+                  onChange={(e) => setAltText(e.target.value)}
+                  className='flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+                <p className='text-[11px] text-muted-foreground leading-relaxed'>
+                  Alt text is used by search engines for SEO and by screen readers for accessibility.
+                </p>
+                <Button
+                  size='sm'
+                  onClick={handleSaveAltText}
+                  disabled={isSavingAlt}
+                  className='w-full mt-2'
+                >
+                  {isSavingAlt ? 'Saving...' : 'Save Alt Text'}
+                </Button>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className='p-4 bg-muted/50 border-t flex sm:justify-between items-center'>

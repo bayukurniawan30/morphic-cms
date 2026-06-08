@@ -39,6 +39,7 @@ export const createGraphQLHandler = () => {
         secureUrl: String!
         size: Int
         mimeType: String
+        alt: String
         createdAt: String!
       }
 

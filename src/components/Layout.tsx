@@ -39,6 +39,7 @@ import {
   Users,
   Webhook,
   X,
+  Terminal,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import React, { useState } from 'react'
@@ -359,6 +360,13 @@ export default function Layout({ user, title, children }: LayoutProps) {
                     href='/webhooks'
                     icon={Webhook}
                     label='Webhooks'
+                    isSidebarOpen={isSidebarOpen}
+                    currentUrl={url}
+                  />
+                  <NavItem
+                    href='/api-playground'
+                    icon={Terminal}
+                    label='API Playground'
                     isSidebarOpen={isSidebarOpen}
                     currentUrl={url}
                   />

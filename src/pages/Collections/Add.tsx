@@ -107,6 +107,35 @@ export default function AddCollection({ user }: AddProps) {
           { id: generateId(), name: 'email', label: 'Email', type: 'email', required: false },
         ]
         break
+      case 'website_metadata':
+        templateFields = [
+          { id: generateId(), name: 'sitename', label: 'Sitename', type: 'text', required: true },
+          { id: generateId(), name: 'description', label: 'Description', type: 'textarea', required: false },
+          { id: generateId(), name: 'keywords', label: 'Keywords', type: 'text', required: false },
+          { id: generateId(), name: 'author', label: 'Author', type: 'text', required: false },
+          { id: generateId(), name: 'email', label: 'Email', type: 'email', required: false },
+          { id: generateId(), name: 'address', label: 'Address', type: 'text', required: false },
+          { id: generateId(), name: 'logo', label: 'Logo', type: 'media', required: false },
+          { id: generateId(), name: 'favicon', label: 'Favicon', type: 'media', required: false },
+          {
+            id: generateId(),
+            name: 'extra',
+            label: 'Extra',
+            type: 'array',
+            required: false,
+            fields: [
+              { id: generateId(), name: 'key', label: 'Key', type: 'text', required: true },
+              { id: generateId(), name: 'value', label: 'Value', type: 'text', required: true },
+            ],
+          },
+        ]
+        break
+      case 'social_media':
+        templateFields = [
+          { id: generateId(), name: 'socialMedia', label: 'Social Media', type: 'text', required: true },
+          { id: generateId(), name: 'link', label: 'Link', type: 'text', required: true },
+        ]
+        break
     }
 
     setData('fields', [...data.fields, ...templateFields])
@@ -298,6 +327,7 @@ export default function AddCollection({ user }: AddProps) {
     { value: 'slug', label: 'Slug' },
     { value: 'email', label: 'Email' },
     { value: 'array', label: 'Array (Repeater)' },
+    { value: 'group', label: 'Group' },
   ]
 
   const [availableCollections, setAvailableCollections] = useState<any[]>([])
@@ -425,6 +455,12 @@ export default function AddCollection({ user }: AddProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => loadTemplate('member')}>
                       Team Member Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('website_metadata')}>
+                      Website Metadata Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('social_media')}>
+                      Social Media Template
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -566,11 +602,11 @@ export default function AddCollection({ user }: AddProps) {
                         </div>
                       )}
 
-                      {field.type === 'array' && (
+                      {(field.type === 'array' || field.type === 'group') && (
                         <div className='space-y-4'>
                           <div className='flex justify-between items-center'>
                             <Label className='text-xs font-semibold'>
-                              Nested Fields (Repeater)
+                              {field.type === 'array' ? 'Nested Fields (Repeater)' : 'Nested Fields (Group)'}
                             </Label>
                             <Button
                               type='button'
@@ -665,7 +701,7 @@ export default function AddCollection({ user }: AddProps) {
                                         type: val,
                                       })
                                     }
-                                    disabledTypes={['array']}
+                                    disabledTypes={['array', 'group']}
                                   />
                                 </div>
                                 <div className='col-span-2 space-y-1'>
