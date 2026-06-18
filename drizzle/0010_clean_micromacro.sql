@@ -1,0 +1,1 @@
+ALTER TABLE "forms" ADD COLUMN "theme" jsonb DEFAULT '{}'::jsonb NOT NULL;

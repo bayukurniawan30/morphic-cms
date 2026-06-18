@@ -18,6 +18,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
+import { rateLimiter } from 'hono-rate-limiter'
 import { generateSecret, generateURI, verifySync } from 'otplib'
 import QRCode from 'qrcode'
 import { db } from '../db/index.js'
@@ -146,6 +147,72 @@ app.get('/docs', async (c) => {
     title: 'Documentation | Morphic CMS',
   })
 })
+
+// Public Form view route (no requireAuth middleware)
+app.get('/public-form/:slug', async (c) => {
+  const slug = c.req.param('slug')
+  
+  try {
+    const formResult = await db
+      .select()
+      .from(forms)
+      .where(eq(forms.slug, slug))
+      .limit(1)
+
+    if (formResult.length === 0) {
+      return c.get('inertia')('Forms/PublicForm', {
+        error: 'This form definition could not be found.'
+      })
+    }
+
+    const form = formResult[0]
+    if (!form.isActive) {
+      return c.get('inertia')('Forms/PublicForm', {
+        error: 'This form is currently closed for submissions.',
+        formName: form.name,
+        form: {
+          id: form.id,
+          name: form.name,
+          slug: form.slug,
+          fields: form.fields,
+          theme: form.theme,
+        }
+      })
+    }
+
+    if (form.storageType !== 'internal') {
+      return c.get('inertia')('Forms/PublicForm', {
+        error: 'Only forms set to internal storage mode can be accessed directly.',
+        formName: form.name,
+        form: {
+          id: form.id,
+          name: form.name,
+          slug: form.slug,
+          fields: form.fields,
+          theme: form.theme,
+        }
+      })
+    }
+
+    return c.get('inertia')('Forms/PublicForm', {
+      form: {
+        id: form.id,
+        name: form.name,
+        slug: form.slug,
+        fields: form.fields,
+        honeypotField: form.honeypotField,
+        theme: form.theme,
+      },
+      turnstileSiteKey: process.env.CLOUDFLARE_TURNSTILE_SITE_KEY || '',
+    })
+  } catch (e) {
+    console.error('Error fetching form for public view:', e)
+    return c.get('inertia')('Forms/PublicForm', {
+      error: 'An unexpected error occurred while loading this form.'
+    })
+  }
+})
+
 
 // Middleware to inject the authenticated user into the Inertia shared props globally
 app.use('*', async (c, next) => {
@@ -3809,6 +3876,8 @@ api.post('/forms', async (c) => {
       honeypotField,
       collectionId,
       emailNotifications,
+      isActive,
+      theme,
     } = body
 
     if (!name || !slug) {
@@ -3835,6 +3904,8 @@ api.post('/forms', async (c) => {
         collectionId: collectionId || null,
         tenantId,
         emailNotifications: emailNotifications || false,
+        isActive: isActive !== undefined ? isActive : true,
+        theme: theme || {},
       })
       .returning()
 
@@ -3865,6 +3936,8 @@ api.put('/forms/:id', async (c) => {
       honeypotField,
       collectionId,
       emailNotifications,
+      isActive,
+      theme,
     } = body
 
     const whereClause = [eq(forms.id, id)]
@@ -3884,6 +3957,8 @@ api.put('/forms/:id', async (c) => {
         honeypotField: honeypotField || null,
         collectionId: collectionId || null,
         emailNotifications: emailNotifications ?? false,
+        isActive: isActive ?? true,
+        theme: theme || {},
         updatedAt: new Date(),
       })
       .where(and(...whereClause))
@@ -4008,8 +4083,23 @@ api.delete('/forms/:slug/entries/:entryId', async (c) => {
   }
 })
 
+// Public Form Submission Rate Limiter
+const formSubmitLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5, // Limit each IP to 5 submissions per form
+  standardHeaders: 'draft-6',
+  keyGenerator: (c) => {
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || c.req.header('x-real-ip') || 'anonymous'
+    const slug = c.req.param('slug') || ''
+    return `${ip}-${slug}`
+  },
+  handler: (c) => {
+    return c.json({ error: 'Too many submissions. Please try again in 15 minutes.' }, 429)
+  }
+})
+
 // Public Form Submission
-api.post('/forms/:slug/submit', async (c) => {
+api.post('/forms/:slug/submit', formSubmitLimiter, async (c) => {
   try {
     const slug = c.req.param('slug')
     const tenantId = c.get('tenantId') // Public submit might not have tenant context unless via headers
@@ -4025,6 +4115,9 @@ api.post('/forms/:slug/submit', async (c) => {
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 
     const form = formResult[0]
+    if (!form.isActive) {
+      return c.json({ error: 'This form is currently closed for submissions.' }, 400)
+    }
 
     let body: Record<string, any> = {}
     try {
@@ -4038,9 +4131,44 @@ api.post('/forms/:slug/submit', async (c) => {
       return c.json({ error: 'Invalid request body format' }, 400)
     }
 
+    // Cloudflare Turnstile Verification
+    const turnstileSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY
+    const host = c.req.header('Host') || ''
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
+
+    if (turnstileSecret && !isLocalhost) {
+      const turnstileToken = body['cf-turnstile-response'] || body['turnstileToken']
+      if (!turnstileToken) {
+        return c.json({ error: 'Security verification failed: Missing Turnstile token.' }, 400)
+      }
+
+      try {
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            secret: turnstileSecret,
+            response: turnstileToken,
+            remoteip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || '',
+          }),
+        })
+
+        const verifyData: any = await verifyRes.json()
+        if (!verifyData.success) {
+          return c.json({ error: 'Security verification failed: Invalid Turnstile token.' }, 400)
+        }
+      } catch (err) {
+        console.error('Turnstile verification error:', err)
+        return c.json({ error: 'Security verification temporary error.' }, 500)
+      }
+    }
+
     // 1. Origin Check (CORS-like security)
     const requestOrigin = c.req.header('Origin') || c.req.header('Referer')
-    if (form.allowedOrigins) {
+    const isLocalhostOrigin = requestOrigin && (requestOrigin.toLowerCase().includes('localhost') || requestOrigin.toLowerCase().includes('127.0.0.1'))
+    if (form.allowedOrigins && !isLocalhostOrigin) {
       const allowed = form.allowedOrigins
         .split(',')
         .map((o) => o.trim().toLowerCase())
@@ -4064,8 +4192,54 @@ api.post('/forms/:slug/submit', async (c) => {
       })
     }
 
-    // Validate body against form fields (optional but recommended)
-    // For simplicity, we just save it now.
+    // Validate and clean body against form fields for security
+    const filteredBody: Record<string, any> = {}
+    const fields = (form.fields as any[]) || []
+
+    for (const field of fields) {
+      const val = body[field.name]
+
+      // 1. Check required fields
+      if (field.required && (val === undefined || val === null || val === '')) {
+        return c.json({ error: `Field "${field.label || field.name}" is required` }, 400)
+      }
+
+      // 2. Filter input key/values (only keep keys defined in schema)
+      if (val !== undefined && val !== null) {
+        if (field.type === 'text' || field.type === 'textarea') {
+          const strVal = String(val)
+          if (field.validation?.minLength !== undefined && strVal.length < field.validation.minLength) {
+            return c.json(
+              { error: `Field "${field.label || field.name}" must be at least ${field.validation.minLength} characters` },
+              400
+            )
+          }
+          if (field.validation?.maxLength !== undefined && strVal.length > field.validation.maxLength) {
+            return c.json(
+              { error: `Field "${field.label || field.name}" cannot exceed ${field.validation.maxLength} characters` },
+              400
+            )
+          }
+          filteredBody[field.name] = strVal
+        } else if (field.type === 'checkbox') {
+          if (Array.isArray(val)) {
+            filteredBody[field.name] = val.map(String)
+          } else {
+            filteredBody[field.name] = [String(val)]
+          }
+        } else if (field.type === 'email') {
+          const strVal = String(val).trim()
+          // Basic email format check
+          if (strVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) {
+            return c.json({ error: `Field "${field.label || field.name}" must be a valid email address` }, 400)
+          }
+          filteredBody[field.name] = strVal
+        } else {
+          filteredBody[field.name] = val
+        }
+      }
+    }
+
 
     // 3. Email Notification Check
     if (form.emailNotifications && form.tenantId) {
@@ -4093,7 +4267,7 @@ api.post('/forms/:slug/submit', async (c) => {
         const emails = tenantUsers.map((u) => u.email).filter(Boolean)
         if (emails.length > 0) {
           const formFieldMap = new Map((form.fields as any[] || []).map((f: any) => [f.name, f]))
-          const submittedFieldsHtml = Object.entries(body)
+          const submittedFieldsHtml = Object.entries(filteredBody)
             .filter(([key]) => formFieldMap.has(key))
             .map(([key, val]) => {
               const field = formFieldMap.get(key)
@@ -4156,7 +4330,7 @@ api.post('/forms/:slug/submit', async (c) => {
         .insert(formEntries)
         .values({
           formId: form.id,
-          data: body,
+          data: filteredBody,
           tenantId: form.tenantId, // Ensure entry gets the same tenant as the form
         })
         .returning()

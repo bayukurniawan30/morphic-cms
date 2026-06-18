@@ -1,7 +1,7 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Link } from '@inertiajs/react'
-import { EditIcon, FileCheckIcon, PlusIcon, TrashIcon } from 'lucide-react'
+import { EditIcon, FileCheckIcon, PlusIcon, TrashIcon, GlobeIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Form {
@@ -145,6 +145,22 @@ export default function FormsList({ forms, user }: ListProps) {
                       </td>
                       <td className='px-6 py-4 text-right whitespace-nowrap'>
                         <div className='flex items-center justify-end gap-2'>
+                          {form.storageType === 'internal' && (
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              asChild
+                              title='View Public Form'
+                            >
+                              <a
+                                href={`/public-form/${form.slug}`}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                              >
+                                <GlobeIcon className='w-4 h-4' />
+                              </a>
+                            </Button>
+                          )}
                           <Button variant='outline' size='sm' asChild>
                             <Link href={`/forms/${form.slug}/entries`}>
                               Entries

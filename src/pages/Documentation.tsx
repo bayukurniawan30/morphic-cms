@@ -704,6 +704,66 @@ export default function Documentation({ user }: { user: any }) {
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
             <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+              Public Forms & Customization
+            </h4>
+            <p className='mb-4'>
+              Forms created with <strong>Internal Storage</strong> can be
+              accessed directly by users via a public web page:{' '}
+              <code>{`/public-form/:slug`}</code>. Morphic provides rich,
+              custom-branding features:
+            </p>
+            <ul className='list-disc pl-5 space-y-2 text-sm text-muted-foreground'>
+              <li>
+                <strong>Theme Colors</strong>: Select from 8 curated HSL color
+                themes (slate, emerald, blue, indigo, violet, rose, orange,
+                yellow).
+              </li>
+              <li>
+                <strong>Custom Header Image</strong>: Upload or choose a header
+                image via the integrated Media Picker.
+              </li>
+              <li>
+                <strong>Custom Branding Text</strong>: Define personalized
+                header and footer text for your form.
+              </li>
+              <li>
+                <strong>Active/Inactive Toggle</strong>: Close the form to
+                submissions at any time using the <em>Status</em> switch. When
+                closed, visitors see a premium restricted screen, and API
+                submissions are blocked.
+              </li>
+            </ul>
+          </div>
+
+          <div className='space-y-4'>
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400'>
+              Bot Protection & Rate Limiting
+            </h4>
+            <p className='mb-2'>
+              To prevent bot spam, public forms come integrated with:
+            </p>
+            <ul className='list-disc pl-5 space-y-2 text-sm text-muted-foreground mb-4'>
+              <li>
+                <strong>Cloudflare Turnstile</strong>: Automatically checks
+                Turnstile verification tokens before accepting submissions
+                (bypassed on local hostnames for development). Configure keys
+                using:
+                <code className='block bg-muted/40 p-2 rounded mt-1 font-mono text-xs'>
+                  CLOUDFLARE_TURNSTILE_SITE_KEY=...
+                  <br />
+                  CLOUDFLARE_TURNSTILE_SECRET_KEY=...
+                </code>
+              </li>
+              <li>
+                <strong>IP-based Rate Limiting</strong>: Restricts individual IP
+                addresses to a maximum of 5 submissions every 15 minutes per
+                form.
+              </li>
+            </ul>
+          </div>
+
+          <div className='space-y-4'>
+            <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400'>
               Handling Submissions
             </h4>
             <p className='mb-4'>
@@ -1135,8 +1195,12 @@ export default function Documentation({ user }: { user: any }) {
               </h4>
               <CodeBlock code={`DELETE /api/media/folders/:id`} />
               <p className='mb-4'>
-                Permanently delete a folder. The folder must be empty to be deleted; if it contains files or subfolders, the API will return a <code>400 Bad Request</code> with the error message <code>"Cannot delete folder because it is not empty"</code>. Requires an API key with a{' '}
-                <code>super_admin</code> or tenant owner role.
+                Permanently delete a folder. The folder must be empty to be
+                deleted; if it contains files or subfolders, the API will return
+                a <code>400 Bad Request</code> with the error message{' '}
+                <code>"Cannot delete folder because it is not empty"</code>.
+                Requires an API key with a <code>super_admin</code> or tenant
+                owner role.
               </p>
             </div>
           </div>
@@ -1182,8 +1246,10 @@ export default function Documentation({ user }: { user: any }) {
               </h4>
               <CodeBlock code={`DELETE /api/documents/:id`} />
               <p className='mb-4'>
-                Permanently delete a document by its ID. It deletes the record from the database and removes the underlying file from cloud storage. Requires an API key with a{' '}
-                <code>super_admin</code> or tenant owner role.
+                Permanently delete a document by its ID. It deletes the record
+                from the database and removes the underlying file from cloud
+                storage. Requires an API key with a <code>super_admin</code> or
+                tenant owner role.
               </p>
             </div>
           </div>

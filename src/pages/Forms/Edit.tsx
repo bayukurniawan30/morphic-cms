@@ -30,9 +30,12 @@ import {
   Settings2Icon,
   ShieldCheckIcon,
   TrashIcon,
+  Palette,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useEffect, useState } from 'react'
+import MediaPicker from '@/components/MediaPicker'
 
 interface EditProps {
   form: any
@@ -40,6 +43,8 @@ interface EditProps {
 }
 
 export default function EditForm({ form, user }: EditProps) {
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
+
   const { data, setData, put, processing, errors } = useForm({
     name: form.name,
     slug: form.slug,
@@ -53,6 +58,13 @@ export default function EditForm({ form, user }: EditProps) {
     honeypotField: form.honeypotField || '',
     collectionId: form.collectionId || (null as number | null),
     emailNotifications: !!form.emailNotifications,
+    isActive: form.isActive !== false,
+    theme: form.theme || {
+      themeColor: 'emerald',
+      headerImageUrl: '',
+      customHeaderText: 'Morphic CMS Form',
+      customFooterText: 'Powered by Morphic CMS',
+    },
   })
 
   const [collectionsList, setCollectionsList] = useState<any[]>([])
@@ -634,6 +646,22 @@ export default function EditForm({ form, user }: EditProps) {
                   </p>
                 </div>
               )}
+
+              <div className='flex items-center justify-between space-x-2 pt-4 border-t mt-4'>
+                <div className='space-y-0.5'>
+                  <Label htmlFor='isActive' className='text-sm font-medium cursor-pointer'>
+                    Status: Open for submissions
+                  </Label>
+                  <p className='text-[10px] text-muted-foreground'>
+                    If toggled off, the public form will be closed to new responses.
+                  </p>
+                </div>
+                <Switch
+                  id='isActive'
+                  checked={data.isActive}
+                  onCheckedChange={(checked) => setData('isActive', checked)}
+                />
+              </div>
             </div>
 
             {/* API Integration Settings (External Only) */}
@@ -844,6 +872,96 @@ export default function EditForm({ form, user }: EditProps) {
                 />
               </div>
             </div>
+
+            {data.storageType === 'internal' && (
+              <div className='bg-card p-6 rounded-xl border shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-300'>
+                {/* Branding & Theme Customization */}
+                <h3 className='text-lg font-semibold flex items-center gap-2'>
+                  <Palette className='w-4 h-4 text-primary' />
+                  Branding & Theme
+                </h3>
+                
+                <div className='space-y-2'>
+                  <Label>Theme Color Preset</Label>
+                  <div className='grid grid-cols-4 gap-2 pt-1'>
+                    {[
+                      { id: 'slate', name: 'slate', colorClass: 'bg-slate-500' },
+                      { id: 'emerald', name: 'emerald', colorClass: 'bg-emerald-500' },
+                      { id: 'blue', name: 'blue', colorClass: 'bg-blue-500' },
+                      { id: 'indigo', name: 'indigo', colorClass: 'bg-indigo-500' },
+                      { id: 'violet', name: 'violet', colorClass: 'bg-violet-500' },
+                      { id: 'rose', name: 'rose', colorClass: 'bg-rose-500' },
+                      { id: 'orange', name: 'orange', colorClass: 'bg-orange-500' },
+                      { id: 'yellow', name: 'yellow', colorClass: 'bg-yellow-500' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.id}
+                        type='button'
+                        onClick={() => setData('theme', { ...data.theme, themeColor: preset.id })}
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all hover:bg-muted/50 ${data.theme.themeColor === preset.id ? 'ring-2 ring-primary border-primary' : 'border-muted'}`}
+                      >
+                        <div className={`w-6 h-6 rounded-full ${preset.colorClass} shadow-sm mb-1`} />
+                        <span className='text-[10px] font-medium capitalize'>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className='space-y-2'>
+                  <Label>Header Image</Label>
+                  {data.theme.headerImageUrl ? (
+                    <div className='relative rounded-lg overflow-hidden border aspect-[3/1] bg-muted group'>
+                      <img src={data.theme.headerImageUrl} alt="Header Preview" className='w-full h-full object-cover' />
+                      <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='destructive'
+                          onClick={() => setData('theme', { ...data.theme, headerImageUrl: '' })}
+                        >
+                          Remove Image
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type='button'
+                      variant='outline'
+                      className='w-full border-dashed h-16 flex flex-col gap-1 items-center justify-center text-muted-foreground hover:text-foreground'
+                      onClick={() => setMediaPickerOpen(true)}
+                    >
+                      <Upload className='w-4 h-4' />
+                      <span className='text-xs'>Select header image</span>
+                    </Button>
+                  )}
+                  <MediaPicker
+                    open={mediaPickerOpen}
+                    onOpenChange={setMediaPickerOpen}
+                    onSelect={(url) => setData('theme', { ...data.theme, headerImageUrl: url })}
+                  />
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='customHeaderText'>Custom Header Text</Label>
+                  <Input
+                    id='customHeaderText'
+                    placeholder='e.g. My Custom Form'
+                    value={data.theme.customHeaderText}
+                    onChange={(e) => setData('theme', { ...data.theme, customHeaderText: e.target.value })}
+                  />
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='customFooterText'>Custom Footer Text</Label>
+                  <Input
+                    id='customFooterText'
+                    placeholder='e.g. Powered by My Company'
+                    value={data.theme.customFooterText}
+                    onChange={(e) => setData('theme', { ...data.theme, customFooterText: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className='flex flex-col gap-2'>
               <Button

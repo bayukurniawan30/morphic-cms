@@ -71,6 +71,20 @@
       "when": 1780812383553,
       "tag": "0009_light_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781747862136,
+      "tag": "0010_clean_micromacro",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1781754168242,
+      "tag": "0011_melodic_bedlam",
+      "breakpoints": true
     }
   ]
 }

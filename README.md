@@ -7,7 +7,7 @@
 
 🌐 [Official Website](https://morphic-cms.com) | 📖 [Documentation](https://morphic-cms.com/docs)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE,CLOUDFLARE_TURNSTILE_SITE_KEY,CLOUDFLARE_TURNSTILE_SECRET_KEY)
 
 _Built with Hono and Postgres JSONB to eliminate database schema friction entirely._
 
@@ -32,9 +32,33 @@ Morphic CMS isn't just another content manager. It's a lightweight, developer-fi
 - **🌐 Multi-tenant Architecture**: Scale your SaaS easily. Manage isolated organizations and workspaces from a single instance.
 - **🛠️ Dynamic Schema Builder**: Define custom collections and global settings with a powerful, intuitive field system.
 - **📁 Smart Media Management**: Seamlessly integrated Cloudinary support with automatic, tenant-based organization.
+- **📋 Public Forms & Custom Branding**: Publish beautiful public questionnaires/forms directly from internal collections with custom header images, footer texts, and 8 theme color presets.
+- **🛡️ Bot Mitigation & Rate Limiting**: Out-of-the-box integration with Cloudflare Turnstile and IP-based rate limiting to prevent spam submissions.
 - **🔒 Secure by Design**: Tenant-scoped REST API with JWT authentication and granular API Key permissions.
 - **🌍 Built-in i18n**: Native multi-language support for global content strategies.
 - **📊 Real-time Analytics**: Built-in API usage tracking and performance monitoring out of the box.
+
+---
+
+### 📋 Public Forms & Security (Cloudflare Turnstile)
+
+Morphic CMS lets you publish collection schemas as public forms. You can brand them with customized header images (integrated with media manager), custom titles/footers, and 8 curated HSL color themes (`slate`, `emerald`, `blue`, `indigo`, `violet`, `rose`, `orange`, `yellow`).
+
+#### Form Status Control
+Each public form can be turned online or offline instantly:
+- **Active Toggle**: Control form availability via the **"Status: Open for submissions"** switch in the dashboard.
+- **Closed Screen**: When toggled off, visitors are greeted with a premium restricted/closed screen, and the API rejects any programmatic submits.
+
+#### Bot Mitigation Setup
+To protect your public forms from spam, Morphic integrates Cloudflare Turnstile:
+1. Register your site on [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/).
+2. Add the site key and secret key to your `.env` file:
+   ```env
+   CLOUDFLARE_TURNSTILE_SITE_KEY=your_turnstile_site_key
+   CLOUDFLARE_TURNSTILE_SECRET_KEY=your_turnstile_secret_key
+   ```
+3. **Local Dev Bypass**: Turnstile challenges and origin validation are automatically bypassed when testing on `localhost` or `127.0.0.1` for local developer convenience.
+4. **IP Rate Limiting**: Form submissions are protected by a built-in rate limiter (max 5 submissions per 15 minutes per IP per form).
 
 ---
 

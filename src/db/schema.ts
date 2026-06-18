@@ -217,6 +217,16 @@ export const forms = pgTable('forms', {
   honeypotField: varchar('honeypot_field', { length: 255 }), // Field name for honeypot
   collectionId: integer('collection_id').references(() => collections.id),
   emailNotifications: boolean('email_notifications').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  theme: jsonb('theme')
+    .$type<{
+      themeColor?: string
+      headerImageUrl?: string
+      customHeaderText?: string
+      customFooterText?: string
+    }>()
+    .notNull()
+    .default({}),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
