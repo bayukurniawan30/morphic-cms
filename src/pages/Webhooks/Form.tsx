@@ -70,7 +70,8 @@ const AVAILABLE_EVENTS = [
 ]
 
 export default function WebhookForm({ user, mode, webhook }: Props) {
-  const { data, setData, post, processing, errors } = useForm({
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const { data, setData, errors } = useForm({
     id: webhook?.id || undefined,
     name: webhook?.name || '',
     url: webhook?.url || '',
@@ -103,7 +104,7 @@ export default function WebhookForm({ user, mode, webhook }: Props) {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (data.events.length === 0) {
@@ -111,15 +112,25 @@ export default function WebhookForm({ user, mode, webhook }: Props) {
       return
     }
 
-    post('/api/webhooks', {
-      onSuccess: () => {
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      const responseData = await res.json()
+      if (res.ok) {
         toast.success(mode === 'create' ? 'Webhook created' : 'Webhook updated')
         router.visit('/webhooks')
-      },
-      onError: () => {
-        toast.error('Failed to save webhook')
-      },
-    })
+      } else {
+        toast.error(responseData.error || 'Failed to save webhook')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -333,10 +344,10 @@ export default function WebhookForm({ user, mode, webhook }: Props) {
             <div className='pt-6 border-t flex justify-end'>
               <Button
                 type='submit'
-                disabled={processing}
+                disabled={isSubmitting}
                 className='w-full sm:w-auto min-w-[140px]'
               >
-                {processing ? (
+                {isSubmitting ? (
                   'Saving...'
                 ) : (
                   <>
