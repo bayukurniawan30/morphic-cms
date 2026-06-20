@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Link, useForm } from '@inertiajs/react'
+import { Link, useForm, usePage } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -43,6 +43,8 @@ interface EditProps {
 }
 
 export default function EditForm({ form, user }: EditProps) {
+  const { activeTenant } = usePage().props as any
+  const tenantSlug = activeTenant?.slug || 'tenant-slug'
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
 
   const { data, setData, put, processing, errors } = useForm({
@@ -639,7 +641,7 @@ export default function EditForm({ form, user }: EditProps) {
                     Public Submission Endpoint
                   </Label>
                   <div className='bg-muted p-2 rounded border font-mono text-[10px] break-all select-all'>
-                    {window.location.origin}/api/forms/{data.slug}/submit
+                    {window.location.origin}/api/forms/{tenantSlug}/{data.slug}/submit
                   </div>
                   <p className='text-[9px] text-muted-foreground'>
                     Use this URL as the action for your website's contact form.
