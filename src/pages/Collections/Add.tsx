@@ -1,6 +1,14 @@
 import { FieldTypeSelector } from '@/components/FieldTypeSelector'
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -11,14 +19,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
 import { Link, useForm } from '@inertiajs/react'
 import {
@@ -75,48 +75,204 @@ export default function AddCollection({ user }: AddProps) {
     switch (type) {
       case 'category':
         templateFields = [
-          { id: generateId(), name: 'title', label: 'Title', type: 'text', required: true },
-          { id: generateId(), name: 'slug', label: 'Slug', type: 'slug', required: true },
+          {
+            id: generateId(),
+            name: 'title',
+            label: 'Title',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'slug',
+            label: 'Slug',
+            type: 'slug',
+            required: true,
+          },
         ]
         break
       case 'post':
         templateFields = [
-          { id: generateId(), name: 'title', label: 'Title', type: 'text', required: true },
-          { id: generateId(), name: 'slug', label: 'Slug', type: 'slug', required: true },
-          { id: generateId(), name: 'content', label: 'Content', type: 'rich-text', required: true },
-          { id: generateId(), name: 'excerpt', label: 'Excerpt', type: 'textarea', required: false },
-          { id: generateId(), name: 'featuredImage', label: 'Featured Image', type: 'media', required: false },
+          {
+            id: generateId(),
+            name: 'title',
+            label: 'Title',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'slug',
+            label: 'Slug',
+            type: 'slug',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'content',
+            label: 'Content',
+            type: 'rich-text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'excerpt',
+            label: 'Excerpt',
+            type: 'textarea',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'featuredImage',
+            label: 'Featured Image',
+            type: 'media',
+            required: false,
+          },
         ]
         break
       case 'product':
         templateFields = [
-          { id: generateId(), name: 'name', label: 'Name', type: 'text', required: true },
-          { id: generateId(), name: 'slug', label: 'Slug', type: 'slug', required: true },
-          { id: generateId(), name: 'description', label: 'Description', type: 'rich-text', required: true },
-          { id: generateId(), name: 'price', label: 'Price', type: 'number', required: true },
-          { id: generateId(), name: 'sku', label: 'SKU', type: 'text', required: false },
-          { id: generateId(), name: 'thumbnail', label: 'Thumbnail', type: 'media', required: false },
+          {
+            id: generateId(),
+            name: 'name',
+            label: 'Name',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'slug',
+            label: 'Slug',
+            type: 'slug',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'description',
+            label: 'Description',
+            type: 'rich-text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'price',
+            label: 'Price',
+            type: 'number',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'sku',
+            label: 'SKU',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'thumbnail',
+            label: 'Thumbnail',
+            type: 'media',
+            required: false,
+          },
         ]
         break
       case 'member':
         templateFields = [
-          { id: generateId(), name: 'name', label: 'Full Name', type: 'text', required: true },
-          { id: generateId(), name: 'position', label: 'Position', type: 'text', required: true },
-          { id: generateId(), name: 'bio', label: 'Biography', type: 'textarea', required: false },
-          { id: generateId(), name: 'photo', label: 'Photo', type: 'media', required: false },
-          { id: generateId(), name: 'email', label: 'Email', type: 'email', required: false },
+          {
+            id: generateId(),
+            name: 'name',
+            label: 'Full Name',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'position',
+            label: 'Position',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'bio',
+            label: 'Biography',
+            type: 'textarea',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'photo',
+            label: 'Photo',
+            type: 'media',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'email',
+            label: 'Email',
+            type: 'email',
+            required: false,
+          },
         ]
         break
       case 'website_metadata':
         templateFields = [
-          { id: generateId(), name: 'sitename', label: 'Sitename', type: 'text', required: true },
-          { id: generateId(), name: 'description', label: 'Description', type: 'textarea', required: false },
-          { id: generateId(), name: 'keywords', label: 'Keywords', type: 'text', required: false },
-          { id: generateId(), name: 'author', label: 'Author', type: 'text', required: false },
-          { id: generateId(), name: 'email', label: 'Email', type: 'email', required: false },
-          { id: generateId(), name: 'address', label: 'Address', type: 'text', required: false },
-          { id: generateId(), name: 'logo', label: 'Logo', type: 'media', required: false },
-          { id: generateId(), name: 'favicon', label: 'Favicon', type: 'media', required: false },
+          {
+            id: generateId(),
+            name: 'sitename',
+            label: 'Sitename',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'description',
+            label: 'Description',
+            type: 'textarea',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'keywords',
+            label: 'Keywords',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'author',
+            label: 'Author',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'email',
+            label: 'Email',
+            type: 'email',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'address',
+            label: 'Address',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'logo',
+            label: 'Logo',
+            type: 'media',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'favicon',
+            label: 'Favicon',
+            type: 'media',
+            required: false,
+          },
           {
             id: generateId(),
             name: 'extra',
@@ -124,16 +280,40 @@ export default function AddCollection({ user }: AddProps) {
             type: 'array',
             required: false,
             fields: [
-              { id: generateId(), name: 'key', label: 'Key', type: 'text', required: true },
-              { id: generateId(), name: 'value', label: 'Value', type: 'text', required: true },
+              {
+                id: generateId(),
+                name: 'key',
+                label: 'Key',
+                type: 'text',
+                required: true,
+              },
+              {
+                id: generateId(),
+                name: 'value',
+                label: 'Value',
+                type: 'text',
+                required: true,
+              },
             ],
           },
         ]
         break
       case 'social_media':
         templateFields = [
-          { id: generateId(), name: 'socialMedia', label: 'Social Media', type: 'text', required: true },
-          { id: generateId(), name: 'link', label: 'Link', type: 'text', required: true },
+          {
+            id: generateId(),
+            name: 'socialMedia',
+            label: 'Social Media',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'link',
+            label: 'Link',
+            type: 'text',
+            required: true,
+          },
         ]
         break
     }
@@ -400,9 +580,6 @@ export default function AddCollection({ user }: AddProps) {
                   <div className='space-y-0.5'>
                     <Label className='flex items-center gap-2'>
                       Localization
-                      <span className='px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-bold uppercase'>
-                        NEW
-                      </span>
                     </Label>
                     <p className='text-xs text-muted-foreground'>
                       Support multiple languages for this collection.
@@ -456,10 +633,14 @@ export default function AddCollection({ user }: AddProps) {
                     <DropdownMenuItem onClick={() => loadTemplate('member')}>
                       Team Member Template
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => loadTemplate('website_metadata')}>
+                    <DropdownMenuItem
+                      onClick={() => loadTemplate('website_metadata')}
+                    >
                       Website Metadata Template
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => loadTemplate('social_media')}>
+                    <DropdownMenuItem
+                      onClick={() => loadTemplate('social_media')}
+                    >
                       Social Media Template
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -606,7 +787,9 @@ export default function AddCollection({ user }: AddProps) {
                         <div className='space-y-4'>
                           <div className='flex justify-between items-center'>
                             <Label className='text-xs font-semibold'>
-                              {field.type === 'array' ? 'Nested Fields (Repeater)' : 'Nested Fields (Group)'}
+                              {field.type === 'array'
+                                ? 'Nested Fields (Repeater)'
+                                : 'Nested Fields (Group)'}
                             </Label>
                             <Button
                               type='button'
@@ -625,14 +808,18 @@ export default function AddCollection({ user }: AddProps) {
                                 className='grid grid-cols-12 gap-3 items-end border-b border-muted last:border-0 pb-3 last:pb-0 text-left'
                               >
                                 <div className='col-span-1 space-y-1 flex flex-col items-center justify-center'>
-                                  <Label className='text-[10px] invisible'>Reorder</Label>
+                                  <Label className='text-[10px] invisible'>
+                                    Reorder
+                                  </Label>
                                   <div className='flex flex-col items-center justify-center space-y-0.5 h-8'>
                                     <Button
                                       type='button'
                                       variant='ghost'
                                       size='icon'
                                       className='h-4 w-4 p-0'
-                                      onClick={() => moveChildField(index, childIndex, 'up')}
+                                      onClick={() =>
+                                        moveChildField(index, childIndex, 'up')
+                                      }
                                       disabled={childIndex === 0}
                                     >
                                       <ChevronUpIcon className='w-3.5 h-3.5' />
@@ -642,8 +829,17 @@ export default function AddCollection({ user }: AddProps) {
                                       variant='ghost'
                                       size='icon'
                                       className='h-4 w-4 p-0'
-                                      onClick={() => moveChildField(index, childIndex, 'down')}
-                                      disabled={childIndex === (field.fields?.length || 0) - 1}
+                                      onClick={() =>
+                                        moveChildField(
+                                          index,
+                                          childIndex,
+                                          'down'
+                                        )
+                                      }
+                                      disabled={
+                                        childIndex ===
+                                        (field.fields?.length || 0) - 1
+                                      }
                                     >
                                       <ChevronDownIcon className='w-3.5 h-3.5' />
                                     </Button>
@@ -705,7 +901,9 @@ export default function AddCollection({ user }: AddProps) {
                                   />
                                 </div>
                                 <div className='col-span-2 space-y-1'>
-                                  <Label className='text-[10px] invisible'>Required</Label>
+                                  <Label className='text-[10px] invisible'>
+                                    Required
+                                  </Label>
                                   <div className='flex items-center space-x-2 h-8'>
                                     <Switch
                                       id={`req-${child.id}`}
@@ -725,7 +923,9 @@ export default function AddCollection({ user }: AddProps) {
                                   </div>
                                 </div>
                                 <div className='col-span-1 space-y-1 flex flex-col items-end'>
-                                  <Label className='text-[10px] invisible'>Delete</Label>
+                                  <Label className='text-[10px] invisible'>
+                                    Delete
+                                  </Label>
                                   <div className='flex items-center justify-end h-8'>
                                     <Button
                                       type='button'
@@ -804,6 +1004,25 @@ export default function AddCollection({ user }: AddProps) {
                               }
                             />
                           </div>
+                        </div>
+                      )}
+
+                      {(field.type === 'text' ||
+                        field.type === 'number' ||
+                        field.type === 'textarea') && (
+                        <div className='space-y-2'>
+                          <Label className='text-xs'>Helper Text</Label>
+                          <Input
+                            type='text'
+                            placeholder='Instructions displayed below the input field'
+                            className='bg-background'
+                            value={field.helperText || ''}
+                            onChange={(e) =>
+                              updateField(index, {
+                                helperText: e.target.value,
+                              })
+                            }
+                          />
                         </div>
                       )}
 

@@ -133,6 +133,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
     availableTenants: TenantProps[]
   }
   const [globals, setGlobals] = React.useState<any[]>([])
+  const [showAllGlobals, setShowAllGlobals] = React.useState(false)
 
   React.useEffect(() => {
     fetch('/api/collections')
@@ -308,7 +309,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   Globals
                 </h3>
                 <div className='space-y-1'>
-                  {globals.map((global) => (
+                  {(showAllGlobals ? globals : globals.slice(0, 3)).map((global) => (
                     <NavItem
                       key={global.id}
                       href={`/globals/${global.slug}`}
@@ -318,6 +319,26 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       currentUrl={url}
                     />
                   ))}
+                  {globals.length > 3 && (
+                    <button
+                      type='button'
+                      onClick={() => setShowAllGlobals(!showAllGlobals)}
+                      className={cn(
+                        'w-full flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mt-1.5',
+                        isSidebarOpen ? 'px-4 py-2 justify-start' : 'justify-center py-2'
+                      )}
+                    >
+                      {isSidebarOpen ? (
+                        <span>
+                          {showAllGlobals
+                            ? 'Show less'
+                            : `Show ${globals.length - 3} more`}
+                        </span>
+                      ) : (
+                        <span>{showAllGlobals ? '«' : '»'}</span>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

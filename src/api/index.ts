@@ -1,4 +1,6 @@
 import { serveStatic } from '@hono/node-server/serve-static'
+import fs from 'fs'
+import path from 'path'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import {
@@ -148,15 +150,137 @@ app.get('/docs', async (c) => {
   })
 })
 
+const parseMarkdown = (md: string): string => {
+  let html = md;
+  // Escape HTML entities to prevent XSS
+  html = html
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Horizontal Rules
+  html = html.replace(/^---$/gm, '<hr class="border-white/5 my-6" />');
+
+  // Headings
+  html = html.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-extrabold text-white mb-4 mt-6">$1</h1>');
+  html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold text-white mb-3 mt-5">$1</h2>');
+  html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold text-white mb-2 mt-4">$1</h3>');
+
+  // Bold
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+
+  // Links
+  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>');
+
+  // Inline Code
+  html = html.replace(/`(.*?)`/g, '<code class="bg-white/10 px-1 py-0.5 rounded font-mono text-xs text-slate-200">$1</code>');
+
+  // Lists
+  html = html.replace(/^\s*[-*]\s+(.*$)/gm, '<li>$1</li>');
+
+  // Wrap contiguous <li> elements in <ul>
+  html = html.replace(/(?:<li>.*?<\/li>\s*)+/gs, (match) => {
+    return `<ul class="list-disc pl-5 my-4 space-y-2 text-slate-300">\n${match}</ul>`;
+  });
+
+  // Paragraphs
+  const lines = html.split('\n');
+  const processedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    if (
+      trimmed.startsWith('<h') ||
+      trimmed.startsWith('<hr') ||
+      trimmed.startsWith('<li') ||
+      trimmed.startsWith('<ul') ||
+      trimmed.startsWith('</ul')
+    ) {
+      return line;
+    }
+    return `<p class="text-slate-400 leading-relaxed mb-4">${line}</p>`;
+  });
+  
+  return processedLines.join('\n');
+}
+
+app.get('/changelog', async (c) => {
+  const userData = c.get('user')
+  const dirPath = path.resolve(process.cwd(), 'release_notes')
+  
+  if (!fs.existsSync(dirPath)) {
+    return c.get('inertia')('Changelog', {
+      user: userData,
+      title: 'Changelog | Morphic CMS',
+      changelogs: []
+    })
+  }
+
+  const files = fs.readdirSync(dirPath)
+  const versionRegex = /release_notes_v(\d+\.\d+\.\d+)\.md/
+  
+  const changelogData = files
+    .filter(file => versionRegex.test(file))
+    .map(file => {
+      const match = file.match(versionRegex)
+      const version = match ? match[1] : '0.0.0'
+      const filePath = path.join(dirPath, file)
+      const content = fs.readFileSync(filePath, 'utf-8')
+      
+      const htmlContent = parseMarkdown(content)
+      const stats = fs.statSync(filePath)
+      const date = stats.mtime.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+      
+      return {
+        version,
+        date,
+        content: htmlContent
+      }
+    })
+    .sort((a, b) => {
+      const partsA = a.version.split('.').map(Number)
+      const partsB = b.version.split('.').map(Number)
+      for (let i = 0; i < 3; i++) {
+        if (partsA[i] > partsB[i]) return -1
+        if (partsA[i] < partsB[i]) return 1
+      }
+      return 0
+    })
+
+  return c.get('inertia')('Changelog', {
+    user: userData,
+    title: 'Changelog | Morphic CMS',
+    changelogs: changelogData
+  })
+})
+
 // Public Form view route (no requireAuth middleware)
-app.get('/public-form/:slug', async (c) => {
+app.get('/public-form/:tenantSlug/:slug', async (c) => {
+  const tenantSlug = c.req.param('tenantSlug')
   const slug = c.req.param('slug')
   
   try {
+    const tenantResult = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.slug, tenantSlug))
+      .limit(1)
+
+    if (tenantResult.length === 0) {
+      return c.get('inertia')('Forms/PublicForm', {
+        error: 'The organization you are looking for does not exist.'
+      })
+    }
+
+    const tenant = tenantResult[0]
+
     const formResult = await db
       .select()
       .from(forms)
-      .where(eq(forms.slug, slug))
+      .where(and(eq(forms.slug, slug), eq(forms.tenantId, tenant.id)))
       .limit(1)
 
     if (formResult.length === 0) {
@@ -170,6 +294,7 @@ app.get('/public-form/:slug', async (c) => {
       return c.get('inertia')('Forms/PublicForm', {
         error: 'This form is currently closed for submissions.',
         formName: form.name,
+        tenantSlug: tenant.slug,
         form: {
           id: form.id,
           name: form.name,
@@ -184,6 +309,7 @@ app.get('/public-form/:slug', async (c) => {
       return c.get('inertia')('Forms/PublicForm', {
         error: 'Only forms set to internal storage mode can be accessed directly.',
         formName: form.name,
+        tenantSlug: tenant.slug,
         form: {
           id: form.id,
           name: form.name,
@@ -203,6 +329,7 @@ app.get('/public-form/:slug', async (c) => {
         honeypotField: form.honeypotField,
         theme: form.theme,
       },
+      tenantSlug: tenant.slug,
       turnstileSiteKey: process.env.CLOUDFLARE_TURNSTILE_SITE_KEY || '',
     })
   } catch (e) {
@@ -1822,6 +1949,16 @@ api.post('/tenants', async (c) => {
     const { name, slug } = await c.req.json()
     if (!name || !slug)
       return c.json({ error: 'Name and slug are required' }, 400)
+
+    const existingTenant = await db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.slug, slug))
+      .limit(1)
+
+    if (existingTenant.length > 0) {
+      return c.json({ error: 'Tenant with this slug already exists' }, 400)
+    }
 
     const newTenant = await db.transaction(async (tx) => {
       const t = await tx.insert(tenants).values({ name, slug }).returning()
@@ -4090,8 +4227,9 @@ const formSubmitLimiter = rateLimiter({
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
     const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || c.req.header('x-real-ip') || 'anonymous'
+    const tenantSlug = c.req.param('tenantSlug') || ''
     const slug = c.req.param('slug') || ''
-    return `${ip}-${slug}`
+    return `${ip}-${tenantSlug}-${slug}`
   },
   handler: (c) => {
     return c.json({ error: 'Too many submissions. Please try again in 15 minutes.' }, 429)
@@ -4099,18 +4237,23 @@ const formSubmitLimiter = rateLimiter({
 })
 
 // Public Form Submission
-api.post('/forms/:slug/submit', formSubmitLimiter, async (c) => {
+api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
   try {
+    const tenantSlug = c.req.param('tenantSlug')
     const slug = c.req.param('slug')
-    const tenantId = c.get('tenantId') // Public submit might not have tenant context unless via headers
 
-    const whereClause = [eq(forms.slug, slug)]
-    if (tenantId) whereClause.push(eq(forms.tenantId, tenantId))
+    const tenantResult = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.slug, tenantSlug))
+      .limit(1)
+    if (tenantResult.length === 0) return c.json({ error: 'Organization not found' }, 404)
+    const tenant = tenantResult[0]
 
     const formResult = await db
       .select()
       .from(forms)
-      .where(and(...whereClause))
+      .where(and(eq(forms.slug, slug), eq(forms.tenantId, tenant.id)))
       .limit(1)
     if (formResult.length === 0) return c.json({ error: 'Form not found' }, 404)
 

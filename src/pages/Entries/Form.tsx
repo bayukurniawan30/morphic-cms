@@ -291,6 +291,11 @@ const GroupFieldInput = ({
                     })
                   }}
                 />
+                {childField.helperText && (
+                  <p className='text-xs text-muted-foreground mt-1 italic'>
+                    {childField.helperText}
+                  </p>
+                )}
                 {childError && (
                   <p className='text-xs font-medium text-destructive mt-1'>
                     {childError}
@@ -741,6 +746,11 @@ const FieldInput = ({
                         })
                       }}
                     />
+                    {childField.helperText && (
+                      <p className='text-xs text-muted-foreground mt-1 italic'>
+                        {childField.helperText}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1715,7 +1725,9 @@ export default function EntriesForm({
                                 <span>
                                   {field.type === 'rich-text'
                                     ? 'Rich Text'
-                                    : field.type}
+                                    : field.type === 'array'
+                                      ? 'Repeater'
+                                      : field.type}
                                 </span>
                               </div>
                             </div>
@@ -1735,6 +1747,11 @@ export default function EntriesForm({
                               availableDocuments={availableDocuments}
                               onMediaPickerOpen={handleMediaPickerOpen}
                             />
+                            {field.helperText && (
+                              <p className='text-xs text-muted-foreground mt-1 italic'>
+                                {field.helperText}
+                              </p>
+                            )}
                             {field.type === 'media' && field.multiple && (
                               <p className='text-[10px] text-muted-foreground italic'>
                                 You can select multiple files for this field and

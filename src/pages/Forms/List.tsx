@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Link } from '@inertiajs/react'
+import { Link, usePage } from '@inertiajs/react'
 import { EditIcon, FileCheckIcon, PlusIcon, TrashIcon, GlobeIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -21,6 +21,7 @@ interface ListProps {
 }
 
 export default function FormsList({ forms, user }: ListProps) {
+  const { activeTenant } = usePage().props as any
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this form definition?'))
       return
@@ -153,7 +154,7 @@ export default function FormsList({ forms, user }: ListProps) {
                               title='View Public Form'
                             >
                               <a
-                                href={`/public-form/${form.slug}`}
+                                href={`/public-form/${activeTenant?.slug || 'default'}/${form.slug}`}
                                 target='_blank'
                                 rel='noopener noreferrer'
                               >
@@ -173,7 +174,7 @@ export default function FormsList({ forms, user }: ListProps) {
                             title='Edit Form'
                           >
                             <Link href={`/forms/edit/${form.id}`}>
-                              <EditIcon className='w-4 h-4' />
+                              Edit
                             </Link>
                           </Button>
                           <Button
@@ -181,7 +182,7 @@ export default function FormsList({ forms, user }: ListProps) {
                             size='sm'
                             onClick={() => handleDelete(form.id)}
                           >
-                            <TrashIcon className='w-4 h-4' />
+                            Delete
                           </Button>
                         </div>
                       </td>

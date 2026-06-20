@@ -1,7 +1,7 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import { Link, usePage } from '@inertiajs/react'
-import { Languages, Plus, Trash2 } from 'lucide-react'
+import { Languages, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 
@@ -149,9 +149,8 @@ export default function List({ user }: ListProps) {
                             variant='destructive'
                             size='sm'
                             onClick={() => handleDelete(locale.id)}
-                            title='Delete'
                           >
-                            <Trash2 className='w-3.5 h-3.5' />
+                            Delete
                           </Button>
                         )}
                       </td>

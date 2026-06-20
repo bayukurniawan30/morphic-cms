@@ -45,6 +45,7 @@ export type FieldDefinition = {
   relationLabelField?: string
   fieldId?: string // used for internal UI state
   slugSourceField?: string
+  helperText?: string
   fields?: FieldDefinition[] // for array type
 }
 

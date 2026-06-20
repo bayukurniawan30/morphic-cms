@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Link, useForm, router, usePage } from '@inertiajs/react'
+import { Link, useForm, usePage } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -522,9 +522,6 @@ export default function EditCollection({
                   <div className='space-y-0.5'>
                     <Label className='flex items-center gap-2'>
                       Localization
-                      <span className='px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-bold uppercase'>
-                        NEW
-                      </span>
                     </Label>
                     <p className='text-xs text-muted-foreground'>
                       Support multiple languages for this collection.
@@ -554,7 +551,12 @@ export default function EditCollection({
           <div className='space-y-4'>
             <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-0'>
               <h2 className='text-xl font-semibold'>Fields</h2>
-              <Button type='button' onClick={addField} size='sm' className='w-full sm:w-auto'>
+              <Button
+                type='button'
+                onClick={addField}
+                size='sm'
+                className='w-full sm:w-auto'
+              >
                 <PlusIcon className='w-4 h-4 mr-2' />
                 Add Field
               </Button>
@@ -743,6 +745,25 @@ export default function EditCollection({
                               }
                             />
                           </div>
+                        </div>
+                      )}
+
+                      {(field.type === 'text' ||
+                        field.type === 'number' ||
+                        field.type === 'textarea') && (
+                        <div className='space-y-2'>
+                          <Label className='text-xs'>Helper Text</Label>
+                          <Input
+                            type='text'
+                            placeholder='Instructions displayed below the input field'
+                            className='bg-background'
+                            value={field.helperText || ''}
+                            onChange={(e) =>
+                              updateField(index, {
+                                helperText: e.target.value,
+                              })
+                            }
+                          />
                         </div>
                       )}
 
@@ -945,7 +966,9 @@ export default function EditCollection({
                         <div className='space-y-4'>
                           <div className='flex justify-between items-center'>
                             <Label className='text-xs font-semibold'>
-                              {field.type === 'array' ? 'Nested Fields (Repeater)' : 'Nested Fields (Group)'}
+                              {field.type === 'array'
+                                ? 'Nested Fields (Repeater)'
+                                : 'Nested Fields (Group)'}
                             </Label>
                             <Button
                               type='button'
@@ -964,14 +987,18 @@ export default function EditCollection({
                                 className='grid grid-cols-12 gap-3 items-end border-b border-muted last:border-0 pb-3 last:pb-0 text-left'
                               >
                                 <div className='col-span-1 space-y-1 flex flex-col items-center justify-center'>
-                                  <Label className='text-[10px] invisible'>Reorder</Label>
+                                  <Label className='text-[10px] invisible'>
+                                    Reorder
+                                  </Label>
                                   <div className='flex flex-col items-center justify-center space-y-0.5 h-8'>
                                     <Button
                                       type='button'
                                       variant='ghost'
                                       size='icon'
                                       className='h-4 w-4 p-0'
-                                      onClick={() => moveChildField(index, childIndex, 'up')}
+                                      onClick={() =>
+                                        moveChildField(index, childIndex, 'up')
+                                      }
                                       disabled={childIndex === 0}
                                     >
                                       <ChevronUpIcon className='w-3.5 h-3.5' />
@@ -981,8 +1008,17 @@ export default function EditCollection({
                                       variant='ghost'
                                       size='icon'
                                       className='h-4 w-4 p-0'
-                                      onClick={() => moveChildField(index, childIndex, 'down')}
-                                      disabled={childIndex === (field.fields?.length || 0) - 1}
+                                      onClick={() =>
+                                        moveChildField(
+                                          index,
+                                          childIndex,
+                                          'down'
+                                        )
+                                      }
+                                      disabled={
+                                        childIndex ===
+                                        (field.fields?.length || 0) - 1
+                                      }
                                     >
                                       <ChevronDownIcon className='w-3.5 h-3.5' />
                                     </Button>
@@ -1044,7 +1080,9 @@ export default function EditCollection({
                                   />
                                 </div>
                                 <div className='col-span-2 space-y-1'>
-                                  <Label className='text-[10px] invisible'>Required</Label>
+                                  <Label className='text-[10px] invisible'>
+                                    Required
+                                  </Label>
                                   <div className='flex items-center space-x-2 h-8'>
                                     <Switch
                                       id={`req-${child.id}`}
@@ -1064,7 +1102,9 @@ export default function EditCollection({
                                   </div>
                                 </div>
                                 <div className='col-span-1 space-y-1 flex flex-col items-end'>
-                                  <Label className='text-[10px] invisible'>Delete</Label>
+                                  <Label className='text-[10px] invisible'>
+                                    Delete
+                                  </Label>
                                   <div className='flex items-center justify-end h-8'>
                                     <Button
                                       type='button'

@@ -39,6 +39,7 @@ interface FieldDefinition {
     | 'radio'
   required: boolean
   options?: FieldOption[]
+  helperText?: string
   validation?: {
     minLength?: number
     maxLength?: number
@@ -63,6 +64,7 @@ interface PublicFormProps {
   form?: FormDefinition
   error?: string
   formName?: string
+  tenantSlug?: string
   turnstileSiteKey?: string
 }
 
@@ -77,7 +79,7 @@ const colorPresets: Record<string, { light: string; dark: string }> = {
   yellow: { light: '45 93% 47%', dark: '45 85% 55%' },
 }
 
-export default function PublicForm({ form, error, formName, turnstileSiteKey }: PublicFormProps) {
+export default function PublicForm({ form, error, formName, tenantSlug, turnstileSiteKey }: PublicFormProps) {
   const { setTheme, resolvedTheme } = useTheme()
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -174,7 +176,7 @@ export default function PublicForm({ form, error, formName, turnstileSiteKey }: 
     setSubmitting(true)
 
     try {
-      const res = await fetch(`/api/forms/${form.slug}/submit`, {
+      const res = await fetch(`/api/forms/${tenantSlug}/${form.slug}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -499,6 +501,11 @@ export default function PublicForm({ form, error, formName, turnstileSiteKey }: 
                           minLength={field.validation?.minLength}
                           maxLength={field.validation?.maxLength}
                         />
+                        {field.helperText && (
+                          <p className='text-xs text-muted-foreground mt-1'>
+                            {field.helperText}
+                          </p>
+                        )}
                       </div>
                     )
                   }
@@ -526,6 +533,11 @@ export default function PublicForm({ form, error, formName, turnstileSiteKey }: 
                         minLength={field.validation?.minLength}
                         maxLength={field.validation?.maxLength}
                       />
+                      {field.helperText && (
+                        <p className='text-xs text-muted-foreground mt-1'>
+                          {field.helperText}
+                        </p>
+                      )}
                     </div>
                   )
                 })}

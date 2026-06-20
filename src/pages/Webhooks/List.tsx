@@ -147,13 +147,11 @@ export default function WebhooksList({ user }: { user: any }) {
                       </td>
                       <td className='px-6 py-4'>
                         {webhook.isActive ? (
-                          <span className='inline-flex items-center text-green-600 text-xs font-medium'>
-                            <CheckCircle2 className='w-3 h-3 mr-1' />
+                          <span className='inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-green-500/10 text-green-600 border border-green-500/20'>
                             Active
                           </span>
                         ) : (
-                          <span className='inline-flex items-center text-muted-foreground text-xs font-medium'>
-                            <XCircle className='w-3 h-3 mr-1' />
+                          <span className='inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-slate-500/10 text-slate-500 border border-slate-500/20'>
                             Paused
                           </span>
                         )}
@@ -163,20 +161,20 @@ export default function WebhooksList({ user }: { user: any }) {
                           {webhook.tenant?.name || 'System Global'}
                         </td>
                       )}
-                      <td className='px-6 py-4 text-right'>
-                        <div className='flex justify-end space-x-1'>
-                          <Button variant='ghost' size='icon' asChild className='h-8 w-8'>
+                      <td className='px-6 py-4 text-right whitespace-nowrap'>
+                        <div className='flex items-center justify-end gap-2'>
+                          <Button variant='outline' size='sm' asChild title='Edit Webhook'>
                             <Link href={`/webhooks/edit/${webhook.id}`}>
-                              <Edit className='w-4 h-4' />
+                              Edit
                             </Link>
                           </Button>
                           <Button
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10'
+                            variant='destructive'
+                            size='sm'
                             onClick={() => handleDelete(webhook.id, webhook.name)}
+                            title='Delete Webhook'
                           >
-                            <Trash2 className='w-4 h-4' />
+                            Delete
                           </Button>
                         </div>
                       </td>

@@ -709,7 +709,7 @@ export default function Documentation({ user }: { user: any }) {
             <p className='mb-4'>
               Forms created with <strong>Internal Storage</strong> can be
               accessed directly by users via a public web page:{' '}
-              <code>{`/public-form/:slug`}</code>. Morphic provides rich,
+              <code>{`/public-form/:tenant-slug/:form-slug`}</code>. Morphic provides rich,
               custom-branding features:
             </p>
             <ul className='list-disc pl-5 space-y-2 text-sm text-muted-foreground'>

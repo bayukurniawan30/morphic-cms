@@ -397,7 +397,7 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
             id='post-form'
             copiedId={copied}
             onCopy={copyToClipboard}
-            code={`curl -X POST "${baseUrl}/api/forms/contact-us/submit" \\
+            code={`curl -X POST "${baseUrl}/api/forms/your-tenant-slug/contact-us/submit" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "John Doe",

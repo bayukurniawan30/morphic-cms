@@ -168,28 +168,28 @@ export default function ApiKeyAbilities({
                     <td className='px-6 py-4 text-muted-foreground text-xs font-mono'>
                       {new Date(ability.createdAt).toLocaleDateString()}
                     </td>
-                    <td className='px-6 py-4 text-right'>
-                      <div className='flex justify-end space-x-1'>
+                    <td className='px-6 py-4 text-right whitespace-nowrap'>
+                      <div className='flex items-center justify-end gap-2'>
                         <Button
-                          variant='ghost'
-                          size='icon'
+                          variant='outline'
+                          size='sm'
                           asChild
-                          className='h-8 w-8'
+                          title='Edit Ability'
                         >
                           <Link href={`/api-key-abilities/edit/${ability.id}`}>
-                            <EditIcon className='h-4 w-4' />
+                            Edit
                           </Link>
                         </Button>
                         {ability.isSystem !== '1' && (
                           <Button
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10'
+                            variant='destructive'
+                            size='sm'
                             onClick={() =>
                               handleDelete(ability.id, ability.name)
                             }
+                            title='Delete Ability'
                           >
-                            <TrashIcon className='h-4 w-4' />
+                            Delete
                           </Button>
                         )}
                       </div>
