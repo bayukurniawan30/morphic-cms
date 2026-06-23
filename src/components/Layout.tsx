@@ -158,13 +158,32 @@ export default function Layout({ user, title, children }: LayoutProps) {
   const isAdmin = user.role === 'super_admin' || activeTenantRole === 'owner'
 
   const handleTenantSwitch = (tenantId: number | null) => {
+    const tenant = availableTenants?.find((t) => t.id === tenantId)
     fetch('/api/tenants/switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenantId }),
     }).then((res) => {
       if (res.ok) {
-        window.location.reload()
+        const host = window.location.host
+        const cleanHost = host.split(':')[0]
+        let baseDomain: string
+
+        if (cleanHost.includes('morphic-cms.com') || cleanHost.endsWith('.morphic-cms.com')) {
+          baseDomain = 'morphic-cms.com'
+        } else {
+          baseDomain = ''
+        }
+
+        if (baseDomain && tenant) {
+          const protocol = window.location.protocol
+          window.location.href = `${protocol}//${tenant.slug}.${baseDomain}/dashboard`
+        } else if (baseDomain && !tenant) {
+          const protocol = window.location.protocol
+          window.location.href = `${protocol}//${baseDomain}/dashboard`
+        } else {
+          window.location.href = '/dashboard'
+        }
       }
     })
   }
