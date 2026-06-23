@@ -1,6 +1,4 @@
 import { serveStatic } from '@hono/node-server/serve-static'
-import fs from 'fs'
-import path from 'path'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import {
@@ -16,13 +14,15 @@ import {
   ne,
   sql,
 } from 'drizzle-orm'
+import fs from 'fs'
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
-import { sign, verify } from 'hono/jwt'
 import { rateLimiter } from 'hono-rate-limiter'
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { cors } from 'hono/cors'
+import { sign, verify } from 'hono/jwt'
 import { generateSecret, generateURI, verifySync } from 'otplib'
 import QRCode from 'qrcode'
+import path from 'path'
 import { db } from '../db/index.js'
 import {
   abilities,
@@ -58,6 +58,28 @@ type Variables = {
   currentTenant: any | null
   tenantRole: string | null
   authType: 'api_key' | 'session' | null
+}
+
+const getCookieOptions = (c: any, maxAge: number) => {
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
+  const cleanHost = host.split(':')[0]
+  let domain: string | undefined = undefined
+
+  if (
+    cleanHost.endsWith('.morphic-cms.com') ||
+    cleanHost === 'morphic-cms.com'
+  ) {
+    domain = '.morphic-cms.com'
+  }
+
+  return {
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax' as const,
+    maxAge,
+    ...(domain ? { domain } : {}),
+  }
 }
 
 // Set up the main app without a base path so it can serve the root '/'
@@ -125,7 +147,11 @@ app.get('/login', async (c) => {
 })
 
 app.get('/logout', async (c) => {
-  deleteCookie(c, 'morphic_token')
+  const cookieOpts = getCookieOptions(c, 0)
+  deleteCookie(c, 'morphic_token', {
+    path: cookieOpts.path,
+    domain: cookieOpts.domain,
+  })
   return c.redirect('/login')
 })
 
@@ -151,43 +177,58 @@ app.get('/docs', async (c) => {
 })
 
 const parseMarkdown = (md: string): string => {
-  let html = md;
+  let html = md
   // Escape HTML entities to prevent XSS
-  html = html
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
   // Horizontal Rules
-  html = html.replace(/^---$/gm, '<hr class="border-white/5 my-6" />');
+  html = html.replace(/^---$/gm, '<hr class="border-white/5 my-6" />')
 
   // Headings
-  html = html.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-extrabold text-white mb-4 mt-6">$1</h1>');
-  html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold text-white mb-3 mt-5">$1</h2>');
-  html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold text-white mb-2 mt-4">$1</h3>');
+  html = html.replace(
+    /^# (.*$)/gm,
+    '<h1 class="text-2xl font-extrabold text-white mb-4 mt-6">$1</h1>'
+  )
+  html = html.replace(
+    /^## (.*$)/gm,
+    '<h2 class="text-xl font-bold text-white mb-3 mt-5">$1</h2>'
+  )
+  html = html.replace(
+    /^### (.*$)/gm,
+    '<h3 class="text-lg font-semibold text-white mb-2 mt-4">$1</h3>'
+  )
 
   // Bold
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+  html = html.replace(
+    /\*\*(.*?)\*\*/g,
+    '<strong class="font-bold text-white">$1</strong>'
+  )
 
   // Links
-  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>');
+  html = html.replace(
+    /\[(.*?)\]\((.*?)\)/g,
+    '<a href="$2" class="text-primary hover:underline">$1</a>'
+  )
 
   // Inline Code
-  html = html.replace(/`(.*?)`/g, '<code class="bg-white/10 px-1 py-0.5 rounded font-mono text-xs text-slate-200">$1</code>');
+  html = html.replace(
+    /`(.*?)`/g,
+    '<code class="bg-white/10 px-1 py-0.5 rounded font-mono text-xs text-slate-200">$1</code>'
+  )
 
   // Lists
-  html = html.replace(/^\s*[-*]\s+(.*$)/gm, '<li>$1</li>');
+  html = html.replace(/^\s*[-*]\s+(.*$)/gm, '<li>$1</li>')
 
   // Wrap contiguous <li> elements in <ul>
   html = html.replace(/(?:<li>.*?<\/li>\s*)+/gs, (match) => {
-    return `<ul class="list-disc pl-5 my-4 space-y-2 text-slate-300">\n${match}</ul>`;
-  });
+    return `<ul class="list-disc pl-5 my-4 space-y-2 text-slate-300">\n${match}</ul>`
+  })
 
   // Paragraphs
-  const lines = html.split('\n');
-  const processedLines = lines.map(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return '';
+  const lines = html.split('\n')
+  const processedLines = lines.map((line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return ''
     if (
       trimmed.startsWith('<h') ||
       trimmed.startsWith('<hr') ||
@@ -195,49 +236,49 @@ const parseMarkdown = (md: string): string => {
       trimmed.startsWith('<ul') ||
       trimmed.startsWith('</ul')
     ) {
-      return line;
+      return line
     }
-    return `<p class="text-slate-400 leading-relaxed mb-4">${line}</p>`;
-  });
-  
-  return processedLines.join('\n');
+    return `<p class="text-slate-400 leading-relaxed mb-4">${line}</p>`
+  })
+
+  return processedLines.join('\n')
 }
 
 app.get('/changelog', async (c) => {
   const userData = c.get('user')
   const dirPath = path.resolve(process.cwd(), 'release_notes')
-  
+
   if (!fs.existsSync(dirPath)) {
     return c.get('inertia')('Changelog', {
       user: userData,
       title: 'Changelog | Morphic CMS',
-      changelogs: []
+      changelogs: [],
     })
   }
 
   const files = fs.readdirSync(dirPath)
   const versionRegex = /release_notes_v(\d+\.\d+\.\d+)\.md/
-  
+
   const changelogData = files
-    .filter(file => versionRegex.test(file))
-    .map(file => {
+    .filter((file) => versionRegex.test(file))
+    .map((file) => {
       const match = file.match(versionRegex)
       const version = match ? match[1] : '0.0.0'
       const filePath = path.join(dirPath, file)
       const content = fs.readFileSync(filePath, 'utf-8')
-      
+
       const htmlContent = parseMarkdown(content)
       const stats = fs.statSync(filePath)
       const date = stats.mtime.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       })
-      
+
       return {
         version,
         date,
-        content: htmlContent
+        content: htmlContent,
       }
     })
     .sort((a, b) => {
@@ -253,7 +294,7 @@ app.get('/changelog', async (c) => {
   return c.get('inertia')('Changelog', {
     user: userData,
     title: 'Changelog | Morphic CMS',
-    changelogs: changelogData
+    changelogs: changelogData,
   })
 })
 
@@ -261,7 +302,7 @@ app.get('/changelog', async (c) => {
 app.get('/public-form/:tenantSlug/:slug', async (c) => {
   const tenantSlug = c.req.param('tenantSlug')
   const slug = c.req.param('slug')
-  
+
   try {
     const tenantResult = await db
       .select()
@@ -271,7 +312,7 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
 
     if (tenantResult.length === 0) {
       return c.get('inertia')('Forms/PublicForm', {
-        error: 'The organization you are looking for does not exist.'
+        error: 'The organization you are looking for does not exist.',
       })
     }
 
@@ -285,7 +326,7 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
 
     if (formResult.length === 0) {
       return c.get('inertia')('Forms/PublicForm', {
-        error: 'This form definition could not be found.'
+        error: 'This form definition could not be found.',
       })
     }
 
@@ -301,13 +342,14 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
           slug: form.slug,
           fields: form.fields,
           theme: form.theme,
-        }
+        },
       })
     }
 
     if (form.storageType !== 'internal') {
       return c.get('inertia')('Forms/PublicForm', {
-        error: 'Only forms set to internal storage mode can be accessed directly.',
+        error:
+          'Only forms set to internal storage mode can be accessed directly.',
         formName: form.name,
         tenantSlug: tenant.slug,
         form: {
@@ -316,7 +358,7 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
           slug: form.slug,
           fields: form.fields,
           theme: form.theme,
-        }
+        },
       })
     }
 
@@ -335,11 +377,10 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
   } catch (e) {
     console.error('Error fetching form for public view:', e)
     return c.get('inertia')('Forms/PublicForm', {
-      error: 'An unexpected error occurred while loading this form.'
+      error: 'An unexpected error occurred while loading this form.',
     })
   }
 })
-
 
 // Middleware to inject the authenticated user into the Inertia shared props globally
 app.use('*', async (c, next) => {
@@ -424,8 +465,44 @@ app.use('*', async (c, next) => {
   c.set('authType', authType)
 
   // --- Tenant Detection ---
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
+  const cleanHost = host.split(':')[0]
+  let subdomain: string | null = null
+
+  if (cleanHost.endsWith('.morphic-cms.com')) {
+    subdomain = cleanHost.slice(0, -'.morphic-cms.com'.length)
+  } else if (cleanHost.endsWith('.localhost')) {
+    subdomain = cleanHost.slice(0, -'.localhost'.length)
+  }
+
+  if (subdomain === 'www' || subdomain === 'api') {
+    subdomain = null
+  }
+
+  let subdomainTenantId: number | null = null
+  let subdomainTenant: any = null
+  if (subdomain) {
+    try {
+      const tenantResult = await db
+        .select()
+        .from(tenants)
+        .where(eq(tenants.slug, subdomain))
+        .limit(1)
+      if (tenantResult[0]) {
+        subdomainTenant = tenantResult[0]
+        subdomainTenantId = tenantResult[0].id
+      }
+    } catch (e) {
+      console.error('Failed to resolve tenant by subdomain:', e)
+    }
+  }
+
+  // Subdomain tenant ID overrides cookie/header if present and valid
   const activeTenantId =
-    c.req.header('X-Tenant-ID') || getCookie(c, 'morphic_active_tenant')
+    subdomainTenantId?.toString() ||
+    c.req.header('X-Tenant-ID') ||
+    getCookie(c, 'morphic_active_tenant')
+
   let currentTenant: any = null
   let tenantId: number | null = null
   let tenantRole: string | null = null
@@ -446,14 +523,20 @@ app.use('*', async (c, next) => {
         .limit(1)
 
       if (userTenantAccess.length > 0 || userData.role === 'super_admin') {
-        const tenantResult = await db
-          .select()
-          .from(tenants)
-          .where(eq(tenants.id, id))
-          .limit(1)
+        if (subdomainTenant && subdomainTenant.id === id) {
+          currentTenant = subdomainTenant
+        } else {
+          const tenantResult = await db
+            .select()
+            .from(tenants)
+            .where(eq(tenants.id, id))
+            .limit(1)
+          if (tenantResult[0]) {
+            currentTenant = tenantResult[0]
+          }
+        }
 
-        if (tenantResult[0]) {
-          currentTenant = tenantResult[0]
+        if (currentTenant) {
           tenantId = id
           tenantRole =
             userTenantAccess[0]?.role ||
@@ -515,7 +598,23 @@ const requireAuth = async (c: any, next: any) => {
   }
 
   const tenantId = c.get('tenantId')
+  const currentTenant = c.get('currentTenant')
   const path = c.req.path
+
+  // Redirect to subdomain if accessing root domain but a tenant is active (except for super_admin who might want global access)
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
+  const cleanHost = host.split(':')[0]
+  const isRootDomain = cleanHost === 'morphic-cms.com'
+
+  if (
+    isRootDomain &&
+    currentTenant &&
+    userData.role !== 'super_admin' &&
+    path !== '/logout'
+  ) {
+    const proto = c.req.header('x-forwarded-proto') || 'https'
+    return c.redirect(`${proto}://${currentTenant.slug}.${cleanHost}${path}`)
+  }
 
   // If no tenant selected and not a super_admin, redirect to tenant selection
   // Allow access to /select-tenant and /tenants (API)
@@ -1694,7 +1793,12 @@ api.use(
   '*',
   cors({
     origin: (origin) => origin,
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID', 'X-Morphic-Test'],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Tenant-ID',
+      'X-Morphic-Test',
+    ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   })
@@ -1800,8 +1904,10 @@ api.use('*', async (c, next) => {
       abilityName: fullUser.abilityName,
       permissions:
         authType === 'api_key'
-          ? (fullUser.permissions || {})
-          : (fullUser.role === 'super_admin' ? '*' : fullUser.permissions || {}),
+          ? fullUser.permissions || {}
+          : fullUser.role === 'super_admin'
+            ? '*'
+            : fullUser.permissions || {},
     } as any)
   }
 
@@ -1812,7 +1918,10 @@ api.use('*', async (c, next) => {
   const xTenantId = c.req.header('X-Tenant-ID')
   if (xTenantId && !tenantId) {
     return c.json(
-      { error: 'Tenant not found or access denied for the specified X-Tenant-ID' },
+      {
+        error:
+          'Tenant not found or access denied for the specified X-Tenant-ID',
+      },
       403
     )
   }
@@ -1990,13 +2099,12 @@ api.post('/tenants', async (c) => {
     })
 
     // Set as active tenant immediately
-    setCookie(c, 'morphic_active_tenant', newTenant.id.toString(), {
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax',
-      maxAge: 60 * 60 * 24 * 30,
-    })
+    setCookie(
+      c,
+      'morphic_active_tenant',
+      newTenant.id.toString(),
+      getCookieOptions(c, 60 * 60 * 24 * 30)
+    )
 
     return c.json({ success: true, tenant: newTenant }, 201)
   } catch (err) {
@@ -2020,7 +2128,11 @@ api.post('/tenants/switch', async (c) => {
     if (userData.role !== 'super_admin') {
       return c.json({ error: 'Unauthorized' }, 403)
     }
-    deleteCookie(c, 'morphic_active_tenant', { path: '/' })
+    const cookieOpts = getCookieOptions(c, 0)
+    deleteCookie(c, 'morphic_active_tenant', {
+      path: cookieOpts.path,
+      domain: cookieOpts.domain,
+    })
     return c.json({ success: true })
   }
 
@@ -2042,13 +2154,12 @@ api.post('/tenants/switch', async (c) => {
     return c.json({ error: 'Unauthorized' }, 403)
   }
 
-  setCookie(c, 'morphic_active_tenant', tenantId.toString(), {
-    path: '/',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax',
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-  })
+  setCookie(
+    c,
+    'morphic_active_tenant',
+    tenantId.toString(),
+    getCookieOptions(c, 60 * 60 * 24 * 30)
+  )
 
   return c.json({ success: true })
 })
@@ -2381,10 +2492,10 @@ const checkPermission = (
 ) => {
   const user = c.get('user')
   if (!user) return false
-  
+
   const authType = c.get('authType')
   const tenantRole = c.get('tenantRole')
-  
+
   // For standard browser sessions, super_admins and owners have full access.
   // For API keys, we strictly enforce the ability/permissions and do not bypass for super_admins/owners.
   if (authType !== 'api_key') {
@@ -2600,13 +2711,12 @@ api.post('/auth/login', async (c) => {
     )
 
     // Set HTTP-only cookie
-    setCookie(c, 'morphic_token', token, {
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * expiresInDays,
-      sameSite: 'Lax',
-    })
+    setCookie(
+      c,
+      'morphic_token',
+      token,
+      getCookieOptions(c, 60 * 60 * 24 * expiresInDays)
+    )
 
     // Update last login
     await db
@@ -2686,13 +2796,12 @@ api.post('/auth/login/2fa', async (c) => {
     const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * expiresInDays
     const token = await sign({ id: user.id, role: user.role, exp }, secret)
 
-    setCookie(c, 'morphic_token', token, {
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * expiresInDays,
-      sameSite: 'Lax',
-    })
+    setCookie(
+      c,
+      'morphic_token',
+      token,
+      getCookieOptions(c, 60 * 60 * 24 * expiresInDays)
+    )
 
     await db
       .update(users)
@@ -3121,7 +3230,9 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
   try {
     const tenantId = c.get('tenantId')
     const idOrSlug = c.req.param('idOrSlug')
-    console.log(`[Entries API] Request for: ${idOrSlug}, Tenant ID (Context): ${tenantId}, X-Tenant-ID Header: ${c.req.header('X-Tenant-ID')}`)
+    console.log(
+      `[Entries API] Request for: ${idOrSlug}, Tenant ID (Context): ${tenantId}, X-Tenant-ID Header: ${c.req.header('X-Tenant-ID')}`
+    )
     let id: number | null = null
 
     const colConditions = []
@@ -4226,14 +4337,21 @@ const formSubmitLimiter = rateLimiter({
   limit: 5, // Limit each IP to 5 submissions per form
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
-    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || c.req.header('x-real-ip') || 'anonymous'
+    const ip =
+      c.req.header('CF-Connecting-IP') ||
+      c.req.header('X-Forwarded-For') ||
+      c.req.header('x-real-ip') ||
+      'anonymous'
     const tenantSlug = c.req.param('tenantSlug') || ''
     const slug = c.req.param('slug') || ''
     return `${ip}-${tenantSlug}-${slug}`
   },
   handler: (c) => {
-    return c.json({ error: 'Too many submissions. Please try again in 15 minutes.' }, 429)
-  }
+    return c.json(
+      { error: 'Too many submissions. Please try again in 15 minutes.' },
+      429
+    )
+  },
 })
 
 // Public Form Submission
@@ -4247,7 +4365,8 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
       .from(tenants)
       .where(eq(tenants.slug, tenantSlug))
       .limit(1)
-    if (tenantResult.length === 0) return c.json({ error: 'Organization not found' }, 404)
+    if (tenantResult.length === 0)
+      return c.json({ error: 'Organization not found' }, 404)
     const tenant = tenantResult[0]
 
     const formResult = await db
@@ -4259,7 +4378,10 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
 
     const form = formResult[0]
     if (!form.isActive) {
-      return c.json({ error: 'This form is currently closed for submissions.' }, 400)
+      return c.json(
+        { error: 'This form is currently closed for submissions.' },
+        400
+      )
     }
 
     let body: Record<string, any> = {}
@@ -4280,27 +4402,40 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
     const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
 
     if (turnstileSecret && !isLocalhost) {
-      const turnstileToken = body['cf-turnstile-response'] || body['turnstileToken']
+      const turnstileToken =
+        body['cf-turnstile-response'] || body['turnstileToken']
       if (!turnstileToken) {
-        return c.json({ error: 'Security verification failed: Missing Turnstile token.' }, 400)
+        return c.json(
+          { error: 'Security verification failed: Missing Turnstile token.' },
+          400
+        )
       }
 
       try {
-        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            secret: turnstileSecret,
-            response: turnstileToken,
-            remoteip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || '',
-          }),
-        })
+        const verifyRes = await fetch(
+          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              secret: turnstileSecret,
+              response: turnstileToken,
+              remoteip:
+                c.req.header('CF-Connecting-IP') ||
+                c.req.header('X-Forwarded-For') ||
+                '',
+            }),
+          }
+        )
 
         const verifyData: any = await verifyRes.json()
         if (!verifyData.success) {
-          return c.json({ error: 'Security verification failed: Invalid Turnstile token.' }, 400)
+          return c.json(
+            { error: 'Security verification failed: Invalid Turnstile token.' },
+            400
+          )
         }
       } catch (err) {
         console.error('Turnstile verification error:', err)
@@ -4310,7 +4445,10 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
 
     // 1. Origin Check (CORS-like security)
     const requestOrigin = c.req.header('Origin') || c.req.header('Referer')
-    const isLocalhostOrigin = requestOrigin && (requestOrigin.toLowerCase().includes('localhost') || requestOrigin.toLowerCase().includes('127.0.0.1'))
+    const isLocalhostOrigin =
+      requestOrigin &&
+      (requestOrigin.toLowerCase().includes('localhost') ||
+        requestOrigin.toLowerCase().includes('127.0.0.1'))
     if (form.allowedOrigins && !isLocalhostOrigin) {
       const allowed = form.allowedOrigins
         .split(',')
@@ -4344,22 +4482,35 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
 
       // 1. Check required fields
       if (field.required && (val === undefined || val === null || val === '')) {
-        return c.json({ error: `Field "${field.label || field.name}" is required` }, 400)
+        return c.json(
+          { error: `Field "${field.label || field.name}" is required` },
+          400
+        )
       }
 
       // 2. Filter input key/values (only keep keys defined in schema)
       if (val !== undefined && val !== null) {
         if (field.type === 'text' || field.type === 'textarea') {
           const strVal = String(val)
-          if (field.validation?.minLength !== undefined && strVal.length < field.validation.minLength) {
+          if (
+            field.validation?.minLength !== undefined &&
+            strVal.length < field.validation.minLength
+          ) {
             return c.json(
-              { error: `Field "${field.label || field.name}" must be at least ${field.validation.minLength} characters` },
+              {
+                error: `Field "${field.label || field.name}" must be at least ${field.validation.minLength} characters`,
+              },
               400
             )
           }
-          if (field.validation?.maxLength !== undefined && strVal.length > field.validation.maxLength) {
+          if (
+            field.validation?.maxLength !== undefined &&
+            strVal.length > field.validation.maxLength
+          ) {
             return c.json(
-              { error: `Field "${field.label || field.name}" cannot exceed ${field.validation.maxLength} characters` },
+              {
+                error: `Field "${field.label || field.name}" cannot exceed ${field.validation.maxLength} characters`,
+              },
               400
             )
           }
@@ -4374,7 +4525,12 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
           const strVal = String(val).trim()
           // Basic email format check
           if (strVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) {
-            return c.json({ error: `Field "${field.label || field.name}" must be a valid email address` }, 400)
+            return c.json(
+              {
+                error: `Field "${field.label || field.name}" must be a valid email address`,
+              },
+              400
+            )
           }
           filteredBody[field.name] = strVal
         } else {
@@ -4382,7 +4538,6 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
         }
       }
     }
-
 
     // 3. Email Notification Check
     if (form.emailNotifications && form.tenantId) {
@@ -4409,7 +4564,9 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
 
         const emails = tenantUsers.map((u) => u.email).filter(Boolean)
         if (emails.length > 0) {
-          const formFieldMap = new Map((form.fields as any[] || []).map((f: any) => [f.name, f]))
+          const formFieldMap = new Map(
+            ((form.fields as any[]) || []).map((f: any) => [f.name, f])
+          )
           const submittedFieldsHtml = Object.entries(filteredBody)
             .filter(([key]) => formFieldMap.has(key))
             .map(([key, val]) => {
