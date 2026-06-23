@@ -38,6 +38,7 @@ services:
       - CLOUDINARY_UPLOAD_PRESET=
       # Optional
       - SIMPLE_HOMEPAGE=0
+      - APP_DOMAIN=
     depends_on:
       - db
 

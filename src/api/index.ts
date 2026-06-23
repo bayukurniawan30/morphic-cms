@@ -65,11 +65,13 @@ const getCookieOptions = (c: any, maxAge: number) => {
   const cleanHost = host.split(':')[0]
   let domain: string | undefined = undefined
 
+  const baseAppDomain = process.env.APP_DOMAIN || 'morphic-cms.com'
+
   if (
-    cleanHost.endsWith('.morphic-cms.com') ||
-    cleanHost === 'morphic-cms.com'
+    cleanHost.endsWith(`.${baseAppDomain}`) ||
+    cleanHost === baseAppDomain
   ) {
-    domain = '.morphic-cms.com'
+    domain = `.${baseAppDomain}`
   }
 
   return {
@@ -469,8 +471,12 @@ app.use('*', async (c, next) => {
   const cleanHost = host.split(':')[0]
   let subdomain: string | null = null
 
-  if (cleanHost.endsWith('.morphic-cms.com')) {
-    subdomain = cleanHost.slice(0, -'.morphic-cms.com'.length)
+  const baseAppDomain = process.env.APP_DOMAIN || 'morphic-cms.com'
+
+  if (cleanHost.endsWith(`.${baseAppDomain}`)) {
+    subdomain = cleanHost.slice(0, -`.${baseAppDomain}`.length)
+  } else if (cleanHost.endsWith('.lvh.me')) {
+    subdomain = cleanHost.slice(0, -'.lvh.me'.length)
   } else if (cleanHost.endsWith('.localhost')) {
     subdomain = cleanHost.slice(0, -'.localhost'.length)
   }
@@ -582,6 +588,7 @@ app.use('*', async (c, next) => {
         activeTenant: currentTenant,
         activeTenantRole: c.get('tenantRole'),
         availableTenants: availableTenants,
+        appDomain: process.env.APP_DOMAIN || 'morphic-cms.com',
       })
     } catch (e) {
       console.error('Failed to fetch available tenants for shared props:', e)
@@ -604,7 +611,8 @@ const requireAuth = async (c: any, next: any) => {
   // Redirect to subdomain if accessing root domain but a tenant is active (except for super_admin who might want global access)
   const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
   const cleanHost = host.split(':')[0]
-  const isRootDomain = cleanHost === 'morphic-cms.com'
+  const baseAppDomain = process.env.APP_DOMAIN || 'morphic-cms.com'
+  const isRootDomain = cleanHost === baseAppDomain
 
   if (
     isRootDomain &&

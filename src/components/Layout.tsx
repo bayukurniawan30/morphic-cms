@@ -127,10 +127,11 @@ export default function Layout({ user, title, children }: LayoutProps) {
 
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { url, props } = usePage()
-  const { activeTenant, activeTenantRole, availableTenants } = props as any as {
+  const { activeTenant, activeTenantRole, availableTenants, appDomain } = props as any as {
     activeTenant: TenantProps | null
     activeTenantRole: string | null
     availableTenants: TenantProps[]
+    appDomain?: string
   }
   const [globals, setGlobals] = React.useState<any[]>([])
   const [showAllGlobals, setShowAllGlobals] = React.useState(false)
@@ -167,18 +168,17 @@ export default function Layout({ user, title, children }: LayoutProps) {
       if (res.ok) {
         const host = window.location.host
         const cleanHost = host.split(':')[0]
-        let baseDomain: string
+        const baseDomain = appDomain || 'morphic-cms.com'
+        let isCustomDomain = false
 
-        if (cleanHost.includes('morphic-cms.com') || cleanHost.endsWith('.morphic-cms.com')) {
-          baseDomain = 'morphic-cms.com'
-        } else {
-          baseDomain = ''
+        if (cleanHost.includes(baseDomain) || cleanHost.endsWith(`.${baseDomain}`)) {
+          isCustomDomain = true
         }
 
-        if (baseDomain && tenant) {
+        if (isCustomDomain && tenant) {
           const protocol = window.location.protocol
           window.location.href = `${protocol}//${tenant.slug}.${baseDomain}/dashboard`
-        } else if (baseDomain && !tenant) {
+        } else if (isCustomDomain && !tenant) {
           const protocol = window.location.protocol
           window.location.href = `${protocol}//${baseDomain}/dashboard`
         } else {

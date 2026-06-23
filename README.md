@@ -7,7 +7,7 @@
 
 🌐 [Official Website](https://morphic-cms.com) | 📖 [Documentation](https://morphic-cms.com/docs)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE,CLOUDFLARE_TURNSTILE_SITE_KEY,CLOUDFLARE_TURNSTILE_SECRET_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE,CLOUDFLARE_TURNSTILE_SITE_KEY,CLOUDFLARE_TURNSTILE_SECRET_KEY,APP_DOMAIN)
 
 _Built with Hono and Postgres JSONB to eliminate database schema friction entirely._
 
@@ -62,6 +62,22 @@ To protect your public forms from spam, Morphic integrates Cloudflare Turnstile:
 
 ---
 
+### 🌐 Multi-Tenant Subdomain Routing
+
+Morphic CMS supports isolated multi-tenant routing using subdomains (e.g. `tenant-slug.yourdomain.com`). 
+
+To configure subdomains for your custom domain:
+1. In Vercel or your hosting provider, add a wildcard domain mapping (e.g., `*.yourdomain.com`).
+2. Add the `APP_DOMAIN` environment variable in your `.env` file:
+   ```env
+   APP_DOMAIN=yourdomain.com
+   ```
+If `APP_DOMAIN` is not set, it defaults to `morphic-cms.com`.
+
+*Note: For local development, subdomain redirects are automatically bypassed when accessing raw `localhost` to avoid browser cookie domain restrictions.*
+
+---
+
 ### 🛠️ The "Edge-First" Tech Stack
 
 Morphic leverages the most cutting-edge tools in the ecosystem:
@@ -93,7 +109,7 @@ The fastest way to get Morphic running is to click the **Deploy with Vercel** bu
    ```
 
 2. **Configure Environment**:
-   Copy `.env.example` to `.env` and fill in your database, Cloudinary, and optional `SIMPLE_HOMEPAGE` setting.
+   Copy `.env.example` to `.env` and fill in your database, Cloudinary, and optional `SIMPLE_HOMEPAGE` and `APP_DOMAIN` settings.
 
 3. **Database Setup**:
 

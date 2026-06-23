@@ -592,6 +592,19 @@ export default function Documentation({ user }: { user: any }) {
             They also have access to the <strong>System Global</strong> view to
             see platform-wide activity.
           </p>
+
+          <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 pt-4'>
+            Subdomain Routing & Custom Domains
+          </h4>
+          <p>
+            Morphic CMS dynamically maps subdomains to specific tenants. For example, if you have a tenant with slug <code>xxx</code>, you can access its dashboard directly via <code>xxx.yourdomain.com</code>.
+          </p>
+          <p className='text-sm text-muted-foreground leading-relaxed'>
+            To enable this, configure the <code>APP_DOMAIN</code> environment variable in your server settings (e.g., <code>APP_DOMAIN=yourdomain.com</code>) and add a wildcard domain record (<code>*.yourdomain.com</code>) pointing to your deployment. If <code>APP_DOMAIN</code> is not configured, it defaults to <code>morphic-cms.com</code>.
+          </p>
+          <p className='text-xs text-muted-foreground italic leading-relaxed'>
+            Note: Subdomain redirects are automatically bypassed during local development on <code>localhost</code> to avoid cookie domain restrictions in modern browsers.
+          </p>
         </div>
       </Section>
 
@@ -615,8 +628,9 @@ export default function Documentation({ user }: { user: any }) {
             <span className='font-bold'>Setup Environment</span>
           </div>
           <p className='mb-4'>
-            Rename <code>.env.example</code> to <code>.env</code> and add your{' '}
-            <code>DATABASE_URL</code>.
+            Rename <code>.env.example</code> to <code>.env</code>, configure your{' '}
+            <code>DATABASE_URL</code>, and optionally set{' '}
+            <code>APP_DOMAIN</code> to configure multi-tenant subdomain routing.
           </p>
           <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4 mt-4'>
             <div className='text-sm space-y-2 w-full flex-1'>
@@ -1476,7 +1490,7 @@ function verifyWebhook(payload, signature, secret) {
                 DATABASE_URL, JWT_SECRET, JWT_EXPIRES_IN_DAYS, STORAGE_SERVICE,
                 CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
                 CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, EMAIL_SERVICE,
-                RESEND_API_KEY, EMAIL_FROM, SIMPLE_HOMEPAGE
+                RESEND_API_KEY, EMAIL_FROM, SIMPLE_HOMEPAGE, APP_DOMAIN
               </div>
             </div>
           </div>

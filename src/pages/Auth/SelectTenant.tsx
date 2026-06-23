@@ -11,9 +11,10 @@ interface Tenant {
 interface SelectTenantProps {
   user: any
   tenants: Tenant[]
+  appDomain?: string
 }
 
-export default function SelectTenant({ user, tenants }: SelectTenantProps) {
+export default function SelectTenant({ user, tenants, appDomain }: SelectTenantProps) {
   const { post, processing } = useForm()
 
   const handleSelect = useCallback(
@@ -28,10 +29,11 @@ export default function SelectTenant({ user, tenants }: SelectTenantProps) {
           if (tenant) {
             const host = window.location.host
             const cleanHost = host.split(':')[0]
+            const baseDomain = appDomain || 'morphic-cms.com'
 
-            if (cleanHost.includes('morphic-cms.com') || cleanHost.endsWith('.morphic-cms.com')) {
+            if (cleanHost.includes(baseDomain) || cleanHost.endsWith(`.${baseDomain}`)) {
               const protocol = window.location.protocol
-              window.location.href = `${protocol}//${tenant.slug}.morphic-cms.com/dashboard`
+              window.location.href = `${protocol}//${tenant.slug}.${baseDomain}/dashboard`
             } else {
               window.location.href = '/dashboard'
             }
@@ -41,7 +43,7 @@ export default function SelectTenant({ user, tenants }: SelectTenantProps) {
         }
       })
     },
-    [tenants]
+    [tenants, appDomain]
   )
 
   useEffect(() => {
