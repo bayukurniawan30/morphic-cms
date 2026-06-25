@@ -27,6 +27,7 @@ import {
   Languages,
   Layers,
   Lock,
+  Flame,
   Menu,
   RefreshCw,
   Rocket,
@@ -1489,7 +1490,7 @@ export default function Home({
                     Pricing & License
                   </td>
                   <td className='p-6 text-white font-bold bg-primary/10 border-x border-white/5'>
-                    Open Source (100% Free Self-Host)
+                    Free Self-Host or Cloud (Free / Pro)
                   </td>
                   <td className='p-6'>Open Source (Limits / Enterprise Pay)</td>
                   <td className='p-6'>
@@ -1875,6 +1876,102 @@ export default function Home({
           </div>
         </section>
 
+        {/* Cloud Callout Section */}
+        <section
+          id='cloud'
+          className='py-28 border-t border-white/5 scroll-mt-24 relative overflow-hidden'
+        >
+          {/* Subtle background glow */}
+          <div className='absolute top-[20%] left-[-10%] w-[35rem] h-[35rem] bg-indigo-500/5 rounded-full blur-[130px] pointer-events-none' />
+          <div className='absolute bottom-0 right-[-10%] w-[35rem] h-[35rem] bg-purple-500/5 rounded-full blur-[130px] pointer-events-none' />
+
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
+            <div className='grid lg:grid-cols-12 gap-12 items-center'>
+              
+              {/* Left Column: Copy */}
+              <div className='lg:col-span-5 space-y-6'>
+                <div className='inline-flex items-center space-x-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs font-semibold text-primary mb-2'>
+                  <Flame className='w-3.5 h-3.5 text-primary animate-pulse mr-1' />
+                  <span>Introducing Morphic Cloud</span>
+                </div>
+                <h2 className='text-3xl md:text-5xl font-black text-white tracking-tight leading-tight'>
+                  Get Started Without the{' '}
+                  <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-400'>
+                    Server Hassle
+                  </span>
+                </h2>
+                <p className='text-slate-400 text-sm md:text-base leading-relaxed'>
+                  Love Morphic CMS but want to skip database provisioning, SSL setups, edge deployment, and ongoing maintenance? Morphic Cloud gets your content projects online instantly on fully managed, high-performance global cloud infrastructure.
+                </p>
+                <div className='pt-4 flex flex-wrap gap-4'>
+                  <Button
+                    asChild
+                    className='h-12 px-6 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5'
+                  >
+                    <Link href='/signup'>Create Free Account</Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant='outline'
+                    className='h-12 px-6 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 transition-all hover:-translate-y-0.5'
+                  >
+                    <Link href='/pricing'>View Pricing & Plans</Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Right Column: Features Grid */}
+              <div className='lg:col-span-7 grid sm:grid-cols-2 gap-6'>
+                {/* Zero Setup */}
+                <div className='p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-all duration-300 backdrop-blur-xl group'>
+                  <div className='w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
+                    <Zap className='w-5 h-5' />
+                  </div>
+                  <h3 className='text-lg font-bold text-white mb-2'>Zero-Config Setup</h3>
+                  <p className='text-xs text-slate-400 leading-relaxed'>
+                    Deploy a production-ready workspace in 3 seconds. We manage the database clusters, caching layers, and security updates under the hood.
+                  </p>
+                </div>
+
+                {/* Team Collaboration */}
+                <div className='p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-all duration-300 backdrop-blur-xl group'>
+                  <div className='w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
+                    <Users className='w-5 h-5' />
+                  </div>
+                  <h3 className='text-lg font-bold text-white mb-2'>Multi-User Workspaces</h3>
+                  <p className='text-xs text-slate-400 leading-relaxed'>
+                    Add up to 3 active users per tenant on our PRO plan. Invite content writers, editors, and administrators with secure role privileges.
+                  </p>
+                </div>
+
+                {/* Built-in Localization */}
+                <div className='p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-all duration-300 backdrop-blur-xl group'>
+                  <div className='w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
+                    <Globe className='w-5 h-5' />
+                  </div>
+                  <h3 className='text-lg font-bold text-white mb-2'>Global Localization</h3>
+                  <p className='text-xs text-slate-400 leading-relaxed'>
+                    Reach global audiences. Build localized content schema structures and serve multi-regional api payloads seamlessly at the edge.
+                  </p>
+                </div>
+
+                {/* Custom Webhooks & Forms */}
+                <div className='p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/20 transition-all duration-300 backdrop-blur-xl group'>
+                  <div className='w-10 h-10 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
+                    <Webhook className='w-5 h-5' />
+                  </div>
+                  <h3 className='text-lg font-bold text-white mb-2'>Webhooks & Forms</h3>
+                  <p className='text-xs text-slate-400 leading-relaxed'>
+                    Trigger builds automatically on Netlify/Vercel with webhook hooks, and collect frontend user submissions directly via Form Builder.
+                  </p>
+                </div>
+
+              </div>
+              
+            </div>
+          </div>
+        </section>
+
         {/* CTA Section */}
         <section className='py-28 text-center relative overflow-hidden'>
           <div className='absolute inset-0 bg-gradient-to-tr from-deep-mocha-900/40 to-transparent border border-white/5 rounded-3xl mx-2' />
@@ -1921,7 +2018,7 @@ export default function Home({
                 MORPHIC
               </span>
             </div>
-            <div className='flex items-center space-x-8'>
+            <div className='flex flex-wrap items-center justify-center gap-x-8 gap-y-4'>
               <a
                 href='#features'
                 className='hover:text-slate-300 transition-colors'
@@ -1951,6 +2048,12 @@ export default function Home({
                 className='hover:text-slate-300 transition-colors'
               >
                 Changelog
+              </Link>
+              <Link
+                href='/terms'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Terms
               </Link>
             </div>
             <div className='opacity-50 text-center md:text-right italic'>

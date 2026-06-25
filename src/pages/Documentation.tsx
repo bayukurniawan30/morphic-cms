@@ -375,7 +375,7 @@ export default function Documentation({ user }: { user: any }) {
                     Pricing & License
                   </td>
                   <td className='p-4 text-foreground/90 font-medium bg-primary/5'>
-                    Open-Source (100% Free Self-Host)
+                    Free Self-Host or Cloud (Free / Pro)
                   </td>
                   <td className='p-4'>Open-Source (Enterprise limits/paid)</td>
                   <td className='p-4'>
@@ -597,14 +597,50 @@ export default function Documentation({ user }: { user: any }) {
             Subdomain Routing & Custom Domains
           </h4>
           <p>
-            Morphic CMS dynamically maps subdomains to specific tenants. For example, if you have a tenant with slug <code>xxx</code>, you can access its dashboard directly via <code>xxx.yourdomain.com</code>.
+            Morphic CMS dynamically maps subdomains to specific tenants. For
+            example, if you have a tenant with slug <code>xxx</code>, you can
+            access its dashboard directly via <code>xxx.yourdomain.com</code>.
           </p>
           <p className='text-sm text-muted-foreground leading-relaxed'>
-            To enable this, configure the <code>APP_DOMAIN</code> environment variable in your server settings (e.g., <code>APP_DOMAIN=yourdomain.com</code>) and add a wildcard domain record (<code>*.yourdomain.com</code>) pointing to your deployment. If <code>APP_DOMAIN</code> is not configured, it defaults to <code>morphic-cms.com</code>.
+            To enable this, configure the <code>APP_DOMAIN</code> environment
+            variable in your server settings (e.g.,{' '}
+            <code>APP_DOMAIN=yourdomain.com</code>) and add a wildcard domain
+            record (<code>*.yourdomain.com</code>) pointing to your deployment.
+            If <code>APP_DOMAIN</code> is not configured, it defaults to{' '}
+            <code>morphic-cms.com</code>.
           </p>
           <p className='text-xs text-muted-foreground italic leading-relaxed'>
-            Note: Subdomain redirects are automatically bypassed during local development on <code>localhost</code> to avoid cookie domain restrictions in modern browsers.
+            Note: Subdomain redirects are automatically bypassed during local
+            development on <code>localhost</code> to avoid cookie domain
+            restrictions in modern browsers.
           </p>
+
+          <h4 className='font-bold text-sm uppercase tracking-widest text-black dark:text-slate-400 pt-4'>
+            SaaS vs Self-Hosted Mode
+          </h4>
+          <p>
+            Morphic CMS can operate as a multi-tenant Cloud SaaS or as a
+            standalone Self-Hosted instance. This behavior is controlled by the{' '}
+            <code>IS_SELF_HOSTED</code> environment variable:
+          </p>
+          <ul className='list-disc pl-5 space-y-2 text-sm text-muted-foreground leading-relaxed'>
+            <li>
+              <strong>
+                <code>true</code> (Default)
+              </strong>
+              : Standalone self-hosted mode. Disables all tier-based limits
+              (unlimited workspaces, user seats, collections, webhooks, and
+              localizations).
+            </li>
+            <li>
+              <strong>
+                <code>false</code>
+              </strong>
+              : Cloud SaaS mode. Enforces workspace limits, storage ceilings,
+              user seats, and localized collections restrictions based on the
+              owner's billing tier (FREE vs PRO).
+            </li>
+          </ul>
         </div>
       </Section>
 
@@ -628,8 +664,8 @@ export default function Documentation({ user }: { user: any }) {
             <span className='font-bold'>Setup Environment</span>
           </div>
           <p className='mb-4'>
-            Rename <code>.env.example</code> to <code>.env</code>, configure your{' '}
-            <code>DATABASE_URL</code>, and optionally set{' '}
+            Rename <code>.env.example</code> to <code>.env</code>, configure
+            your <code>DATABASE_URL</code>, and optionally set{' '}
             <code>APP_DOMAIN</code> to configure multi-tenant subdomain routing.
           </p>
           <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4 mt-4'>
@@ -723,8 +759,8 @@ export default function Documentation({ user }: { user: any }) {
             <p className='mb-4'>
               Forms created with <strong>Internal Storage</strong> can be
               accessed directly by users via a public web page:{' '}
-              <code>{`/public-form/:tenant-slug/:form-slug`}</code>. Morphic provides rich,
-              custom-branding features:
+              <code>{`/public-form/:tenant-slug/:form-slug`}</code>. Morphic
+              provides rich, custom-branding features:
             </p>
             <ul className='list-disc pl-5 space-y-2 text-sm text-muted-foreground'>
               <li>
@@ -1490,7 +1526,8 @@ function verifyWebhook(payload, signature, secret) {
                 DATABASE_URL, JWT_SECRET, JWT_EXPIRES_IN_DAYS, STORAGE_SERVICE,
                 CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
                 CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, EMAIL_SERVICE,
-                RESEND_API_KEY, EMAIL_FROM, SIMPLE_HOMEPAGE, APP_DOMAIN
+                RESEND_API_KEY, EMAIL_FROM, SIMPLE_HOMEPAGE, APP_DOMAIN,
+                IS_SELF_HOSTED
               </div>
             </div>
           </div>

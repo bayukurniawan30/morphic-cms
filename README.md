@@ -7,7 +7,7 @@
 
 🌐 [Official Website](https://morphic-cms.com) | 📖 [Documentation](https://morphic-cms.com/docs)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE,CLOUDFLARE_TURNSTILE_SITE_KEY,CLOUDFLARE_TURNSTILE_SECRET_KEY,APP_DOMAIN)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbayukurniawan30%2Fmorphic-cms&env=DATABASE_URL,JWT_SECRET,JWT_EXPIRES_IN_DAYS,STORAGE_SERVICE,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET,EMAIL_SERVICE,RESEND_API_KEY,EMAIL_FROM,SIMPLE_HOMEPAGE,CLOUDFLARE_TURNSTILE_SITE_KEY,CLOUDFLARE_TURNSTILE_SECRET_KEY,APP_DOMAIN,IS_SELF_HOSTED)
 
 _Built with Hono and Postgres JSONB to eliminate database schema friction entirely._
 
@@ -75,6 +75,19 @@ To configure subdomains for your custom domain:
 If `APP_DOMAIN` is not set, it defaults to `morphic-cms.com`.
 
 *Note: For local development, subdomain redirects are automatically bypassed when accessing raw `localhost` to avoid browser cookie domain restrictions.*
+
+---
+
+### 🖥️ SaaS vs Self-Hosted Mode
+
+Morphic CMS can operate as a multi-tenant Cloud SaaS or as a standalone Self-Hosted instance. This behavior is controlled by the `IS_SELF_HOSTED` environment variable:
+
+```env
+IS_SELF_HOSTED=true
+```
+
+- **`true` (Default)**: Standalone self-hosted mode. Disables all tier-based limits (unlimited workspaces, user seats, collections, webhooks, and localizations).
+- **`false`**: Cloud SaaS mode. Enforces workspace limits, storage ceilings, user seats, and localized collections restrictions based on the owner's billing tier (FREE vs PRO).
 
 ---
 

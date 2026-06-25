@@ -516,6 +516,14 @@ app.get('/docs', async (c) => {
   })
 })
 
+app.get('/terms', async (c) => {
+  const userData = c.get('user')
+  return c.get('inertia')('Terms', {
+    user: userData,
+    title: 'Terms of Service | Morphic CMS',
+  })
+})
+
 const parseMarkdown = (md: string): string => {
   let html = md
   // Escape HTML entities to prevent XSS

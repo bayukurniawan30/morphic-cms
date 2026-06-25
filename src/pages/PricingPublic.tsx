@@ -1,7 +1,7 @@
 import { Logo } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
-import { Check, Flame, HelpCircle, Menu, Sparkles, X } from 'lucide-react'
+import { Check, Flame, HelpCircle, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
 interface PricingPublicProps {
@@ -188,14 +188,12 @@ export default function PricingPublic({
           {/* Header Section */}
           <div className='text-center space-y-4 max-w-2xl mx-auto'>
             <div className='inline-flex items-center gap-2 px-3 py-1 bg-deep-mocha-900/40 border border-deep-mocha-700/25 rounded-full text-xs font-semibold text-deep-mocha-300 mb-2'>
-              <Sparkles className='w-3.5 h-3.5 text-primary' />
+              <Flame className='w-3.5 h-3.5 text-primary' />
               <span>Morphic Cloud</span>
             </div>
             <h1 className='text-4xl md:text-5xl font-black tracking-tight text-white'>
               Find the perfect plan for your{' '}
-              <span className='gradient-text-neon'>
-                Content
-              </span>
+              <span className='gradient-text-neon'>Content</span>
             </h1>
             <p className='text-slate-400 text-base leading-relaxed'>
               Scale from single developers to team-oriented production projects
@@ -412,6 +410,60 @@ export default function PricingPublic({
             </div>
           </div>
         </main>
+
+        {/* Footer */}
+        <footer className='py-16 border-t border-white/5 text-slate-500 text-xs mt-12 bg-deep-mocha-900/20 relative z-10'>
+          <div className='max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6'>
+            <div className='flex items-center space-x-2.5'>
+              <Logo stroke='#ffffff' />
+              <span className='font-black text-white tracking-tighter uppercase'>
+                MORPHIC
+              </span>
+            </div>
+            <div className='flex flex-wrap items-center justify-center gap-x-8 gap-y-4'>
+              <Link
+                href='/#features'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Features
+              </Link>
+              <Link
+                href='/#architecture'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Architecture
+              </Link>
+              <Link
+                href='/#comparison'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Comparison
+              </Link>
+              <Link
+                href='/docs'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Docs
+              </Link>
+              <Link
+                href='/changelog'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Changelog
+              </Link>
+              <Link
+                href='/terms'
+                className='hover:text-slate-300 transition-colors'
+              >
+                Terms
+              </Link>
+            </div>
+            <div className='opacity-50 text-center md:text-right italic'>
+              &copy; {new Date().getFullYear()} Morphic CMS. Released under the
+              MIT License.
+            </div>
+          </div>
+        </footer>
       </div>
     </>
   )
