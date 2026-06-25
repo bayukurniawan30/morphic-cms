@@ -3,11 +3,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { APP_VERSION } from '@/lib/version'
-import { Head, useForm } from '@inertiajs/react'
+import { Head, useForm, usePage } from '@inertiajs/react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import React from 'react'
 
 export default function Index({ title }: { title: string }) {
+  const { props } = usePage()
+  const isSelfHosted = (props as any).isSelfHosted
+
   const { data, setData, setError, errors, processing } = useForm({
     email: '',
     password: '',
@@ -18,11 +21,24 @@ export default function Index({ title }: { title: string }) {
   const [step, setStep] = React.useState(1)
   const [tempToken, setTempToken] = React.useState('')
   const [code, setCode] = React.useState('')
+  const [successMessage, setSuccessMessage] = React.useState('')
+  const [errorMessage, setErrorMessage] = React.useState('')
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('verified') === 'true') {
+      setSuccessMessage('Email verified successfully! You can now sign in.')
+    } else if (params.get('error') === 'verification_failed') {
+      setErrorMessage('Verification link is invalid or has expired.')
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError('email', '')
+    setSuccessMessage('')
+    setErrorMessage('')
 
     try {
       if (step === 1) {
@@ -95,7 +111,17 @@ export default function Index({ title }: { title: string }) {
           </p>
         </div>
 
-        <div className='bg-card/50 backdrop-blur-xl p-8 rounded-3xl border border-border shadow-2xl space-y-8'>
+        <div className='bg-card/50 backdrop-blur-xl p-8 rounded-3xl border border-border shadow-2xl space-y-6'>
+          {successMessage && (
+            <div className='p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-xl text-center animate-in fade-in duration-300'>
+              {successMessage}
+            </div>
+          )}
+          {errorMessage && (
+            <div className='p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold rounded-xl text-center animate-in fade-in duration-300'>
+              {errorMessage}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className='space-y-6'>
             {step === 1 ? (
               <>
@@ -213,7 +239,9 @@ export default function Index({ title }: { title: string }) {
           <p className='text-xs text-muted-foreground uppercase tracking-[0.2em] font-bold'>
             Headless Content Management System
           </p>
-          <p className='text-[10px] font-mono opacity-30'>v{APP_VERSION}</p>
+          {isSelfHosted && (
+            <p className='text-[10px] font-mono opacity-30'>v{APP_VERSION}</p>
+          )}
         </div>
       </div>
     </div>

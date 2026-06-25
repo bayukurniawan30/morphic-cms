@@ -105,6 +105,7 @@ export const entriesRelations = relations(entries, ({ one }) => ({
 
 export const entryVersions = pgTable('entry_versions', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   entryId: integer('entry_id')
     .references(() => entries.id, { onDelete: 'cascade' })
     .notNull(),
@@ -137,6 +138,8 @@ export const users = pgTable(
     username: varchar('username', { length: 255 }).notNull().unique(),
     password: varchar('password', { length: 255 }).notNull(),
     role: roleEnum('role').default('editor').notNull(),
+    planTier: varchar('plan_tier', { length: 50 }).notNull().default('FREE'),
+    allowedMonthlyRequests: integer('allowed_monthly_requests').notNull().default(20000),
     apiKey: varchar('api_key', { length: 255 }).unique(),
     abilityId: integer('ability_id').references(() => abilities.id),
     lastLogin: timestamp('last_login'),
@@ -145,6 +148,9 @@ export const users = pgTable(
     twoFactorSecret: varchar('two_factor_secret', { length: 255 }),
     isTwoFactorEnabled: boolean('is_two_factor_enabled').notNull().default(false),
     recoveryCodes: jsonb('recovery_codes').$type<string[]>().notNull().default([]),
+    isEmailVerified: boolean('is_email_verified').notNull().default(false),
+    emailVerificationToken: varchar('email_verification_token', { length: 255 }),
+    emailVerificationExpiresAt: timestamp('email_verification_expires_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
@@ -180,7 +186,10 @@ export const media = pgTable('media', {
   alt: varchar('alt', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (table) => ({
+  tenantIdIdx: index('media_tenant_id_idx').on(table.tenantId),
+  tenantSizeIdx: index('media_tenant_size_idx').on(table.tenantId, table.size),
+}))
 
 export const documents = pgTable('documents', {
   id: serial('id').primaryKey(),
@@ -195,7 +204,10 @@ export const documents = pgTable('documents', {
   resourceType: varchar('resource_type', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (table) => ({
+  tenantIdIdx: index('documents_tenant_id_idx').on(table.tenantId),
+  tenantSizeIdx: index('documents_tenant_size_idx').on(table.tenantId, table.size),
+}))
 
 export const forms = pgTable('forms', {
   id: serial('id').primaryKey(),

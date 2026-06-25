@@ -28,6 +28,7 @@ import {
   FileCheckIcon,
   FileImageIcon,
   FileText,
+  Flame,
   Globe,
   Languages,
   LayoutDashboard,
@@ -36,10 +37,10 @@ import {
   Menu,
   Plus,
   ShieldCheck,
+  Terminal,
   Users,
   Webhook,
   X,
-  Terminal,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import React, { useState } from 'react'
@@ -49,12 +50,15 @@ interface UserProps {
   name?: string
   email?: string
   role?: 'super_admin' | 'editor'
+  planTier?: string
 }
 
 interface TenantProps {
   id: number
   name: string
   slug: string
+  planTier?: string
+  allowedMonthlyRequests?: number
 }
 
 interface LayoutProps {
@@ -127,11 +131,27 @@ export default function Layout({ user, title, children }: LayoutProps) {
 
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { url, props } = usePage()
-  const { activeTenant, activeTenantRole, availableTenants, appDomain } = props as any as {
+  const {
+    activeTenant,
+    activeTenantRole,
+    availableTenants,
+    appDomain,
+    features,
+    isSelfHosted = false,
+  } = props as any as {
     activeTenant: TenantProps | null
     activeTenantRole: string | null
     availableTenants: TenantProps[]
     appDomain?: string
+    features?: {
+      maxCollections: number
+      maxUsers: number
+      maxWorkspaces: number
+      hasLocalization: boolean
+      hasWebhooks: boolean
+      hasFormBuilder: boolean
+    }
+    isSelfHosted?: boolean
   }
   const [globals, setGlobals] = React.useState<any[]>([])
   const [showAllGlobals, setShowAllGlobals] = React.useState(false)
@@ -171,7 +191,10 @@ export default function Layout({ user, title, children }: LayoutProps) {
         const baseDomain = appDomain || 'morphic-cms.com'
         let isCustomDomain = false
 
-        if (cleanHost.includes(baseDomain) || cleanHost.endsWith(`.${baseDomain}`)) {
+        if (
+          cleanHost.includes(baseDomain) ||
+          cleanHost.endsWith(`.${baseDomain}`)
+        ) {
           isCustomDomain = true
         }
 
@@ -280,13 +303,15 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   isSidebarOpen={isSidebarOpen}
                   currentUrl={url}
                 />
-                <NavItem
-                  href='/forms'
-                  icon={FileCheckIcon}
-                  label='Form Builder'
-                  isSidebarOpen={isSidebarOpen}
-                  currentUrl={url}
-                />
+                {(!features || features.hasFormBuilder) && (
+                  <NavItem
+                    href='/forms'
+                    icon={FileCheckIcon}
+                    label='Form Builder'
+                    isSidebarOpen={isSidebarOpen}
+                    currentUrl={url}
+                  />
+                )}
               </div>
             </div>
 
@@ -328,23 +353,27 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   Globals
                 </h3>
                 <div className='space-y-1'>
-                  {(showAllGlobals ? globals : globals.slice(0, 3)).map((global) => (
-                    <NavItem
-                      key={global.id}
-                      href={`/globals/${global.slug}`}
-                      icon={Globe}
-                      label={global.name}
-                      isSidebarOpen={isSidebarOpen}
-                      currentUrl={url}
-                    />
-                  ))}
+                  {(showAllGlobals ? globals : globals.slice(0, 3)).map(
+                    (global) => (
+                      <NavItem
+                        key={global.id}
+                        href={`/globals/${global.slug}`}
+                        icon={Globe}
+                        label={global.name}
+                        isSidebarOpen={isSidebarOpen}
+                        currentUrl={url}
+                      />
+                    )
+                  )}
                   {globals.length > 3 && (
                     <button
                       type='button'
                       onClick={() => setShowAllGlobals(!showAllGlobals)}
                       className={cn(
                         'w-full flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mt-1.5',
-                        isSidebarOpen ? 'px-4 py-2 justify-start' : 'justify-center py-2'
+                        isSidebarOpen
+                          ? 'px-4 py-2 justify-start'
+                          : 'justify-center py-2'
                       )}
                     >
                       {isSidebarOpen ? (
@@ -389,20 +418,24 @@ export default function Layout({ user, title, children }: LayoutProps) {
                     isSidebarOpen={isSidebarOpen}
                     currentUrl={url}
                   />
-                  <NavItem
-                    href='/localization'
-                    icon={Languages}
-                    label='Localization'
-                    isSidebarOpen={isSidebarOpen}
-                    currentUrl={url}
-                  />
-                  <NavItem
-                    href='/webhooks'
-                    icon={Webhook}
-                    label='Webhooks'
-                    isSidebarOpen={isSidebarOpen}
-                    currentUrl={url}
-                  />
+                  {(!features || features.hasLocalization) && (
+                    <NavItem
+                      href='/localization'
+                      icon={Languages}
+                      label='Localization'
+                      isSidebarOpen={isSidebarOpen}
+                      currentUrl={url}
+                    />
+                  )}
+                  {(!features || features.hasWebhooks) && (
+                    <NavItem
+                      href='/webhooks'
+                      icon={Webhook}
+                      label='Webhooks'
+                      isSidebarOpen={isSidebarOpen}
+                      currentUrl={url}
+                    />
+                  )}
                   <NavItem
                     href='/api-playground'
                     icon={Terminal}
@@ -425,52 +458,54 @@ export default function Layout({ user, title, children }: LayoutProps) {
             )}
           </nav>
 
-          <div
-            className={cn(
-              'p-2 border-t space-y-2 bg-muted/20 transition-all',
-              !isSidebarOpen && 'lg:p-1'
-            )}
-          >
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <a
-                  href='https://github.com/bayukurniawan30/morphic-cms'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm',
-                    !isSidebarOpen && 'lg:justify-center lg:px-0'
-                  )}
-                >
-                  <GithubIcon className='h-5 w-5 shrink-0' />
-                  <span
-                    className={cn(
-                      'truncate transition-all duration-300',
-                      !isSidebarOpen && 'lg:hidden lg:w-0'
-                    )}
-                  >
-                    Support Us
-                  </span>
-                </a>
-              </TooltipTrigger>
-              <TooltipContent
-                side='right'
-                className={cn('hidden', !isSidebarOpen && 'lg:block')}
-              >
-                Support Us on GitHub
-              </TooltipContent>
-            </Tooltip>
+          {isSelfHosted && (
             <div
               className={cn(
-                'px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between transition-all',
-                !isSidebarOpen && 'lg:hidden'
+                'p-2 border-t space-y-2 bg-muted/20 transition-all',
+                !isSidebarOpen && 'lg:p-1'
               )}
             >
-              <span>
-                Version <span className='uppercase'>{getAppVersion()}</span>
-              </span>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <a
+                    href='https://github.com/bayukurniawan30/morphic-cms'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm',
+                      !isSidebarOpen && 'lg:justify-center lg:px-0'
+                    )}
+                  >
+                    <GithubIcon className='h-5 w-5 shrink-0' />
+                    <span
+                      className={cn(
+                        'truncate transition-all duration-300',
+                        !isSidebarOpen && 'lg:hidden lg:w-0'
+                      )}
+                    >
+                      Support Us
+                    </span>
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent
+                  side='right'
+                  className={cn('hidden', !isSidebarOpen && 'lg:block')}
+                >
+                  Support Us on GitHub
+                </TooltipContent>
+              </Tooltip>
+              <div
+                className={cn(
+                  'px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between transition-all',
+                  !isSidebarOpen && 'lg:hidden'
+                )}
+              >
+                <span>
+                  Version <span className='uppercase'>{getAppVersion()}</span>
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
 
         {/* Main Content */}
@@ -503,9 +538,25 @@ export default function Layout({ user, title, children }: LayoutProps) {
                     className='h-9 md:flex items-center gap-2 border-dashed bg-muted/50 hover:bg-muted transition-colors'
                   >
                     <Building2 className='h-4 w-4 text-muted-foreground' />
-                    <span className='max-w-[120px] truncate font-medium'>
-                      {activeTenant ? activeTenant.name : 'System Global'}
-                    </span>
+                    <div className='flex items-center gap-1.5'>
+                      <span className='max-w-[120px] truncate font-medium'>
+                        {activeTenant ? activeTenant.name : 'System Global'}
+                      </span>
+                      {activeTenant &&
+                        (activeTenant.planTier === 'PRO' ? (
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-sm border border-purple-400/20'>
+                            PRO
+                          </span>
+                        ) : (
+                          <Link
+                            href='/pricing'
+                            className='inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary transition-colors border border-border'
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            FREE
+                          </Link>
+                        ))}
+                    </div>
                     <ChevronDown className='h-3 w-3 text-muted-foreground' />
                   </Button>
                 </DropdownMenuTrigger>
@@ -545,22 +596,39 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       </DropdownMenuItem>
                     ))}
                   </div>
-                  {user.role === 'super_admin' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href='/tenants/add'
-                          className='flex items-center gap-2 text-primary font-medium'
-                        >
-                          <Plus className='h-4 w-4' />
-                          <span>Create New Tenant</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  {user &&
+                    (user.role === 'super_admin' ||
+                      user.planTier === 'PRO' ||
+                      user.planTier === 'SELF_HOSTED') && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href='/tenants/add'
+                            className='flex items-center gap-2 text-primary font-medium'
+                          >
+                            <Plus className='h-4 w-4' />
+                            <span>Create New Workspace</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {activeTenant && activeTenant.planTier !== 'PRO' && (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  asChild
+                  className='h-9 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/50 hover:border-purple-300 transition-all font-semibold'
+                >
+                  <Link href='/pricing' className='flex items-center gap-1.5'>
+                    <Flame className='h-3.5 w-3.5' />
+                    <span>Upgrade Plan</span>
+                  </Link>
+                </Button>
+              )}
 
               <Button variant='ghost' size='icon' onClick={toggleTheme}>
                 {resolvedTheme === 'dark' ? (
@@ -612,6 +680,9 @@ export default function Layout({ user, title, children }: LayoutProps) {
                     <Link href={user?.id ? `/users/edit/${user.id}` : '#'}>
                       Profile
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href='/pricing'>Pricing & Plans</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleLogout}

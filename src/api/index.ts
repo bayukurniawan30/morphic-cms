@@ -49,6 +49,8 @@ import apiDocuments from './documents.js'
 import { createGraphQLHandler } from './graphql.js'
 import apiMedia from './media.js'
 import apiUsers from './users.js'
+import { usageTracker, redis } from '../middleware/usageTracker.js'
+import { getTenantFeatures, getWorkspaceFeatures, PLAN_LIMITS } from '../config/features.js'
 
 console.log('🔥 Morphic CMS: Hono Initializing on Vercel Node Runtime')
 
@@ -134,6 +136,260 @@ app.use('/assets/*', serveStatic({ root: distPath }))
 app.use('/favicon.png', serveStatic({ root: distPath }))
 app.use('/vite.svg', serveStatic({ root: distPath }))
 
+// Middleware to decode token, verify user, and determine tenant globally
+app.use('*', async (c, next) => {
+  const getAuthToken = () => {
+    try {
+      return getCookie(c, 'morphic_token')
+    } catch (e) {
+      const cookieHeader =
+        (c.req.raw as any)?.headers?.['cookie'] ||
+        (c.req.raw as any)?.headers?.get?.('cookie')
+      if (typeof cookieHeader === 'string') {
+        const match = cookieHeader.match(/morphic_token=([^;]+)/)
+        return match ? match[1] : undefined
+      }
+      return undefined
+    }
+  }
+
+  const token = getAuthToken()
+
+  // Check for API Key in header or query param
+  const authHeader = c.req.header('Authorization')
+  const apiKeyHeader = authHeader?.startsWith('Bearer ')
+    ? authHeader.substring(7)
+    : undefined
+  const apiKeyQuery = c.req.query('api_key')
+  const apiKey = apiKeyHeader || apiKeyQuery
+
+  let userData: any = null
+  let authType: 'api_key' | 'session' | null = null
+
+  if (apiKey) {
+    authType = 'api_key'
+    try {
+      const userResult = await db
+        .select()
+        .from(users)
+        .where(eq(users.apiKey, apiKey))
+        .limit(1)
+      const dbUser = userResult[0]
+
+      if (dbUser) {
+        userData = {
+          id: dbUser.id,
+          name: dbUser.name || dbUser.username,
+          email: dbUser.email,
+          role: dbUser.role,
+          apiKey: dbUser.apiKey,
+          planTier: dbUser.planTier,
+          allowedMonthlyRequests: dbUser.allowedMonthlyRequests,
+        }
+      }
+    } catch (e) {
+      console.error('Failed to verify API Key:', e)
+    }
+  } else if (token) {
+    authType = 'session'
+    try {
+      const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
+      const decoded = await verify(token, secret, 'HS256')
+
+      const userResult = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, Number(decoded.id)))
+        .limit(1)
+      const dbUser = userResult[0]
+
+      if (dbUser) {
+        userData = {
+          id: dbUser.id,
+          name: dbUser.name || dbUser.username,
+          email: dbUser.email,
+          role: dbUser.role,
+          apiKey: dbUser.apiKey,
+          planTier: dbUser.planTier,
+          allowedMonthlyRequests: dbUser.allowedMonthlyRequests,
+        }
+      }
+    } catch (e) {
+      console.error('Failed to verify token globally:', e)
+    }
+  }
+
+  c.set('user', userData)
+  c.set('authType', authType)
+
+  // --- Tenant Detection ---
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
+  const cleanHost = host.split(':')[0]
+  let subdomain: string | null = null
+
+  const baseAppDomain = process.env.APP_DOMAIN || 'morphic-cms.com'
+
+  if (cleanHost.endsWith(`.${baseAppDomain}`)) {
+    subdomain = cleanHost.slice(0, -`.${baseAppDomain}`.length)
+  }
+
+  if (subdomain === 'www' || subdomain === 'api') {
+    subdomain = null
+  }
+
+  let subdomainTenantId: number | null = null
+  let subdomainTenant: any = null
+  if (subdomain) {
+    try {
+      const tenantResult = await db
+        .select()
+        .from(tenants)
+        .where(eq(tenants.slug, subdomain))
+        .limit(1)
+      if (tenantResult[0]) {
+        subdomainTenant = tenantResult[0]
+        subdomainTenantId = tenantResult[0].id
+      }
+    } catch (e) {
+      console.error('Failed to resolve tenant by subdomain:', e)
+    }
+  }
+
+  // Subdomain tenant ID overrides cookie/header if present and valid
+  const activeTenantId =
+    subdomainTenantId?.toString() ||
+    c.req.header('X-Tenant-ID') ||
+    getCookie(c, 'morphic_active_tenant')
+
+  let currentTenant: any = null
+  let tenantId: number | null = null
+  let tenantRole: string | null = null
+
+  if (userData && activeTenantId) {
+    try {
+      const id = Number(activeTenantId)
+      // Verify user has access to this tenant
+      const userTenantAccess = await db
+        .select()
+        .from(usersToTenants)
+        .where(
+          and(
+            eq(usersToTenants.userId, userData.id),
+            eq(usersToTenants.tenantId, id)
+          )
+        )
+        .limit(1)
+
+      if (userTenantAccess.length > 0 || userData.role === 'super_admin') {
+        if (subdomainTenant && subdomainTenant.id === id) {
+          currentTenant = subdomainTenant
+        } else {
+          const tenantResult = await db
+            .select()
+            .from(tenants)
+            .where(eq(tenants.id, id))
+            .limit(1)
+          if (tenantResult[0]) {
+            currentTenant = tenantResult[0]
+          }
+        }
+
+        if (currentTenant) {
+          tenantId = id
+          tenantRole =
+            userTenantAccess[0]?.role ||
+            (userData?.role === 'super_admin' ? 'owner' : 'member')
+
+          try {
+            const ownerRecord = await db
+              .select({
+                planTier: users.planTier,
+                allowedMonthlyRequests: users.allowedMonthlyRequests,
+              })
+              .from(usersToTenants)
+              .innerJoin(users, eq(usersToTenants.userId, users.id))
+              .where(
+                and(
+                  eq(usersToTenants.tenantId, id),
+                  eq(usersToTenants.role, 'owner')
+                )
+              )
+              .limit(1)
+
+            if (ownerRecord.length > 0) {
+              currentTenant = {
+                ...currentTenant,
+                planTier: ownerRecord[0].planTier,
+                allowedMonthlyRequests: ownerRecord[0].allowedMonthlyRequests,
+              }
+            } else {
+              currentTenant = {
+                ...currentTenant,
+                planTier: 'FREE',
+                allowedMonthlyRequests: PLAN_LIMITS.FREE.allowedMonthlyRequests,
+              }
+            }
+          } catch (err) {
+            console.error('Failed to resolve tenant owner plan details:', err)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to verify tenant access:', e)
+    }
+  }
+
+  c.set('tenantId', tenantId)
+  c.set('currentTenant', currentTenant)
+  c.set('tenantRole', tenantRole)
+
+  await next()
+})
+
+// Inject shared Inertia props
+app.use('*', async (c, next) => {
+  if (!c.req.path.startsWith('/api/')) {
+    const userData = c.get('user')
+    const currentTenant = c.get('currentTenant')
+
+    let availableTenants: any[] = []
+    let features = null
+
+    if (userData) {
+      try {
+        if (userData.role === 'super_admin') {
+          availableTenants = await db.select().from(tenants)
+        } else {
+          availableTenants = await db
+            .select({
+              id: tenants.id,
+              name: tenants.name,
+              slug: tenants.slug,
+            })
+            .from(tenants)
+            .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+            .where(eq(usersToTenants.userId, userData.id))
+        }
+
+        features = await getWorkspaceFeatures(currentTenant?.id)
+      } catch (e) {
+        console.error('Failed to fetch available tenants for shared props:', e)
+      }
+    }
+
+    c.set('inertiaSharedProps' as any, {
+      user: userData || null,
+      activeTenant: currentTenant || null,
+      activeTenantRole: c.get('tenantRole') || null,
+      availableTenants: availableTenants,
+      appDomain: process.env.APP_DOMAIN || 'morphic-cms.com',
+      features,
+      isSelfHosted: process.env.IS_SELF_HOSTED === 'true',
+    })
+  }
+  await next()
+})
+
 // Serve the Landing Page at root
 app.get('/', async (c) => {
   const isSimple = process.env.SIMPLE_HOMEPAGE === '1'
@@ -145,7 +401,77 @@ app.get('/', async (c) => {
 
 // Serve the Login page at /login
 app.get('/login', async (c) => {
+  const userData = c.get('user')
+  if (userData) {
+    return c.redirect('/dashboard')
+  }
   return c.get('inertia')('Index', { title: 'Morphic CMS' })
+})
+
+// Serve the Sign Up page at /signup
+app.get('/signup', async (c) => {
+  const userData = c.get('user')
+  if (userData) {
+    return c.redirect('/dashboard')
+  }
+  return c.get('inertia')('Auth/SignUp', {
+    title: 'Morphic CMS',
+    turnstileSiteKey: process.env.CLOUDFLARE_TURNSTILE_SITE_KEY || '',
+  })
+})
+
+// Verify email address confirmation route
+app.get('/verify-email', async (c) => {
+  const token = c.req.query('token')
+  if (!token) {
+    return c.redirect('/login?error=verification_failed')
+  }
+
+  try {
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.emailVerificationToken, token),
+        gt(users.emailVerificationExpiresAt, new Date())
+      ))
+      .limit(1)
+
+    const user = userResult[0]
+    if (!user) {
+      return c.redirect('/login?error=verification_failed')
+    }
+
+    await db
+      .update(users)
+      .set({
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+
+    return c.redirect('/login?verified=true')
+  } catch (err) {
+    console.error('Error during email verification:', err)
+    return c.redirect('/login?error=verification_failed')
+  }
+})
+
+// Serve the Pricing page at /pricing
+app.get('/pricing', async (c) => {
+  const userData = c.get('user')
+  if (userData) {
+    return c.get('inertia')('Pricing', {
+      user: userData,
+      lemonSqueezyProUrl: process.env.LEMON_SQUEEZY_PRO_CHECKOUT_URL || '',
+      title: 'Pricing & Plans',
+    })
+  }
+  return c.get('inertia')('PricingPublic', {
+    lemonSqueezyProUrl: process.env.LEMON_SQUEEZY_PRO_CHECKOUT_URL || '',
+    title: 'Pricing & Plans',
+  })
 })
 
 app.get('/logout', async (c) => {
@@ -384,221 +710,10 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
   }
 })
 
-// Middleware to inject the authenticated user into the Inertia shared props globally
-app.use('*', async (c, next) => {
-  const getAuthToken = () => {
-    try {
-      return getCookie(c, 'morphic_token')
-    } catch (e) {
-      const cookieHeader =
-        (c.req.raw as any)?.headers?.['cookie'] ||
-        (c.req.raw as any)?.headers?.get?.('cookie')
-      if (typeof cookieHeader === 'string') {
-        const match = cookieHeader.match(/morphic_token=([^;]+)/)
-        return match ? match[1] : undefined
-      }
-      return undefined
-    }
-  }
 
-  const token = getAuthToken()
-
-  // Check for API Key in header or query param
-  const authHeader = c.req.header('Authorization')
-  const apiKeyHeader = authHeader?.startsWith('Bearer ')
-    ? authHeader.substring(7)
-    : undefined
-  const apiKeyQuery = c.req.query('api_key')
-  const apiKey = apiKeyHeader || apiKeyQuery
-
-  let userData: any = null
-  let authType: 'api_key' | 'session' | null = null
-
-  if (apiKey) {
-    authType = 'api_key'
-    try {
-      const userResult = await db
-        .select()
-        .from(users)
-        .where(eq(users.apiKey, apiKey))
-        .limit(1)
-      const dbUser = userResult[0]
-
-      if (dbUser) {
-        userData = {
-          id: dbUser.id,
-          name: dbUser.name || dbUser.username,
-          email: dbUser.email,
-          role: dbUser.role,
-          apiKey: dbUser.apiKey,
-        }
-      }
-    } catch (e) {
-      console.error('Failed to verify API Key:', e)
-    }
-  } else if (token) {
-    authType = 'session'
-    try {
-      const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
-      const decoded = await verify(token, secret, 'HS256')
-
-      const userResult = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, Number(decoded.id)))
-        .limit(1)
-      const dbUser = userResult[0]
-
-      if (dbUser) {
-        userData = {
-          id: dbUser.id,
-          name: dbUser.name || dbUser.username,
-          email: dbUser.email,
-          role: dbUser.role,
-          apiKey: dbUser.apiKey,
-        }
-      }
-    } catch (e) {
-      console.error('Failed to verify token globally:', e)
-    }
-  }
-
-  c.set('user', userData)
-  c.set('authType', authType)
-
-  // --- Tenant Detection ---
-  const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
-  const cleanHost = host.split(':')[0]
-  let subdomain: string | null = null
-
-  const baseAppDomain = process.env.APP_DOMAIN || 'morphic-cms.com'
-
-  if (cleanHost.endsWith(`.${baseAppDomain}`)) {
-    subdomain = cleanHost.slice(0, -`.${baseAppDomain}`.length)
-  } else if (cleanHost.endsWith('.lvh.me')) {
-    subdomain = cleanHost.slice(0, -'.lvh.me'.length)
-  } else if (cleanHost.endsWith('.localhost')) {
-    subdomain = cleanHost.slice(0, -'.localhost'.length)
-  }
-
-  if (subdomain === 'www' || subdomain === 'api') {
-    subdomain = null
-  }
-
-  let subdomainTenantId: number | null = null
-  let subdomainTenant: any = null
-  if (subdomain) {
-    try {
-      const tenantResult = await db
-        .select()
-        .from(tenants)
-        .where(eq(tenants.slug, subdomain))
-        .limit(1)
-      if (tenantResult[0]) {
-        subdomainTenant = tenantResult[0]
-        subdomainTenantId = tenantResult[0].id
-      }
-    } catch (e) {
-      console.error('Failed to resolve tenant by subdomain:', e)
-    }
-  }
-
-  // Subdomain tenant ID overrides cookie/header if present and valid
-  const activeTenantId =
-    subdomainTenantId?.toString() ||
-    c.req.header('X-Tenant-ID') ||
-    getCookie(c, 'morphic_active_tenant')
-
-  let currentTenant: any = null
-  let tenantId: number | null = null
-  let tenantRole: string | null = null
-
-  if (userData && activeTenantId) {
-    try {
-      const id = Number(activeTenantId)
-      // Verify user has access to this tenant
-      const userTenantAccess = await db
-        .select()
-        .from(usersToTenants)
-        .where(
-          and(
-            eq(usersToTenants.userId, userData.id),
-            eq(usersToTenants.tenantId, id)
-          )
-        )
-        .limit(1)
-
-      if (userTenantAccess.length > 0 || userData.role === 'super_admin') {
-        if (subdomainTenant && subdomainTenant.id === id) {
-          currentTenant = subdomainTenant
-        } else {
-          const tenantResult = await db
-            .select()
-            .from(tenants)
-            .where(eq(tenants.id, id))
-            .limit(1)
-          if (tenantResult[0]) {
-            currentTenant = tenantResult[0]
-          }
-        }
-
-        if (currentTenant) {
-          tenantId = id
-          tenantRole =
-            userTenantAccess[0]?.role ||
-            (userData?.role === 'super_admin' ? 'owner' : 'member')
-        }
-      }
-    } catch (e) {
-      console.error('Failed to verify tenant access:', e)
-    }
-  }
-
-  c.set('tenantId', tenantId)
-  c.set('currentTenant', currentTenant)
-  c.set('tenantRole', tenantRole)
-
-  await next()
-})
-
-// Inject shared Inertia props
-app.use('*', async (c, next) => {
-  const userData = c.get('user')
-  const currentTenant = c.get('currentTenant')
-
-  if (userData && !c.req.path.startsWith('/api/')) {
-    try {
-      let availableTenants = []
-      if (userData.role === 'super_admin') {
-        availableTenants = await db.select().from(tenants)
-      } else {
-        availableTenants = await db
-          .select({
-            id: tenants.id,
-            name: tenants.name,
-            slug: tenants.slug,
-          })
-          .from(tenants)
-          .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
-          .where(eq(usersToTenants.userId, userData.id))
-      }
-
-      c.set('inertiaSharedProps' as any, {
-        user: userData,
-        activeTenant: currentTenant,
-        activeTenantRole: c.get('tenantRole'),
-        availableTenants: availableTenants,
-        appDomain: process.env.APP_DOMAIN || 'morphic-cms.com',
-      })
-    } catch (e) {
-      console.error('Failed to fetch available tenants for shared props:', e)
-    }
-  }
-  await next()
-})
 
 // Middleware to require authentication for admin pages
-const requireAuth = async (c: any, next: any) => {
+async function requireAuth(c: any, next: any) {
   const userData = c.get('user')
   if (!userData) {
     return c.redirect('/login')
@@ -667,7 +782,6 @@ app.get('/select-tenant', requireAuth, async (c) => {
 
 app.get('/tenants/add', requireAuth, async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin') return c.redirect('/dashboard')
   return c.get('inertia')('Tenants/Add', { user: userData })
 })
 
@@ -1113,7 +1227,7 @@ app.get('/users', requireAuth, async (c) => {
   const role = c.req.query('role')
   const q = c.req.query('q')
   const page = parseInt(c.req.query('page') || '1', 10)
-  const limit = parseInt(c.req.query('limit') || '10', 10)
+  const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 100)
   const offset = (page - 1) * limit
 
   // Dynamic where clause
@@ -1251,6 +1365,18 @@ app.get('/users', requireAuth, async (c) => {
     allTenants = [currentTenant]
   }
 
+  let totalWorkspaceUsers = 0
+  if (tenantId) {
+    const workspaceUsersCount = await db
+      .select({ count: sql`count(*)` })
+      .from(usersToTenants)
+      .where(eq(usersToTenants.tenantId, tenantId))
+    totalWorkspaceUsers = Number(workspaceUsersCount[0]?.count || 0)
+  }
+
+  const flashError = c.req.query('error') || undefined
+  const flashSuccess = c.req.query('success') || undefined
+
   return c.get('inertia')('Users/List', {
     users: processedUsers,
     user: userData,
@@ -1263,6 +1389,11 @@ app.get('/users', requireAuth, async (c) => {
       totalCount,
       limit,
     },
+    totalWorkspaceUsers,
+    flash: {
+      error: flashError,
+      success: flashSuccess,
+    },
   })
 })
 
@@ -1274,6 +1405,21 @@ app.get('/users/add', requireAuth, async (c) => {
     return c.redirect('/users')
   }
   const tenantId = c.get('tenantId')
+
+  if (tenantId && userData.role !== 'super_admin') {
+    const features = await getWorkspaceFeatures(tenantId)
+    const existingUsers = await db
+      .select({ count: sql`count(*)` })
+      .from(usersToTenants)
+      .where(eq(usersToTenants.tenantId, tenantId))
+    const userCount = Number(existingUsers[0]?.count || 0)
+
+    if (userCount >= features.maxUsers) {
+      return c.redirect(
+        `/users?error=User limit reached for this workspace. Upgrade your plan to add more users.`
+      )
+    }
+  }
   const whereClause = tenantId
     ? eq(abilities.tenantId, tenantId)
     : isNull(abilities.tenantId)
@@ -1364,7 +1510,7 @@ app.get('/collections', requireAuth, async (c) => {
   const typeFilter = c.req.query('type') || 'all'
   const q = c.req.query('q')
   const page = parseInt(c.req.query('page') || '1', 10)
-  const limit = parseInt(c.req.query('limit') || '10', 10)
+  const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 100)
   const offset = (page - 1) * limit
 
   // Build where clause
@@ -1428,6 +1574,23 @@ app.get('/collections', requireAuth, async (c) => {
 
   const allCollections = await collectionsQuery
 
+  let totalWorkspaceCollections = 0
+  if (tenantId) {
+    const collectionsCountResult = await db
+      .select({ count: sql`count(*)` })
+      .from(collections)
+      .where(
+        and(
+          eq(collections.type, 'collection'),
+          eq(collections.tenantId, tenantId)
+        )
+      )
+    totalWorkspaceCollections = Number(collectionsCountResult[0]?.count || 0)
+  }
+
+  const flashError = c.req.query('error') || undefined
+  const flashSuccess = c.req.query('success') || undefined
+
   return c.get('inertia')('Collections/List', {
     collections: allCollections.map((r: any) => ({
       ...r.collection,
@@ -1441,6 +1604,11 @@ app.get('/collections', requireAuth, async (c) => {
       totalPages,
       totalCount,
       limit,
+    },
+    totalWorkspaceCollections,
+    flash: {
+      error: flashError,
+      success: flashSuccess,
     },
   })
 })
@@ -1507,7 +1675,7 @@ app.get('/entries/:collectionId', requireAuth, async (c) => {
 
   // Handle pagination/sort for entries
   const page = parseInt(c.req.query('page') || '1', 10)
-  const limit = parseInt(c.req.query('limit') || '10', 10)
+  const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 100)
   const offset = (page - 1) * limit
   const sort = c.req.query('sort') || 'createdAt'
   const dir = c.req.query('dir') || 'desc'
@@ -1786,6 +1954,27 @@ app.get('/collections/edit/:id', requireAuth, async (c) => {
 
 app.get('/collections/add', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+
+  if (tenantId && userData.role !== 'super_admin') {
+    const features = await getWorkspaceFeatures(tenantId)
+    const existingCollections = await db
+      .select({ count: sql`count(*)` })
+      .from(collections)
+      .where(
+        and(
+          eq(collections.type, 'collection'),
+          eq(collections.tenantId, tenantId)
+        )
+      )
+    const count = Number(existingCollections[0]?.count || 0)
+    if (count >= features.maxCollections) {
+      return c.redirect(
+        `/collections?error=Collection limit reached for this workspace. Upgrade your plan to create more.`
+      )
+    }
+  }
+
   return c.get('inertia')('Collections/Add', { user: userData })
 })
 
@@ -1811,6 +2000,8 @@ api.use(
     credentials: true,
   })
 )
+
+api.use('*', usageTracker)
 
 // API Logging Middleware
 api.use('*', async (c, next) => {
@@ -1874,8 +2065,10 @@ api.use('*', async (c, next) => {
   if (
     path === '/api/auth/login' ||
     path === '/api/auth/login/2fa' ||
+    path === '/api/auth/signup' ||
     path === '/api/auth/forgot-password' ||
     path === '/api/auth/reset-password' ||
+    path === '/api/webhooks/lemon-squeezy' ||
     path === '/api/test' ||
     c.req.header('X-Morphic-Test') === 'true' ||
     (path.startsWith('/api/forms/') && path.endsWith('/submit'))
@@ -1996,6 +2189,11 @@ api.post('/webhooks', async (c) => {
       return c.json({ success: true })
     } else {
       // Create
+      const features = await getWorkspaceFeatures(tenantId)
+      if (!features.hasWebhooks) {
+        return c.json({ error: 'Webhook features are not available on this plan. Please upgrade.' }, 403)
+      }
+
       const newWebhook = await db
         .insert(webhooks)
         .values({ name, url, secret, events, isActive, tenantId })
@@ -2017,6 +2215,135 @@ api.delete('/webhooks/:id', async (c) => {
 
   await db.delete(webhooks).where(and(...whereClause))
   return c.json({ success: true })
+})
+
+api.post('/webhooks/lemon-squeezy', async (c) => {
+  const signature = c.req.header('x-signature')
+  const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET
+
+  if (!signature || !secret) {
+    console.error('Lemon Squeezy Webhook: Missing signature header or config secret.')
+    return c.json({ error: 'Unauthorized signature validation setup' }, 401)
+  }
+
+  try {
+    const rawBody = await c.req.text()
+
+    // Validate signature
+    const hmac = crypto.createHmac('sha256', secret)
+    const digest = hmac.update(rawBody).digest('hex')
+    const isValid = crypto.timingSafeEqual(Buffer.from(digest, 'hex'), Buffer.from(signature, 'hex'))
+
+    if (!isValid) {
+      console.error('Lemon Squeezy Webhook: Invalid signature.')
+      return c.json({ error: 'Invalid signature' }, 401)
+    }
+
+    const payload = JSON.parse(rawBody)
+    const eventName = payload.meta?.event_name
+
+    const upgradeEvents = [
+      'order_created',
+      'subscription_created',
+      'subscription_resumed',
+      'subscription_unpaused',
+      'subscription_payment_success',
+      'subscription_payment_recovered',
+      'subscription_plan_changed',
+    ]
+
+    const downgradeEvents = [
+      'subscription_cancelled',
+      'subscription_expired',
+      'subscription_paused',
+      'subscription_payment_failed',
+    ]
+
+    if (upgradeEvents.includes(eventName)) {
+      const customData = payload.meta?.custom_data || {}
+      const userId = customData.user_id || payload.meta?.passthrough
+
+      if (userId) {
+        // 1. Upgrade the user's plan to PRO
+        await db
+          .update(users)
+          .set({
+            planTier: 'PRO',
+            allowedMonthlyRequests: PLAN_LIMITS.PRO.allowedMonthlyRequests,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, Number(userId)))
+
+        console.log(`Lemon Squeezy Webhook: Upgraded user ${userId} to PRO tier. Event: ${eventName}`)
+
+        // 2. Clear Redis cache for all workspaces owned by this user
+        const ownedWorkspaces = await db
+          .select({ tenantId: usersToTenants.tenantId })
+          .from(usersToTenants)
+          .where(
+            and(
+              eq(usersToTenants.userId, Number(userId)),
+              eq(usersToTenants.role, 'owner')
+            )
+          )
+
+        if (redis) {
+          for (const workspace of ownedWorkspaces) {
+            const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
+            await redis.del(cacheKey).catch((err: any) => {
+              console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+            })
+          }
+        }
+      } else {
+        console.warn(`Lemon Squeezy Webhook: No user_id found in metadata/passthrough for upgrade event ${eventName}.`)
+      }
+    } else if (downgradeEvents.includes(eventName)) {
+      const customData = payload.meta?.custom_data || {}
+      const userId = customData.user_id || payload.meta?.passthrough
+
+      if (userId) {
+        // 1. Downgrade the user's plan to FREE
+        await db
+          .update(users)
+          .set({
+            planTier: 'FREE',
+            allowedMonthlyRequests: PLAN_LIMITS.FREE.allowedMonthlyRequests,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, Number(userId)))
+
+        console.log(`Lemon Squeezy Webhook: Downgraded user ${userId} to FREE tier. Event: ${eventName}`)
+
+        // 2. Clear Redis cache for all workspaces owned by this user
+        const ownedWorkspaces = await db
+          .select({ tenantId: usersToTenants.tenantId })
+          .from(usersToTenants)
+          .where(
+            and(
+              eq(usersToTenants.userId, Number(userId)),
+              eq(usersToTenants.role, 'owner')
+            )
+          )
+
+        if (redis) {
+          for (const workspace of ownedWorkspaces) {
+            const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
+            await redis.del(cacheKey).catch((err: any) => {
+              console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+            })
+          }
+        }
+      } else {
+        console.warn(`Lemon Squeezy Webhook: No user_id found in metadata/passthrough for downgrade event ${eventName}.`)
+      }
+    }
+
+    return c.json({ received: true })
+  } catch (err) {
+    console.error('Error handling Lemon Squeezy webhook:', err)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
 })
 
 const yoga = createGraphQLHandler()
@@ -2059,8 +2386,36 @@ api.get('/tenants', async (c) => {
 
 api.post('/tenants', async (c) => {
   const userData = c.get('user')
-  if (userData.role !== 'super_admin')
-    return c.json({ error: 'Forbidden' }, 403)
+  if (!userData) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  // Enforce workspace limit for non-super_admins
+  if (userData.role !== 'super_admin') {
+    try {
+      const ownedWorkspaces = await db
+        .select({ id: tenants.id })
+        .from(tenants)
+        .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+        .where(
+          and(
+            eq(usersToTenants.userId, userData.id),
+            eq(usersToTenants.role, 'owner')
+          )
+        )
+
+      const features = getTenantFeatures(userData.planTier)
+      if (ownedWorkspaces.length >= features.maxWorkspaces) {
+        const errorMsg = userData.planTier === 'PRO'
+          ? `You have reached the limit of ${features.maxWorkspaces} workspaces allowed on the PRO plan.`
+          : `Upgrade to the PRO plan to manage up to 3 workspaces. You have reached the limit of ${features.maxWorkspaces} workspace on the Free plan.`;
+        return c.json({ error: errorMsg }, 403)
+      }
+    } catch (e) {
+      console.error('Failed to verify owned workspaces count:', e)
+      return c.json({ error: 'Internal server error' }, 500)
+    }
+  }
 
   try {
     const { name, slug } = await c.req.json()
@@ -2271,6 +2626,21 @@ api.post('/tenants/:id/users', async (c) => {
         )
       )
   } else {
+    if (userData.role !== 'super_admin') {
+      const features = await getWorkspaceFeatures(tenantId)
+      const existingUsers = await db
+        .select({ count: sql`count(*)` })
+        .from(usersToTenants)
+        .where(eq(usersToTenants.tenantId, tenantId))
+      const userCount = Number(existingUsers[0]?.count || 0)
+
+      if (userCount >= features.maxUsers) {
+        return c.json({
+          error: `Upgrade to PRO plan to add more than ${features.maxUsers} users to this workspace.`,
+        }, 403)
+      }
+    }
+
     await db.insert(usersToTenants).values({
       tenantId,
       userId: targetUserId,
@@ -2382,6 +2752,11 @@ api.post('/locales', async (c) => {
     const tenantId = c.get('tenantId')
     if (!code || !name)
       return c.json({ error: 'Code and name are required' }, 400)
+
+    const features = await getWorkspaceFeatures(tenantId)
+    if (!features.hasLocalization) {
+      return c.json({ error: 'Localization features are not available on this plan. Please upgrade.' }, 403)
+    }
 
     // If setting as default, unset others in the same tenant
     if (isDefault) {
@@ -2512,6 +2887,11 @@ const checkPermission = (
       user.permissions === '*' ||
       tenantRole === 'owner'
     ) {
+      return true
+    }
+  } else {
+    // If it is an API key, we still allow super_admins to bypass if they have '*' or are super_admin role
+    if (user.role === 'super_admin' || user.permissions === '*') {
       return true
     }
   }
@@ -2663,6 +3043,273 @@ api.delete('/abilities/:id', async (c) => {
   }
 })
 
+api.post('/auth/signup', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { name, username, email, password, workspaceName, workspaceSlug } = body
+
+    if (!name || !username || !email || !password || !workspaceName || !workspaceSlug) {
+      return c.json({ error: 'All fields are required.' }, 400)
+    }
+
+    // Cloudflare Turnstile Verification
+    const turnstileSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY
+    const host = c.req.header('host') || ''
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
+    const isTest = process.env.NODE_ENV === 'test' || c.req.header('X-Morphic-Test') === 'true'
+
+    if (turnstileSecret && !isLocalhost && !isTest) {
+      const turnstileToken = body.cf_turnstile_response || body.turnstileToken
+      if (!turnstileToken) {
+        return c.json({ error: 'Security verification failed: Missing Turnstile token.' }, 400)
+      }
+
+      try {
+        const response = await fetch(
+          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              secret: turnstileSecret,
+              response: turnstileToken,
+            }),
+          }
+        )
+
+        const outcome: any = await response.json()
+        if (!outcome.success) {
+          return c.json({ error: 'Security verification failed: Invalid Turnstile token.' }, 400)
+        }
+      } catch (err) {
+        console.error('Turnstile verification error:', err)
+        return c.json({ error: 'Security verification service unavailable.' }, 500)
+      }
+    }
+
+    const now = new Date()
+
+    // Helper to delete an expired, unverified user and their workspaces
+    const deleteExpiredUser = async (userId: number) => {
+      await db.transaction(async (tx) => {
+        const ownedLinks = await tx
+          .select({ tenantId: usersToTenants.tenantId })
+          .from(usersToTenants)
+          .where(and(eq(usersToTenants.userId, userId), eq(usersToTenants.role, 'owner')))
+        
+        const tenantIds = ownedLinks.map(link => link.tenantId)
+        
+        await tx.delete(users).where(eq(users.id, userId))
+        
+        if (tenantIds.length > 0) {
+          await tx.delete(tenants).where(inArray(tenants.id, tenantIds))
+        }
+      })
+    }
+
+    // Validate email uniqueness
+    const emailResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1)
+    if (emailResult.length > 0) {
+      const existingUser = emailResult[0]
+      if (!existingUser.isEmailVerified && existingUser.emailVerificationExpiresAt && existingUser.emailVerificationExpiresAt < now) {
+        await deleteExpiredUser(existingUser.id)
+      } else {
+        return c.json({ error: 'Email is already registered.' }, 400)
+      }
+    }
+
+    // Validate username uniqueness
+    const usernameResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1)
+    if (usernameResult.length > 0) {
+      const existingUser = usernameResult[0]
+      if (!existingUser.isEmailVerified && existingUser.emailVerificationExpiresAt && existingUser.emailVerificationExpiresAt < now) {
+        await deleteExpiredUser(existingUser.id)
+      } else {
+        return c.json({ error: 'Username is already taken.' }, 400)
+      }
+    }
+
+    // Validate workspace slug uniqueness
+    const tenantResult = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.slug, workspaceSlug))
+      .limit(1)
+    if (tenantResult.length > 0) {
+      const tenant = tenantResult[0]
+      const ownerRecord = await db
+        .select({
+          id: users.id,
+          isEmailVerified: users.isEmailVerified,
+          emailVerificationExpiresAt: users.emailVerificationExpiresAt,
+        })
+        .from(usersToTenants)
+        .innerJoin(users, eq(usersToTenants.userId, users.id))
+        .where(and(eq(usersToTenants.tenantId, tenant.id), eq(usersToTenants.role, 'owner')))
+        .limit(1)
+      
+      if (ownerRecord.length > 0) {
+        const owner = ownerRecord[0]
+        if (!owner.isEmailVerified && owner.emailVerificationExpiresAt && owner.emailVerificationExpiresAt < now) {
+          await deleteExpiredUser(owner.id)
+        } else {
+          return c.json({ error: 'Workspace URL slug is already taken.' }, 400)
+        }
+      } else {
+        await db.delete(tenants).where(eq(tenants.id, tenant.id))
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const isSelfHosted = process.env.IS_SELF_HOSTED === 'true'
+    const verificationToken = isSelfHosted ? null : crypto.randomBytes(32).toString('hex')
+    const isEmailVerifiedVal = isSelfHosted
+    const verificationExpiresAt = verificationToken ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null
+
+    // Execute user and workspace creation inside a database transaction
+    const onboarding = await db.transaction(async (tx) => {
+      // 1. Create User
+      const uResult = await tx
+        .insert(users)
+        .values({
+          name,
+          username,
+          email,
+          password: hashedPassword,
+          role: 'editor', // Default role is editor
+          planTier: 'FREE',
+          allowedMonthlyRequests: PLAN_LIMITS.FREE.allowedMonthlyRequests,
+          isEmailVerified: isEmailVerifiedVal,
+          emailVerificationToken: verificationToken,
+          emailVerificationExpiresAt: verificationExpiresAt,
+        })
+        .returning()
+      const newUser = uResult[0]
+
+      // 2. Create Workspace (Tenant)
+      const tResult = await tx
+        .insert(tenants)
+        .values({
+          name: workspaceName,
+          slug: workspaceSlug,
+        })
+        .returning()
+      const newTenant = tResult[0]
+
+      // 3. Link User as Owner of Workspace
+      await tx.insert(usersToTenants).values({
+        userId: newUser.id,
+        tenantId: newTenant.id,
+        role: 'owner',
+      })
+
+      // 4. Seed Default English Locale
+      await tx.insert(locales).values({
+        tenantId: newTenant.id,
+        code: 'en',
+        name: 'English',
+        isDefault: true,
+      })
+
+      // 5. Seed Default "Read Access" Ability
+      await tx.insert(abilities).values({
+        tenantId: newTenant.id,
+        name: 'Read Access',
+        isSystem: '1',
+        permissions: {},
+      })
+
+      return { newUser, newTenant }
+    })
+
+    if (!isSelfHosted && verificationToken) {
+      const proto = c.req.header('x-forwarded-proto') || 'http'
+      const reqHost = c.req.header('x-forwarded-host') || c.req.header('host') || 'localhost:3000'
+      const verificationLink = `${proto}://${reqHost}/verify-email?token=${verificationToken}`
+
+      const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h1 style="color: #87787a; border-bottom: 2px solid #514849; padding-bottom: 10px; font-size: 24px; font-weight: bold; margin-bottom: 16px;">Verify your Morphic CMS Account</h1>
+          <p style="font-size: 16px; line-height: 1.6; color: #555; margin-bottom: 24px;">
+            Thank you for signing up for Morphic CMS! Please verify your email address to activate your account and access your workspace.
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" style="background-color: #514849; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify Email Address</a>
+          </div>
+          <p style="font-size: 14px; color: #666; margin-bottom: 8px;">
+            If the button above doesn't work, copy and paste this URL into your browser:
+          </p>
+          <p style="font-size: 14px; word-break: break-all; margin-bottom: 24px;">
+            <a href="${verificationLink}" style="color: #514849; text-decoration: underline;">${verificationLink}</a>
+          </p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999; line-height: 1.6;">
+            This link will expire in 24 hours. If you did not sign up for a Morphic CMS account, you can safely ignore this email.
+          </p>
+        </div>
+      `
+
+      if (process.env.NODE_ENV !== 'production' || isLocalhost) {
+        console.log(`\n✉️  [Local Dev] Email Verification Link:\n👉 ${verificationLink}\n`)
+      }
+
+      await sendEmail({
+        to: email,
+        subject: 'Verify your Morphic CMS Account',
+        html: htmlContent,
+      })
+
+      return c.json({ success: true, requiresVerification: true })
+    }
+
+    // Sign JWT Token
+    const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
+    const expiresInDays = parseInt(process.env.JWT_EXPIRES_IN_DAYS || '7', 10)
+    const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * expiresInDays
+
+    const token = await sign(
+      {
+        id: onboarding.newUser.id,
+        role: onboarding.newUser.role,
+        exp,
+      },
+      secret
+    )
+
+    // Set auth cookie
+    setCookie(
+      c,
+      'morphic_token',
+      token,
+      getCookieOptions(c, 60 * 60 * 24 * expiresInDays)
+    )
+
+    // Set active tenant cookie
+    setCookie(
+      c,
+      'morphic_active_tenant',
+      onboarding.newTenant.id.toString(),
+      getCookieOptions(c, 60 * 60 * 24 * expiresInDays)
+    )
+
+    return c.json({ success: true, requiresVerification: false })
+  } catch (err) {
+    console.error('Error during onboarding signup:', err)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
 api.post('/auth/login', async (c) => {
   try {
     const body = await c.req.json()
@@ -2689,6 +3336,11 @@ api.post('/auth/login', async (c) => {
 
     if (!isValid) {
       return c.json({ error: 'Invalid credentials' }, 401)
+    }
+
+    // Check if email verification is completed (in Cloud SaaS mode)
+    if (process.env.IS_SELF_HOSTED !== 'true' && !user.isEmailVerified) {
+      return c.json({ error: 'Please verify your email address before logging in.' }, 403)
     }
 
     const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
@@ -3090,6 +3742,31 @@ api.post('/collections', async (c) => {
     const tenantId = c.get('tenantId')
     if (!name) return c.json({ error: 'Name is required' }, 400)
 
+    const userData = c.get('user')
+    if (tenantId && userData?.role !== 'super_admin') {
+      const features = await getWorkspaceFeatures(tenantId)
+      if (body.localized && !features.hasLocalization) {
+        return c.json({
+          error: 'Upgrade to PRO plan to enable Localization features.',
+        }, 403)
+      }
+      const existingCollections = await db
+        .select({ count: sql`count(*)` })
+        .from(collections)
+        .where(
+          and(
+            eq(collections.type, body.type || 'collection'),
+            eq(collections.tenantId, tenantId)
+          )
+        )
+      const count = Number(existingCollections[0]?.count || 0)
+      if (count >= features.maxCollections) {
+        return c.json({
+          error: `Upgrade to PRO plan to create more than ${features.maxCollections} collections.`,
+        }, 403)
+      }
+    }
+
     const hasStatusField = fields?.some(
       (f: any) => f.name.toLowerCase() === 'status'
     )
@@ -3166,6 +3843,16 @@ api.put('/collections/:id', async (c) => {
     )
     if (hasStatusField) {
       return c.json({ error: "'status' is a reserved field name" }, 400)
+    }
+
+    const userData = c.get('user')
+    if (tenantId && userData?.role !== 'super_admin') {
+      const features = await getWorkspaceFeatures(tenantId)
+      if (body.localized && !features.hasLocalization) {
+        return c.json({
+          error: 'Upgrade to PRO plan to enable Localization features.',
+        }, 403)
+      }
     }
 
     const whereClause = [eq(collections.id, id)]
@@ -3418,7 +4105,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     }
 
     const page = parseInt(c.req.query('page') || '1', 10)
-    const limit = parseInt(c.req.query('limit') || '10', 10)
+    const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 100)
     const offset = (page - 1) * limit
 
     const isTrash = c.req.query('trash') === 'true'

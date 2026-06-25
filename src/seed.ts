@@ -71,6 +71,7 @@ async function seed() {
           username: 'superadmin',
           password: hashedPassword,
           role: 'super_admin',
+          isEmailVerified: true,
         })
         .returning()
       userId = user.id

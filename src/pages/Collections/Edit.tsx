@@ -63,6 +63,8 @@ export default function EditCollection({
   const { props: pageProps } = usePage()
   const activeTenant = (pageProps as any).activeTenant
   const isSystemGlobal = !activeTenant
+  const features = (pageProps as any).features
+  const isLocalizationAllowed = user?.role === 'super_admin' || !!features?.hasLocalization
 
   const { data, setData, processing, errors } = useForm({
     name: collection.name,
@@ -522,6 +524,11 @@ export default function EditCollection({
                   <div className='space-y-0.5'>
                     <Label className='flex items-center gap-2'>
                       Localization
+                      {!isLocalizationAllowed && (
+                        <span className='text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider'>
+                          PRO
+                        </span>
+                      )}
                     </Label>
                     <p className='text-xs text-muted-foreground'>
                       Support multiple languages for this collection.
@@ -529,6 +536,7 @@ export default function EditCollection({
                   </div>
                   <Switch
                     checked={data.localized}
+                    disabled={!isLocalizationAllowed}
                     onCheckedChange={(val) => setData('localized', val)}
                   />
                 </div>

@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Link, useForm } from '@inertiajs/react'
+import { Link, useForm, usePage } from '@inertiajs/react'
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -37,6 +37,10 @@ interface AddProps {
 }
 
 export default function AddCollection({ user }: AddProps) {
+  const { props: pageProps } = usePage()
+  const features = (pageProps as any).features
+  const isLocalizationAllowed = user?.role === 'super_admin' || !!features?.hasLocalization
+
   const { data, setData, post, processing, errors } = useForm({
     name: '',
     type: 'collection' as 'collection' | 'global',
@@ -580,6 +584,11 @@ export default function AddCollection({ user }: AddProps) {
                   <div className='space-y-0.5'>
                     <Label className='flex items-center gap-2'>
                       Localization
+                      {!isLocalizationAllowed && (
+                        <span className='text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider'>
+                          PRO
+                        </span>
+                      )}
                     </Label>
                     <p className='text-xs text-muted-foreground'>
                       Support multiple languages for this collection.
@@ -587,6 +596,7 @@ export default function AddCollection({ user }: AddProps) {
                   </div>
                   <Switch
                     checked={data.localized}
+                    disabled={!isLocalizationAllowed}
                     onCheckedChange={(val) => setData('localized', val)}
                   />
                 </div>

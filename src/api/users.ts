@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/index.js'
-import { abilities, users } from '../db/schema.js'
+import { abilities, users, usersToTenants } from '../db/schema.js'
 import { sendEmail } from '../lib/email.js'
+import { getWorkspaceFeatures } from '../config/features.js'
 
 type Variables = {
   user: any
@@ -84,6 +85,21 @@ apiUsers.post('/', async (c) => {
         { error: 'Email, username, and password are required' },
         400
       )
+    }
+
+    if (tenantId && userData.role !== 'super_admin') {
+      const features = await getWorkspaceFeatures(tenantId)
+      const existingUsers = await db
+        .select({ count: sql`count(*)` })
+        .from(usersToTenants)
+        .where(eq(usersToTenants.tenantId, tenantId))
+      const userCount = Number(existingUsers[0]?.count || 0)
+
+      if (userCount >= features.maxUsers) {
+        return c.json({
+          error: `Upgrade to PRO plan to add more than ${features.maxUsers} users to this workspace.`,
+        }, 403)
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)

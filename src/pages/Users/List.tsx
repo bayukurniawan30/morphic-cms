@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Link, router } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import {
   ArrowDown,
   ArrowUp,
@@ -86,6 +86,7 @@ interface ListProps {
     success?: string
     error?: string
   }
+  totalWorkspaceUsers?: number
 }
 
 export default function List({
@@ -96,7 +97,18 @@ export default function List({
   filters,
   pagination,
   flash,
+  totalWorkspaceUsers = 0,
 }: ListProps) {
+  const { props: pageProps } = usePage()
+  const activeTenant = (pageProps as any).activeTenant
+  const features = (pageProps as any).features
+
+  const isLimitReached =
+    user?.role !== 'super_admin' &&
+    !!activeTenant &&
+    !!features &&
+    totalWorkspaceUsers >= features.maxUsers
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [userTenants, setUserTenants] = useState<UserTenant[]>([])
   const [loadingTenants, setLoadingTenants] = useState(false)
@@ -254,16 +266,29 @@ export default function List({
               </h1>
             </div>
             <p className='text-muted-foreground text-sm'>
-              Manage platform administrators and editors (
+              Manage workspace owners and members (
               {pagination?.totalCount || 0} total).
             </p>
           </div>
-          <div className='flex flex-wrap gap-2 items-center'>
-            <Button asChild>
-              <Link href='/users/add'>Add User</Link>
-            </Button>
+          <div className='flex flex-wrap gap-3 items-center'>
+            {isLimitReached && (
+              <p className='text-xs text-destructive bg-destructive/10 px-3 py-1.5 rounded-lg border border-destructive/20 font-medium'>
+                Workspace user limit reached ({totalWorkspaceUsers}/{features?.maxUsers}). Upgrade your plan to add more.
+              </p>
+            )}
+            {!isLimitReached && (
+              <Button asChild>
+                <Link href='/users/add'>Add User</Link>
+              </Button>
+            )}
           </div>
         </div>
+
+        {flash?.error && (
+          <div className='p-4 bg-destructive/10 text-destructive rounded-md border border-destructive/20'>
+            {flash.error}
+          </div>
+        )}
 
         {flash?.success && (
           <div className='p-4 bg-green-500/10 text-green-600 rounded-md border border-green-500/20'>

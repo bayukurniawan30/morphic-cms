@@ -59,6 +59,11 @@ interface ListProps {
     totalCount: number
     limit: number
   }
+  totalWorkspaceCollections?: number
+  flash?: {
+    success?: string
+    error?: string
+  }
 }
 
 export default function CollectionsList({
@@ -66,10 +71,19 @@ export default function CollectionsList({
   user,
   filters,
   pagination,
+  totalWorkspaceCollections = 0,
+  flash,
 }: ListProps) {
   const { props: pageProps } = usePage()
   const activeTenant = (pageProps as any).activeTenant
+  const features = (pageProps as any).features
   const isSystemGlobal = !activeTenant
+
+  const isLimitReached =
+    user?.role !== 'super_admin' &&
+    !!activeTenant &&
+    !!features &&
+    totalWorkspaceCollections >= features.maxCollections
 
   const [searchQuery, setSearchQuery] = useState(filters?.q || '')
 
@@ -180,7 +194,7 @@ export default function CollectionsList({
               {pagination?.totalCount || 0} total).
             </p>
           </div>
-          <div className='flex flex-wrap gap-2 items-center'>
+          <div className='flex flex-wrap gap-3 items-center'>
             <div className='w-48'>
               <Select value={currentType} onValueChange={handleTypeChange}>
                 <SelectTrigger className='h-10 bg-card border-muted-foreground/20'>
@@ -195,14 +209,33 @@ export default function CollectionsList({
                 </SelectContent>
               </Select>
             </div>
-            <Button asChild>
-              <Link href='/collections/add'>
-                <PlusIcon className='w-4 h-4 mr-2' />
-                Add Collection
-              </Link>
-            </Button>
+            {isLimitReached && (
+              <p className='text-xs text-destructive bg-destructive/10 px-3 py-1.5 rounded-lg border border-destructive/20 font-medium'>
+                Collection limit reached ({totalWorkspaceCollections}/{features?.maxCollections}). Upgrade your plan to add more.
+              </p>
+            )}
+            {!isLimitReached && (
+              <Button asChild>
+                <Link href='/collections/add'>
+                  <PlusIcon className='w-4 h-4 mr-2' />
+                  Add Collection
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
+
+        {flash?.error && (
+          <div className='p-4 bg-destructive/10 text-destructive rounded-md border border-destructive/20'>
+            {flash.error}
+          </div>
+        )}
+
+        {flash?.success && (
+          <div className='p-4 bg-green-500/10 text-green-600 rounded-md border border-green-500/20'>
+            {flash.success}
+          </div>
+        )}
 
         <div className='bg-card rounded-xl shadow-sm border overflow-hidden'>
           <div className='p-4 border-b bg-muted/20 flex flex-col md:flex-row gap-4 items-center justify-between'>

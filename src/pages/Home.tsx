@@ -558,14 +558,14 @@ export default function Home({
             >
               Deployment
             </a>
-            <Link href='/docs' className='hover:text-white transition-colors'>
-              Docs
-            </Link>
             <Link
-              href='/changelog'
+              href='/pricing'
               className='hover:text-white transition-colors'
             >
-              Changelog
+              Pricing
+            </Link>
+            <Link href='/docs' className='hover:text-white transition-colors'>
+              Docs
             </Link>
           </div>
 
@@ -575,19 +575,13 @@ export default function Home({
               variant='outline'
               className='rounded-full border-white/10 bg-deep-mocha-900/40 text-slate-300 hover:text-white hover:bg-deep-mocha-800'
             >
-              <a
-                href='https://github.com/bayukurniawan30/morphic-cms'
-                target='_blank'
-                rel='noopener noreferrer'
-              >
-                GitHub Star
-              </a>
+              <Link href='/login'>Sign in</Link>
             </Button>
             <Button
               asChild
               className='rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/10'
             >
-              <Link href='/docs'>Get Started</Link>
+              <Link href='/signup'>Get Started</Link>
             </Button>
           </div>
 
@@ -644,6 +638,13 @@ export default function Home({
               Documentation
             </Link>
             <Link
+              href='/pricing'
+              onClick={() => setIsMenuOpen(false)}
+              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
+            >
+              Pricing
+            </Link>
+            <Link
               href='/changelog'
               onClick={() => setIsMenuOpen(false)}
               className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
@@ -654,21 +655,15 @@ export default function Home({
               <Button
                 asChild
                 variant='outline'
-                className='w-full rounded-full border-white/10 bg-deep-mocha-900/40 text-slate-300'
+                className='w-full rounded-full border-white/10 bg-deep-mocha-900/40 text-slate-300 hover:text-white'
               >
-                <a
-                  href='https://github.com/bayukurniawan30/morphic-cms'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                >
-                  Star on GitHub
-                </a>
+                <Link href='/login'>Sign in</Link>
               </Button>
               <Button
                 asChild
                 className='w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg'
               >
-                <Link href='/docs'>Get Started</Link>
+                <Link href='/signup'>Get Started</Link>
               </Button>
             </div>
           </div>
@@ -706,7 +701,7 @@ export default function Home({
               size='lg'
               className='h-14 px-8 rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-2xl shadow-primary/20 group border-none transition-all'
             >
-              <Link href='/docs' className='flex items-center'>
+              <Link href='/signup' className='flex items-center'>
                 Get Started
                 <ArrowRight className='ml-2 w-5 h-5 group-hover:translate-x-0.5 transition-transform' />
               </Link>

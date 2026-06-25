@@ -9,6 +9,7 @@ import {
   uploadBufferToCloudinary,
   createCloudinaryFolder,
 } from '../lib/cloudinary.js'
+import { getWorkspaceFeatures, getWorkspaceStorageUsage } from '../config/features.js'
 
 type Variables = {
   userId?: number
@@ -84,7 +85,7 @@ apiDocuments.get('/', async (c) => {
   try {
     const tenantId = c.get('tenantId')
     const page = parseInt(c.req.query('page') || '1', 10)
-    const limit = parseInt(c.req.query('limit') || '10', 10)
+    const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 100)
     const search = c.req.query('search') || ''
     const sortBy = c.req.query('sortBy') || 'createdAt'
     const sortDir = c.req.query('sortDir') || 'desc'
@@ -149,6 +150,30 @@ apiDocuments.post('/upload', async (c) => {
       return c.json({ error: 'No file provided' }, 400)
     }
 
+    const userData = c.get('user')
+    const tenantId = c.get('tenantId')
+    if (tenantId && userData?.role !== 'super_admin') {
+      const features = await getWorkspaceFeatures(tenantId)
+
+      // Enforce per-file upload size limit
+      if (file.size > features.maxUploadSizeBytes) {
+        const limitDisplay = features.maxUploadSizeBytes >= 1024 * 1024
+          ? `${features.maxUploadSizeBytes / (1024 * 1024)} MB`
+          : `${features.maxUploadSizeBytes / 1024} KB`
+        return c.json({
+          error: `File size exceeds the upload limit of ${limitDisplay} per file on your current plan.`,
+        }, 403)
+      }
+
+      const currentUsage = await getWorkspaceStorageUsage(tenantId)
+      if (currentUsage + file.size > features.maxMediaStorageBytes) {
+        const limitMb = Math.round(features.maxMediaStorageBytes / (1024 * 1024))
+        return c.json({
+          error: `Storage limit reached. You are allowed up to ${limitMb} MB of total storage on your current plan. Please upgrade your workspace plan to upload more files.`,
+        }, 403)
+      }
+    }
+
     const allowedExtensions = [
       'pdf',
       'doc',
@@ -171,7 +196,6 @@ apiDocuments.post('/upload', async (c) => {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    const tenantId = c.get('tenantId')
     const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'morphic-cms'
     let folderPath = uploadPreset
 

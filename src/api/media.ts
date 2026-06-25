@@ -16,6 +16,7 @@ import {
 } from '../lib/s3.js'
 
 import { triggerWebhooks } from '../lib/webhooks.js'
+import { getWorkspaceFeatures, getWorkspaceStorageUsage } from '../config/features.js'
 
 type Variables = {
   userId?: number
@@ -266,6 +267,29 @@ apiMedia.post('/upload', async (c) => {
 
     if (!file) {
       return c.json({ error: 'No file provided' }, 400)
+    }
+
+    const userData = c.get('user')
+    if (tenantId && userData?.role !== 'super_admin') {
+      const features = await getWorkspaceFeatures(tenantId)
+
+      // Enforce per-file upload size limit
+      if (file.size > features.maxUploadSizeBytes) {
+        const limitDisplay = features.maxUploadSizeBytes >= 1024 * 1024
+          ? `${features.maxUploadSizeBytes / (1024 * 1024)} MB`
+          : `${features.maxUploadSizeBytes / 1024} KB`
+        return c.json({
+          error: `File size exceeds the upload limit of ${limitDisplay} per file on your current plan.`,
+        }, 403)
+      }
+
+      const currentUsage = await getWorkspaceStorageUsage(tenantId)
+      if (currentUsage + file.size > features.maxMediaStorageBytes) {
+        const limitMb = Math.round(features.maxMediaStorageBytes / (1024 * 1024))
+        return c.json({
+          error: `Storage limit reached. You are allowed up to ${limitMb} MB of total storage on your current plan. Please upgrade your workspace plan to upload more files.`,
+        }, 403)
+      }
     }
 
     const arrayBuffer = await file.arrayBuffer()

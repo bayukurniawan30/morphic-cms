@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import app from './index'
 import { db } from '../db/index.js'
-import { tenants, collections, entries, users, usersToTenants } from '../db/schema.js'
+import { tenants, collections, entries, users, usersToTenants, abilities, locales } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
 
@@ -215,6 +215,201 @@ describe('Morphic CMS API', () => {
         }
         if (tenantAId) await db.delete(tenants).where(eq(tenants.id, tenantAId))
         if (tenantBId) await db.delete(tenants).where(eq(tenants.id, tenantBId))
+      }
+    })
+  })
+
+  describe('Auth Onboarding & Verification Flow', () => {
+    it('should complete registration, block unverified login, verify email, and allow login', async () => {
+      const testId = crypto.randomUUID().substring(0, 8)
+      const signupPayload = {
+        name: `Test Verify User ${testId}`,
+        username: `verifyuser-${testId}`,
+        email: `verify-${testId}@example.com`,
+        password: 'securepassword123',
+        workspaceName: `Verify Org ${testId}`,
+        workspaceSlug: `verify-org-${testId}`,
+      }
+
+      let userId: number | undefined
+      let tenantId: number | undefined
+
+      try {
+        // 1. Submit signup request
+        const signupRes = await app.request('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(signupPayload),
+        })
+        expect(signupRes.status).toBe(200)
+        const signupData = await signupRes.json()
+        expect(signupData.success).toBe(true)
+        expect(signupData.requiresVerification).toBe(true)
+
+        // Find the user and tenant from the db to get generated IDs and token
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.email, signupPayload.email)
+        })
+        expect(dbUser).toBeDefined()
+        userId = dbUser!.id
+        expect(dbUser!.isEmailVerified).toBe(false)
+        expect(dbUser!.emailVerificationToken).toBeTruthy()
+
+        const dbTenant = await db.query.tenants.findFirst({
+          where: eq(tenants.slug, signupPayload.workspaceSlug)
+        })
+        expect(dbTenant).toBeDefined()
+        tenantId = dbTenant!.id
+
+        // 2. Attempt login while unverified -> should be blocked
+        const loginBlockedRes = await app.request('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: signupPayload.email,
+            password: signupPayload.password,
+          }),
+        })
+        expect(loginBlockedRes.status).toBe(403)
+        const loginBlockedData = await loginBlockedRes.json()
+        expect(loginBlockedData.error).toContain('verify your email')
+
+        // 3. Confirm email verification token
+        const verifyRes = await app.request(`/verify-email?token=${dbUser!.emailVerificationToken}`)
+        expect(verifyRes.status).toBe(302)
+        expect(verifyRes.headers.get('location')).toBe('/login?verified=true')
+
+        // Re-read user to check status
+        const updatedUser = await db.query.users.findFirst({
+          where: eq(users.id, userId)
+        })
+        expect(updatedUser!.isEmailVerified).toBe(true)
+        expect(updatedUser!.emailVerificationToken).toBeNull()
+
+        // 4. Try logging in again -> should succeed
+        const loginSuccessRes = await app.request('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: signupPayload.email,
+            password: signupPayload.password,
+          }),
+        })
+        expect(loginSuccessRes.status).toBe(200)
+        const loginSuccessData = await loginSuccessRes.json()
+        expect(loginSuccessData.requires2fa).toBeFalsy()
+
+      } finally {
+        // Clean up
+        if (userId) {
+          await db.delete(usersToTenants).where(eq(usersToTenants.userId, userId))
+          await db.delete(users).where(eq(users.id, userId))
+        }
+        if (tenantId) {
+          await db.delete(abilities).where(eq(abilities.tenantId, tenantId))
+          await db.delete(locales).where(eq(locales.tenantId, tenantId))
+          await db.delete(tenants).where(eq(tenants.id, tenantId))
+        }
+      }
+    })
+
+    it('should clean up expired unverified user records and allow re-registration with same email/username/slug', async () => {
+      const testId = crypto.randomUUID().substring(0, 8)
+      const email = `expired-${testId}@example.com`
+      const username = `expireduser-${testId}`
+      const slug = `expired-org-${testId}`
+
+      let preUserId: number | undefined
+      let preTenantId: number | undefined
+      let postUserId: number | undefined
+      let postTenantId: number | undefined
+
+      try {
+        // 1. Create a pre-existing expired unverified user and workspace
+        const [preTenant] = await db
+          .insert(tenants)
+          .values({
+            name: 'Expired Org',
+            slug: slug,
+          })
+          .returning()
+        preTenantId = preTenant.id
+
+        const [preUser] = await db
+          .insert(users)
+          .values({
+            name: 'Expired User',
+            username: username,
+            email: email,
+            password: 'oldhashedpassword',
+            role: 'editor',
+            isEmailVerified: false,
+            emailVerificationToken: 'oldtoken123',
+            emailVerificationExpiresAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // expired 2 hours ago
+          })
+          .returning()
+        preUserId = preUser.id
+
+        await db.insert(usersToTenants).values({
+          userId: preUser.id,
+          tenantId: preTenant.id,
+          role: 'owner',
+        })
+
+        // 2. Submit a registration with the identical email, username, and workspaceSlug
+        const signupRes = await app.request('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'New Verified User',
+            username: username,
+            email: email,
+            password: 'newsecurepassword',
+            workspaceName: 'New Workspace',
+            workspaceSlug: slug,
+          }),
+        })
+        
+        expect(signupRes.status).toBe(200)
+        const signupData = await signupRes.json()
+        expect(signupData.success).toBe(true)
+        expect(signupData.requiresVerification).toBe(true)
+
+        // 3. Verify that a new user and tenant are created and the old ones are deleted
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.email, email)
+        })
+        expect(dbUser).toBeDefined()
+        expect(dbUser!.id).not.toBe(preUserId) // different ID
+        postUserId = dbUser!.id
+
+        const dbTenant = await db.query.tenants.findFirst({
+          where: eq(tenants.slug, slug)
+        })
+        expect(dbTenant).toBeDefined()
+        expect(dbTenant!.id).not.toBe(preTenantId) // different ID
+        postTenantId = dbTenant!.id
+
+      } finally {
+        // Clean up both old and new if they exist
+        if (preUserId) {
+          await db.delete(usersToTenants).where(eq(usersToTenants.userId, preUserId))
+          await db.delete(users).where(eq(users.id, preUserId))
+        }
+        if (preTenantId) {
+          await db.delete(abilities).where(eq(abilities.tenantId, preTenantId))
+          await db.delete(locales).where(eq(locales.tenantId, preTenantId))
+          await db.delete(tenants).where(eq(tenants.id, preTenantId))
+        }
+        if (postUserId) {
+          await db.delete(usersToTenants).where(eq(usersToTenants.userId, postUserId))
+          await db.delete(users).where(eq(users.id, postUserId))
+        }
+        if (postTenantId) {
+          await db.delete(abilities).where(eq(abilities.tenantId, postTenantId))
+          await db.delete(locales).where(eq(locales.tenantId, postTenantId))
+          await db.delete(tenants).where(eq(tenants.id, postTenantId))
+        }
       }
     })
   })
