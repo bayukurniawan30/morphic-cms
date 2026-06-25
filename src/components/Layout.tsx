@@ -36,6 +36,7 @@ import {
   Mail,
   Menu,
   Plus,
+  Search,
   ShieldCheck,
   Terminal,
   Users,
@@ -155,6 +156,16 @@ export default function Layout({ user, title, children }: LayoutProps) {
   }
   const [globals, setGlobals] = React.useState<any[]>([])
   const [showAllGlobals, setShowAllGlobals] = React.useState(false)
+  const [tenantSearchQuery, setTenantSearchQuery] = React.useState('')
+
+  const filteredTenants = React.useMemo(() => {
+    if (!availableTenants) return []
+    return availableTenants.filter(
+      (tenant) =>
+        tenant.name.toLowerCase().includes(tenantSearchQuery.toLowerCase()) ||
+        tenant.slug.toLowerCase().includes(tenantSearchQuery.toLowerCase())
+    )
+  }, [availableTenants, tenantSearchQuery])
 
   React.useEffect(() => {
     fetch('/api/collections')
@@ -530,7 +541,11 @@ export default function Layout({ user, title, children }: LayoutProps) {
 
             <div className='flex items-center space-x-2'>
               {/* Tenant Switcher */}
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={(open) => {
+                if (!open) {
+                  setTenantSearchQuery('')
+                }
+              }}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant='outline'
@@ -564,6 +579,22 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   <DropdownMenuLabel className='text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5'>
                     Switch Workspace
                   </DropdownMenuLabel>
+                  
+                  {/* Search input to filter workspaces */}
+                  <div className='px-2 py-1 relative flex items-center mb-1'>
+                    <Search className='absolute left-3.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none' />
+                    <input
+                      type='text'
+                      placeholder='Search workspaces...'
+                      value={tenantSearchQuery}
+                      onChange={(e) => setTenantSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className='w-full pl-7 pr-2 py-1 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/60'
+                    />
+                  </div>
+                  <DropdownMenuSeparator />
+
                   <div className='max-h-[300px] overflow-y-auto custom-scrollbar'>
                     {user.role === 'super_admin' && (
                       <DropdownMenuItem
@@ -580,21 +611,27 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    {availableTenants?.map((tenant) => (
-                      <DropdownMenuItem
-                        key={tenant.id}
-                        onClick={() => handleTenantSwitch(tenant.id)}
-                        className='flex items-center justify-between'
-                      >
-                        <div className='flex items-center gap-2'>
-                          <Building2 className='h-4 w-4 text-muted-foreground' />
-                          <span className='truncate'>{tenant.name}</span>
-                        </div>
-                        {activeTenant?.id === tenant.id && (
-                          <Check className='h-3 w-3 text-primary' />
-                        )}
-                      </DropdownMenuItem>
-                    ))}
+                    {filteredTenants.length === 0 ? (
+                      <div className='text-xs text-muted-foreground text-center py-4 px-2 italic'>
+                        No workspaces found
+                      </div>
+                    ) : (
+                      filteredTenants.map((tenant) => (
+                        <DropdownMenuItem
+                          key={tenant.id}
+                          onClick={() => handleTenantSwitch(tenant.id)}
+                          className='flex items-center justify-between'
+                        >
+                          <div className='flex items-center gap-2'>
+                            <Building2 className='h-4 w-4 text-muted-foreground' />
+                            <span className='truncate'>{tenant.name}</span>
+                          </div>
+                          {activeTenant?.id === tenant.id && (
+                            <Check className='h-3 w-3 text-primary' />
+                          )}
+                        </DropdownMenuItem>
+                      ))
+                    )}
                   </div>
                   {user &&
                     (user.role === 'super_admin' ||
