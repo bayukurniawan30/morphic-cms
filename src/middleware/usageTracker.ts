@@ -46,7 +46,7 @@ export const usageTracker: MiddlewareHandler = async (c, next) => {
 
     if (!ownerMeta) {
       // Find the workspace owner and read allowed monthly requests
-      const ownerRecord = await db
+      const ownerRecords = await db
         .select({
           ownerId: users.id,
           allowedMonthlyRequests: users.allowedMonthlyRequests,
@@ -60,13 +60,25 @@ export const usageTracker: MiddlewareHandler = async (c, next) => {
             eq(usersToTenants.role, 'owner')
           )
         )
-        .limit(1)
 
-      if (ownerRecord.length > 0) {
+      if (ownerRecords.length > 0) {
+        let bestOwner = ownerRecords[0]
+        const tierWeight = (tier: string) => {
+          const t = (tier || 'FREE').toUpperCase()
+          if (t === 'SELF_HOSTED') return 3
+          if (t === 'PRO') return 2
+          return 1
+        }
+        for (const record of ownerRecords) {
+          if (tierWeight(record.planTier) > tierWeight(bestOwner.planTier)) {
+            bestOwner = record
+          }
+        }
+
         ownerMeta = {
-          ownerId: ownerRecord[0].ownerId,
-          allowedMonthlyRequests: ownerRecord[0].allowedMonthlyRequests,
-          planTier: ownerRecord[0].planTier,
+          ownerId: bestOwner.ownerId,
+          allowedMonthlyRequests: bestOwner.allowedMonthlyRequests,
+          planTier: (bestOwner.planTier || 'FREE').toUpperCase(),
         }
         // Cache in Redis with 1 hour TTL (3600 seconds)
         await redis.set(cacheKey, JSON.stringify(ownerMeta), { ex: 3600 })

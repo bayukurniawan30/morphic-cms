@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react'
-import { Building2, ChevronRight, LogOut, Shield, Plus } from 'lucide-react'
+import { Building2, ChevronRight, LogOut, Shield } from 'lucide-react'
 import { useCallback, useEffect } from 'react'
 
 interface Tenant {
@@ -14,7 +14,11 @@ interface SelectTenantProps {
   appDomain?: string
 }
 
-export default function SelectTenant({ user, tenants, appDomain }: SelectTenantProps) {
+export default function SelectTenant({
+  user,
+  tenants,
+  appDomain,
+}: SelectTenantProps) {
   const { post, processing } = useForm()
 
   const handleSelect = useCallback(
@@ -31,7 +35,10 @@ export default function SelectTenant({ user, tenants, appDomain }: SelectTenantP
             const cleanHost = host.split(':')[0]
             const baseDomain = appDomain || 'morphic-cms.com'
 
-            if (cleanHost.includes(baseDomain) || cleanHost.endsWith(`.${baseDomain}`)) {
+            if (
+              cleanHost.includes(baseDomain) ||
+              cleanHost.endsWith(`.${baseDomain}`)
+            ) {
               const protocol = window.location.protocol
               window.location.href = `${protocol}//${tenant.slug}.${baseDomain}/dashboard`
             } else {
@@ -129,25 +136,6 @@ export default function SelectTenant({ user, tenants, appDomain }: SelectTenantP
             </button>
           ))}
 
-          {/* Create Workspace Card */}
-          <Link
-            href='/tenants/add'
-            className='group relative flex flex-col p-6 text-left rounded-2xl bg-card/40 border border-dashed border-border hover:border-primary hover:bg-card transition-all duration-300 shadow-sm'
-          >
-            <div className='flex items-center justify-between mb-4'>
-              <div className='w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-primary group-hover:bg-primary/10 transition-colors'>
-                <Plus className='w-6 h-6' />
-              </div>
-              <ChevronRight className='w-5 h-5 text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all' />
-            </div>
-            <h3 className='text-xl font-bold text-foreground mb-1'>
-              Create Workspace
-            </h3>
-            <p className='text-sm text-muted-foreground group-hover:text-foreground/70'>
-              Setup a new content project
-            </p>
-          </Link>
-
           {/* Admin bypass */}
           {user.role === 'super_admin' && (
             <Link
@@ -184,7 +172,7 @@ export default function SelectTenant({ user, tenants, appDomain }: SelectTenantP
       {/* Footer Branding */}
       <div className='absolute bottom-8 left-0 right-0 text-center'>
         <p className='text-muted-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold'>
-          Powered by Morphic Core
+          Powered by Morphic CMS
         </p>
       </div>
     </div>

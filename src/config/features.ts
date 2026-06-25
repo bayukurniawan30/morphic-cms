@@ -78,7 +78,7 @@ export async function getWorkspaceFeatures(
   }
 
   try {
-    const ownerRecord = await db
+    const ownerRecords = await db
       .select({
         planTier: users.planTier,
       })
@@ -90,10 +90,12 @@ export async function getWorkspaceFeatures(
           eq(usersToTenants.role, 'owner')
         )
       )
-      .limit(1)
 
-    if (ownerRecord.length > 0) {
-      return getTenantFeatures(ownerRecord[0].planTier)
+    if (ownerRecords.length > 0) {
+      const tiers = ownerRecords.map((r) => (r.planTier || 'FREE').toUpperCase())
+      if (tiers.includes('SELF_HOSTED')) return PLAN_LIMITS.SELF_HOSTED
+      if (tiers.includes('PRO')) return PLAN_LIMITS.PRO
+      return PLAN_LIMITS.FREE
     }
   } catch (err) {
     console.error(

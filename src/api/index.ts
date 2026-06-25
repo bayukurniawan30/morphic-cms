@@ -183,7 +183,7 @@ app.use('*', async (c, next) => {
           email: dbUser.email,
           role: dbUser.role,
           apiKey: dbUser.apiKey,
-          planTier: dbUser.planTier,
+          planTier: (dbUser.planTier || 'FREE').toUpperCase(),
           allowedMonthlyRequests: dbUser.allowedMonthlyRequests,
         }
       }
@@ -210,7 +210,7 @@ app.use('*', async (c, next) => {
           email: dbUser.email,
           role: dbUser.role,
           apiKey: dbUser.apiKey,
-          planTier: dbUser.planTier,
+          planTier: (dbUser.planTier || 'FREE').toUpperCase(),
           allowedMonthlyRequests: dbUser.allowedMonthlyRequests,
         }
       }
@@ -301,7 +301,7 @@ app.use('*', async (c, next) => {
             (userData?.role === 'super_admin' ? 'owner' : 'member')
 
           try {
-            const ownerRecord = await db
+            const ownerRecords = await db
               .select({
                 planTier: users.planTier,
                 allowedMonthlyRequests: users.allowedMonthlyRequests,
@@ -314,13 +314,25 @@ app.use('*', async (c, next) => {
                   eq(usersToTenants.role, 'owner')
                 )
               )
-              .limit(1)
 
-            if (ownerRecord.length > 0) {
+            if (ownerRecords.length > 0) {
+              let bestOwner = ownerRecords[0]
+              const tierWeight = (tier: string) => {
+                const t = (tier || 'FREE').toUpperCase()
+                if (t === 'SELF_HOSTED') return 3
+                if (t === 'PRO') return 2
+                return 1
+              }
+              for (const record of ownerRecords) {
+                if (tierWeight(record.planTier) > tierWeight(bestOwner.planTier)) {
+                  bestOwner = record
+                }
+              }
+
               currentTenant = {
                 ...currentTenant,
-                planTier: ownerRecord[0].planTier,
-                allowedMonthlyRequests: ownerRecord[0].allowedMonthlyRequests,
+                planTier: (bestOwner.planTier || 'FREE').toUpperCase(),
+                allowedMonthlyRequests: bestOwner.allowedMonthlyRequests,
               }
             } else {
               currentTenant = {
