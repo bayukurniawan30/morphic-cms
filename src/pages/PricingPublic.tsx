@@ -5,13 +5,7 @@ import { Head, Link } from '@inertiajs/react'
 import { Check, Flame, HelpCircle, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
-interface PricingPublicProps {
-  lemonSqueezyProUrl: string
-}
-
-export default function PricingPublic({
-  lemonSqueezyProUrl,
-}: PricingPublicProps) {
+export default function PricingPublic() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleUpgrade = () => {

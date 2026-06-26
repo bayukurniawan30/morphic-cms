@@ -10,23 +10,29 @@ interface PricingProps {
     role: 'super_admin' | 'editor'
     planTier: string
   }
-  lemonSqueezyProUrl: string
 }
 
-export default function Pricing({ user, lemonSqueezyProUrl }: PricingProps) {
+export default function Pricing({ user }: PricingProps) {
   const currentPlan = user.planTier || 'FREE'
 
-  const handleUpgrade = () => {
-    if (!lemonSqueezyProUrl) {
-      alert(
-        'Checkout URL is not configured. Please set LEMON_SQUEEZY_PRO_CHECKOUT_URL in .env'
-      )
-      return
+  const handleUpgrade = async () => {
+    try {
+      const response = await fetch('/api/payments/polar/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      const data = await response.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Failed to create checkout session.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('An error occurred. Please try again.')
     }
-    // Append user_id as metadata/passthrough and direct the redirect back to the CMS
-    const redirectUrl = encodeURIComponent(`${window.location.origin}/pricing`)
-    const checkoutUrl = `${lemonSqueezyProUrl}?checkout[custom][user_id]=${user.id}&passthrough=${user.id}&checkout[redirect_url]=${redirectUrl}`
-    window.location.href = checkoutUrl
   }
 
   return (
@@ -226,10 +232,10 @@ export default function Pricing({ user, lemonSqueezyProUrl }: PricingProps) {
                 </Button>
               ) : (
                 <Button
-                  className='w-full h-12 rounded-xl text-sm font-bold bg-muted text-muted-foreground cursor-not-allowed'
-                  disabled
+                  onClick={handleUpgrade}
+                  className='w-full h-12 rounded-xl text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all'
                 >
-                  Coming Soon
+                  Upgrade to Pro
                 </Button>
               )}
             </div>

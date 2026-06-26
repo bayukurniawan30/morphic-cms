@@ -23,6 +23,8 @@ import { sign, verify } from 'hono/jwt'
 import { generateSecret, generateURI, verifySync } from 'otplib'
 import QRCode from 'qrcode'
 import path from 'path'
+import { Polar } from '@polar-sh/sdk'
+import { validateEvent } from '@polar-sh/sdk/webhooks'
 import { db } from '../db/index.js'
 import {
   abilities,
@@ -476,12 +478,13 @@ app.get('/pricing', async (c) => {
   if (userData) {
     return c.get('inertia')('Pricing', {
       user: userData,
-      lemonSqueezyProUrl: process.env.LEMON_SQUEEZY_PRO_CHECKOUT_URL || '',
+      paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
+      paddlePriceId: process.env.PADDLE_PRICE_ID || '',
+      paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
       title: 'Pricing & Plans',
     })
   }
   return c.get('inertia')('PricingPublic', {
-    lemonSqueezyProUrl: process.env.LEMON_SQUEEZY_PRO_CHECKOUT_URL || '',
     title: 'Pricing & Plans',
   })
 })
@@ -2104,7 +2107,7 @@ api.use('*', async (c, next) => {
     path === '/api/auth/signup' ||
     path === '/api/auth/forgot-password' ||
     path === '/api/auth/reset-password' ||
-    path === '/api/webhooks/lemon-squeezy' ||
+    path === '/api/webhooks/polar' ||
     path === '/api/test' ||
     c.req.header('X-Morphic-Test') === 'true' ||
     (path.startsWith('/api/forms/') && path.endsWith('/submit'))
@@ -2253,131 +2256,155 @@ api.delete('/webhooks/:id', async (c) => {
   return c.json({ success: true })
 })
 
-api.post('/webhooks/lemon-squeezy', async (c) => {
-  const signature = c.req.header('x-signature')
-  const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET
+api.post('/payments/polar/checkout', async (c) => {
+  const userData = c.get('user')
+  if (!userData) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
 
-  if (!signature || !secret) {
-    console.error('Lemon Squeezy Webhook: Missing signature header or config secret.')
+  const token = process.env.POLAR_API_TOKEN
+  const productId = process.env.POLAR_PRODUCT_ID
+  const environment = process.env.POLAR_ENV || 'sandbox'
+
+  if (!token || !productId) {
+    console.error('Polar Config: Missing POLAR_API_TOKEN or POLAR_PRODUCT_ID.')
+    return c.json({ error: 'Billing is not configured on this server.' }, 500)
+  }
+
+  try {
+    const polar = new Polar({
+      accessToken: token,
+      server: environment === 'sandbox' ? 'sandbox' : 'production',
+    })
+
+    const requestUrl = new URL(c.req.url)
+    const successUrl = `${requestUrl.protocol}//${requestUrl.host}/pricing`
+
+    const checkout = await polar.checkouts.create({
+      products: [productId],
+      customerEmail: userData.email,
+      metadata: {
+        userId: String(userData.id),
+      },
+      successUrl,
+    })
+
+    return c.json({ url: checkout.url })
+  } catch (err: any) {
+    console.error('Error creating Polar checkout session:', err)
+    return c.json({ error: err.message || 'Failed to create checkout session' }, 500)
+  }
+})
+
+api.post('/webhooks/polar', async (c) => {
+  const signature = c.req.header('webhook-signature')
+  const id = c.req.header('webhook-id')
+  const timestamp = c.req.header('webhook-timestamp')
+  const secret = process.env.POLAR_WEBHOOK_SECRET
+
+  if (!signature || !secret || !id || !timestamp) {
+    console.error('Polar Webhook: Missing signature headers or config secret.')
     return c.json({ error: 'Unauthorized signature validation setup' }, 401)
   }
 
   try {
     const rawBody = await c.req.text()
 
-    // Validate signature
-    const hmac = crypto.createHmac('sha256', secret)
-    const digest = hmac.update(rawBody).digest('hex')
-    const isValid = crypto.timingSafeEqual(Buffer.from(digest, 'hex'), Buffer.from(signature, 'hex'))
-
-    if (!isValid) {
-      console.error('Lemon Squeezy Webhook: Invalid signature.')
-      return c.json({ error: 'Invalid signature' }, 401)
+    const headers = {
+      'webhook-signature': signature,
+      'webhook-id': id,
+      'webhook-timestamp': timestamp,
     }
 
-    const payload = JSON.parse(rawBody)
-    const eventName = payload.meta?.event_name
+    const event = validateEvent(rawBody, headers, secret) as any
+    const eventType = event.type
+    const status = event.data?.status
 
-    const upgradeEvents = [
-      'order_created',
-      'subscription_created',
-      'subscription_resumed',
-      'subscription_unpaused',
-      'subscription_payment_success',
-      'subscription_payment_recovered',
-      'subscription_plan_changed',
-    ]
+    console.log(`Polar Webhook Received [${eventType}]:`, JSON.stringify(event, null, 2))
 
-    const downgradeEvents = [
-      'subscription_cancelled',
-      'subscription_expired',
-      'subscription_paused',
-      'subscription_payment_failed',
-    ]
-
-    if (upgradeEvents.includes(eventName)) {
-      const customData = payload.meta?.custom_data || {}
-      const userId = customData.user_id || payload.meta?.passthrough
+    if (eventType && eventType.startsWith('subscription.')) {
+      const metadata = event.data?.metadata || {}
+      const userId = metadata.userId || metadata.user_id
 
       if (userId) {
-        // 1. Upgrade the user's plan to PRO
-        await db
-          .update(users)
-          .set({
-            planTier: 'PRO',
-            allowedMonthlyRequests: PLAN_LIMITS.PRO.allowedMonthlyRequests,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, Number(userId)))
-
-        console.log(`Lemon Squeezy Webhook: Upgraded user ${userId} to PRO tier. Event: ${eventName}`)
-
-        // 2. Clear Redis cache for all workspaces owned by this user
-        const ownedWorkspaces = await db
-          .select({ tenantId: usersToTenants.tenantId })
-          .from(usersToTenants)
-          .where(
-            and(
-              eq(usersToTenants.userId, Number(userId)),
-              eq(usersToTenants.role, 'owner')
-            )
-          )
-
-        if (redis) {
-          for (const workspace of ownedWorkspaces) {
-            const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
-            await redis.del(cacheKey).catch((err: any) => {
-              console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+        if (status === 'active' || status === 'trialing') {
+          // 1. Upgrade the user's plan to PRO
+          await db
+            .update(users)
+            .set({
+              planTier: 'PRO',
+              allowedMonthlyRequests: PLAN_LIMITS.PRO.allowedMonthlyRequests,
+              updatedAt: new Date(),
             })
+            .where(eq(users.id, Number(userId)))
+
+          console.log(`Polar Webhook: Upgraded user ${userId} to PRO tier. Status: ${status}`)
+
+          // 2. Clear Redis cache for all workspaces owned by this user
+          const ownedWorkspaces = await db
+            .select({ tenantId: usersToTenants.tenantId })
+            .from(usersToTenants)
+            .where(
+              and(
+                eq(usersToTenants.userId, Number(userId)),
+                eq(usersToTenants.role, 'owner')
+              )
+            )
+
+          if (redis) {
+            for (const workspace of ownedWorkspaces) {
+              const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
+              await redis.del(cacheKey).catch((err: any) => {
+                console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+              })
+            }
+          }
+        } else if (
+          status === 'canceled' ||
+          status === 'paused' ||
+          status === 'past_due' ||
+          status === 'unpaid'
+        ) {
+          // 1. Downgrade the user's plan to FREE
+          await db
+            .update(users)
+            .set({
+              planTier: 'FREE',
+              allowedMonthlyRequests: PLAN_LIMITS.FREE.allowedMonthlyRequests,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, Number(userId)))
+
+          console.log(`Polar Webhook: Downgraded user ${userId} to FREE tier. Status: ${status}`)
+
+          // 2. Clear Redis cache for all workspaces owned by this user
+          const ownedWorkspaces = await db
+            .select({ tenantId: usersToTenants.tenantId })
+            .from(usersToTenants)
+            .where(
+              and(
+                eq(usersToTenants.userId, Number(userId)),
+                eq(usersToTenants.role, 'owner')
+              )
+            )
+
+          if (redis) {
+            for (const workspace of ownedWorkspaces) {
+              const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
+              await redis.del(cacheKey).catch((err: any) => {
+                console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+              })
+            }
           }
         }
       } else {
-        console.warn(`Lemon Squeezy Webhook: No user_id found in metadata/passthrough for upgrade event ${eventName}.`)
-      }
-    } else if (downgradeEvents.includes(eventName)) {
-      const customData = payload.meta?.custom_data || {}
-      const userId = customData.user_id || payload.meta?.passthrough
-
-      if (userId) {
-        // 1. Downgrade the user's plan to FREE
-        await db
-          .update(users)
-          .set({
-            planTier: 'FREE',
-            allowedMonthlyRequests: PLAN_LIMITS.FREE.allowedMonthlyRequests,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, Number(userId)))
-
-        console.log(`Lemon Squeezy Webhook: Downgraded user ${userId} to FREE tier. Event: ${eventName}`)
-
-        // 2. Clear Redis cache for all workspaces owned by this user
-        const ownedWorkspaces = await db
-          .select({ tenantId: usersToTenants.tenantId })
-          .from(usersToTenants)
-          .where(
-            and(
-              eq(usersToTenants.userId, Number(userId)),
-              eq(usersToTenants.role, 'owner')
-            )
-          )
-
-        if (redis) {
-          for (const workspace of ownedWorkspaces) {
-            const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
-            await redis.del(cacheKey).catch((err: any) => {
-              console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
-            })
-          }
-        }
-      } else {
-        console.warn(`Lemon Squeezy Webhook: No user_id found in metadata/passthrough for downgrade event ${eventName}.`)
+        console.warn(`Polar Webhook: No userId/user_id found in metadata for event ${eventType}.`)
       }
     }
 
     return c.json({ received: true })
   } catch (err) {
-    console.error('Error handling Lemon Squeezy webhook:', err)
+    console.error('Error handling Polar webhook:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
 })
