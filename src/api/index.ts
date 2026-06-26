@@ -1,4 +1,6 @@
 import { serveStatic } from '@hono/node-server/serve-static'
+import { Polar } from '@polar-sh/sdk'
+import { validateEvent } from '@polar-sh/sdk/webhooks'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import {
@@ -23,8 +25,11 @@ import { sign, verify } from 'hono/jwt'
 import { generateSecret, generateURI, verifySync } from 'otplib'
 import QRCode from 'qrcode'
 import path from 'path'
-import { Polar } from '@polar-sh/sdk'
-import { validateEvent } from '@polar-sh/sdk/webhooks'
+import {
+  getTenantFeatures,
+  getWorkspaceFeatures,
+  PLAN_LIMITS,
+} from '../config/features.js'
 import { db } from '../db/index.js'
 import {
   abilities,
@@ -47,12 +52,11 @@ import { buildZodSchema } from '../lib/dynamic-schema.js'
 import { sendEmail } from '../lib/email.js'
 import { inertia } from '../lib/inertia.js'
 import { triggerWebhooks } from '../lib/webhooks.js'
+import { redis, usageTracker } from '../middleware/usageTracker.js'
 import apiDocuments from './documents.js'
 import { createGraphQLHandler } from './graphql.js'
 import apiMedia from './media.js'
 import apiUsers from './users.js'
-import { usageTracker, redis } from '../middleware/usageTracker.js'
-import { getTenantFeatures, getWorkspaceFeatures, PLAN_LIMITS } from '../config/features.js'
 
 console.log('🔥 Morphic CMS: Hono Initializing on Vercel Node Runtime')
 
@@ -71,10 +75,7 @@ const getCookieOptions = (c: any, maxAge: number) => {
 
   const baseAppDomain = process.env.APP_DOMAIN || 'morphic-cms.com'
 
-  if (
-    cleanHost.endsWith(`.${baseAppDomain}`) ||
-    cleanHost === baseAppDomain
-  ) {
+  if (cleanHost.endsWith(`.${baseAppDomain}`) || cleanHost === baseAppDomain) {
     domain = `.${baseAppDomain}`
   }
 
@@ -326,7 +327,9 @@ app.use('*', async (c, next) => {
                 return 1
               }
               for (const record of ownerRecords) {
-                if (tierWeight(record.planTier) > tierWeight(bestOwner.planTier)) {
+                if (
+                  tierWeight(record.planTier) > tierWeight(bestOwner.planTier)
+                ) {
                   bestOwner = record
                 }
               }
@@ -445,10 +448,12 @@ app.get('/verify-email', async (c) => {
     const userResult = await db
       .select()
       .from(users)
-      .where(and(
-        eq(users.emailVerificationToken, token),
-        gt(users.emailVerificationExpiresAt, new Date())
-      ))
+      .where(
+        and(
+          eq(users.emailVerificationToken, token),
+          gt(users.emailVerificationExpiresAt, new Date())
+        )
+      )
       .limit(1)
 
     const user = userResult[0]
@@ -748,8 +753,6 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
     })
   }
 })
-
-
 
 // Middleware to require authentication for admin pages
 async function requireAuth(c: any, next: any) {
@@ -2230,7 +2233,13 @@ api.post('/webhooks', async (c) => {
       // Create
       const features = await getWorkspaceFeatures(tenantId)
       if (!features.hasWebhooks) {
-        return c.json({ error: 'Webhook features are not available on this plan. Please upgrade.' }, 403)
+        return c.json(
+          {
+            error:
+              'Webhook features are not available on this plan. Please upgrade.',
+          },
+          403
+        )
       }
 
       const newWebhook = await db
@@ -2292,7 +2301,10 @@ api.post('/payments/polar/checkout', async (c) => {
     return c.json({ url: checkout.url })
   } catch (err: any) {
     console.error('Error creating Polar checkout session:', err)
-    return c.json({ error: err.message || 'Failed to create checkout session' }, 500)
+    return c.json(
+      { error: err.message || 'Failed to create checkout session' },
+      500
+    )
   }
 })
 
@@ -2320,7 +2332,10 @@ api.post('/webhooks/polar', async (c) => {
     const eventType = event.type
     const status = event.data?.status
 
-    console.log(`Polar Webhook Received [${eventType}]:`, JSON.stringify(event, null, 2))
+    console.log(
+      `Polar Webhook Received [${eventType}]:`,
+      JSON.stringify(event, null, 2)
+    )
 
     if (eventType && eventType.startsWith('subscription.')) {
       const metadata = event.data?.metadata || {}
@@ -2328,6 +2343,14 @@ api.post('/webhooks/polar', async (c) => {
 
       if (userId) {
         if (status === 'active' || status === 'trialing') {
+          // Retrieve user details before updating to check previous plan tier and get email/name
+          const userRecords = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, Number(userId)))
+            .limit(1)
+          const user = userRecords[0]
+
           // 1. Upgrade the user's plan to PRO
           await db
             .update(users)
@@ -2338,7 +2361,64 @@ api.post('/webhooks/polar', async (c) => {
             })
             .where(eq(users.id, Number(userId)))
 
-          console.log(`Polar Webhook: Upgraded user ${userId} to PRO tier. Status: ${status}`)
+          console.log(
+            `Polar Webhook: Upgraded user ${userId} to PRO tier. Status: ${status}`
+          )
+
+          // 2. If the user successfully upgraded to PRO, send them a thank you email
+          if (user && user.planTier !== 'PRO') {
+            try {
+              await sendEmail({
+                to: user.email,
+                subject: 'Thank you for subscribing to Morphic CMS Pro!',
+                html: `
+                  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; color: #555; line-height: 1.6;">
+                    <h2 style="color: #87787a; border-bottom: 2px solid #514849; padding-bottom: 10px; font-size: 24px; font-weight: bold; margin-bottom: 24px;">Welcome to Morphic CMS Pro!</h2>
+                    <p style="font-size: 16px; color: #555;">Hi ${user.name || 'there'},</p>
+                    <p style="font-size: 16px; color: #555;">Thank you for subscribing to our <strong>Morphic CMS Pro</strong> plan! We are thrilled to have you on board.</p>
+                    <p style="font-size: 16px; color: #555;">Your workspace limits and features have been upgraded immediately:</p>
+                    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                      <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px 0; font-weight: bold; color: #555;">Monthly API Requests</td>
+                        <td style="padding: 10px 0; text-align: right; color: #514849; font-weight: bold;">500,000</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px 0; font-weight: bold; color: #555;">Storage Capacity</td>
+                        <td style="padding: 10px 0; text-align: right; color: #514849; font-weight: bold;">5 GB</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px 0; font-weight: bold; color: #555;">Managed Workspaces</td>
+                        <td style="padding: 10px 0; text-align: right; color: #514849; font-weight: bold;">3</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px 0; font-weight: bold; color: #555;">Users per Workspace</td>
+                        <td style="padding: 10px 0; text-align: right; color: #514849; font-weight: bold;">Up to 3</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px 0; font-weight: bold; color: #555;">Collections (Schemas)</td>
+                        <td style="padding: 10px 0; text-align: right; color: #514849; font-weight: bold;">Unlimited</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px 0; font-weight: bold; color: #555;">Form Builder, Localization & Webhooks</td>
+                        <td style="padding: 10px 0; text-align: right; color: #514849; font-weight: bold;">Fully Enabled</td>
+                      </tr>
+                    </table>
+                    <p style="font-size: 15px; color: #555;">If you have any questions, encounter any issues, or need help setting up your endpoints, feel free to reply directly to this email or reach out to us at <a href="mailto:support@morphic-cms.com" style="color: #514849; text-decoration: underline;">support@morphic-cms.com</a>.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                    <p style="font-size: 14px; color: #666;">Cheers,<br><strong style="color: #514849;">The Morphic CMS Team</strong></p>
+                  </div>
+                `,
+              })
+              console.log(
+                `Polar Webhook: Sent thank you email to user ${user.email} (${userId})`
+              )
+            } catch (emailErr) {
+              console.error(
+                `Polar Webhook: Failed to send thank you email to user ${user.email} (${userId}):`,
+                emailErr
+              )
+            }
+          }
 
           // 2. Clear Redis cache for all workspaces owned by this user
           const ownedWorkspaces = await db
@@ -2355,7 +2435,10 @@ api.post('/webhooks/polar', async (c) => {
             for (const workspace of ownedWorkspaces) {
               const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
               await redis.del(cacheKey).catch((err: any) => {
-                console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+                console.error(
+                  `Failed to flush cache for tenant ${workspace.tenantId}:`,
+                  err
+                )
               })
             }
           }
@@ -2375,7 +2458,9 @@ api.post('/webhooks/polar', async (c) => {
             })
             .where(eq(users.id, Number(userId)))
 
-          console.log(`Polar Webhook: Downgraded user ${userId} to FREE tier. Status: ${status}`)
+          console.log(
+            `Polar Webhook: Downgraded user ${userId} to FREE tier. Status: ${status}`
+          )
 
           // 2. Clear Redis cache for all workspaces owned by this user
           const ownedWorkspaces = await db
@@ -2392,13 +2477,18 @@ api.post('/webhooks/polar', async (c) => {
             for (const workspace of ownedWorkspaces) {
               const cacheKey = `tenant:${workspace.tenantId}:owner_metadata`
               await redis.del(cacheKey).catch((err: any) => {
-                console.error(`Failed to flush cache for tenant ${workspace.tenantId}:`, err)
+                console.error(
+                  `Failed to flush cache for tenant ${workspace.tenantId}:`,
+                  err
+                )
               })
             }
           }
         }
       } else {
-        console.warn(`Polar Webhook: No userId/user_id found in metadata for event ${eventType}.`)
+        console.warn(
+          `Polar Webhook: No userId/user_id found in metadata for event ${eventType}.`
+        )
       }
     }
 
@@ -2469,9 +2559,10 @@ api.post('/tenants', async (c) => {
 
       const features = getTenantFeatures(userData.planTier)
       if (ownedWorkspaces.length >= features.maxWorkspaces) {
-        const errorMsg = userData.planTier === 'PRO'
-          ? `You have reached the limit of ${features.maxWorkspaces} workspaces allowed on the PRO plan.`
-          : `Upgrade to the PRO plan to manage up to 3 workspaces. You have reached the limit of ${features.maxWorkspaces} workspace on the Free plan.`;
+        const errorMsg =
+          userData.planTier === 'PRO'
+            ? `You have reached the limit of ${features.maxWorkspaces} workspaces allowed on the PRO plan.`
+            : `Upgrade to the PRO plan to manage up to 3 workspaces. You have reached the limit of ${features.maxWorkspaces} workspace on the Free plan.`
         return c.json({ error: errorMsg }, 403)
       }
     } catch (e) {
@@ -2698,9 +2789,12 @@ api.post('/tenants/:id/users', async (c) => {
       const userCount = Number(existingUsers[0]?.count || 0)
 
       if (userCount >= features.maxUsers) {
-        return c.json({
-          error: `Upgrade to PRO plan to add more than ${features.maxUsers} users to this workspace.`,
-        }, 403)
+        return c.json(
+          {
+            error: `Upgrade to PRO plan to add more than ${features.maxUsers} users to this workspace.`,
+          },
+          403
+        )
       }
     }
 
@@ -2818,7 +2912,13 @@ api.post('/locales', async (c) => {
 
     const features = await getWorkspaceFeatures(tenantId)
     if (!features.hasLocalization) {
-      return c.json({ error: 'Localization features are not available on this plan. Please upgrade.' }, 403)
+      return c.json(
+        {
+          error:
+            'Localization features are not available on this plan. Please upgrade.',
+        },
+        403
+      )
     }
 
     // If setting as default, unset others in the same tenant
@@ -3109,9 +3209,17 @@ api.delete('/abilities/:id', async (c) => {
 api.post('/auth/signup', async (c) => {
   try {
     const body = await c.req.json()
-    const { name, username, email, password, workspaceName, workspaceSlug } = body
+    const { name, username, email, password, workspaceName, workspaceSlug } =
+      body
 
-    if (!name || !username || !email || !password || !workspaceName || !workspaceSlug) {
+    if (
+      !name ||
+      !username ||
+      !email ||
+      !password ||
+      !workspaceName ||
+      !workspaceSlug
+    ) {
       return c.json({ error: 'All fields are required.' }, 400)
     }
 
@@ -3119,12 +3227,17 @@ api.post('/auth/signup', async (c) => {
     const turnstileSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY
     const host = c.req.header('host') || ''
     const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
-    const isTest = process.env.NODE_ENV === 'test' || c.req.header('X-Morphic-Test') === 'true'
+    const isTest =
+      process.env.NODE_ENV === 'test' ||
+      c.req.header('X-Morphic-Test') === 'true'
 
     if (turnstileSecret && !isLocalhost && !isTest) {
       const turnstileToken = body.cf_turnstile_response || body.turnstileToken
       if (!turnstileToken) {
-        return c.json({ error: 'Security verification failed: Missing Turnstile token.' }, 400)
+        return c.json(
+          { error: 'Security verification failed: Missing Turnstile token.' },
+          400
+        )
       }
 
       try {
@@ -3144,11 +3257,17 @@ api.post('/auth/signup', async (c) => {
 
         const outcome: any = await response.json()
         if (!outcome.success) {
-          return c.json({ error: 'Security verification failed: Invalid Turnstile token.' }, 400)
+          return c.json(
+            { error: 'Security verification failed: Invalid Turnstile token.' },
+            400
+          )
         }
       } catch (err) {
         console.error('Turnstile verification error:', err)
-        return c.json({ error: 'Security verification service unavailable.' }, 500)
+        return c.json(
+          { error: 'Security verification service unavailable.' },
+          500
+        )
       }
     }
 
@@ -3160,12 +3279,17 @@ api.post('/auth/signup', async (c) => {
         const ownedLinks = await tx
           .select({ tenantId: usersToTenants.tenantId })
           .from(usersToTenants)
-          .where(and(eq(usersToTenants.userId, userId), eq(usersToTenants.role, 'owner')))
-        
-        const tenantIds = ownedLinks.map(link => link.tenantId)
-        
+          .where(
+            and(
+              eq(usersToTenants.userId, userId),
+              eq(usersToTenants.role, 'owner')
+            )
+          )
+
+        const tenantIds = ownedLinks.map((link) => link.tenantId)
+
         await tx.delete(users).where(eq(users.id, userId))
-        
+
         if (tenantIds.length > 0) {
           await tx.delete(tenants).where(inArray(tenants.id, tenantIds))
         }
@@ -3180,7 +3304,11 @@ api.post('/auth/signup', async (c) => {
       .limit(1)
     if (emailResult.length > 0) {
       const existingUser = emailResult[0]
-      if (!existingUser.isEmailVerified && existingUser.emailVerificationExpiresAt && existingUser.emailVerificationExpiresAt < now) {
+      if (
+        !existingUser.isEmailVerified &&
+        existingUser.emailVerificationExpiresAt &&
+        existingUser.emailVerificationExpiresAt < now
+      ) {
         await deleteExpiredUser(existingUser.id)
       } else {
         return c.json({ error: 'Email is already registered.' }, 400)
@@ -3195,7 +3323,11 @@ api.post('/auth/signup', async (c) => {
       .limit(1)
     if (usernameResult.length > 0) {
       const existingUser = usernameResult[0]
-      if (!existingUser.isEmailVerified && existingUser.emailVerificationExpiresAt && existingUser.emailVerificationExpiresAt < now) {
+      if (
+        !existingUser.isEmailVerified &&
+        existingUser.emailVerificationExpiresAt &&
+        existingUser.emailVerificationExpiresAt < now
+      ) {
         await deleteExpiredUser(existingUser.id)
       } else {
         return c.json({ error: 'Username is already taken.' }, 400)
@@ -3218,12 +3350,21 @@ api.post('/auth/signup', async (c) => {
         })
         .from(usersToTenants)
         .innerJoin(users, eq(usersToTenants.userId, users.id))
-        .where(and(eq(usersToTenants.tenantId, tenant.id), eq(usersToTenants.role, 'owner')))
+        .where(
+          and(
+            eq(usersToTenants.tenantId, tenant.id),
+            eq(usersToTenants.role, 'owner')
+          )
+        )
         .limit(1)
-      
+
       if (ownerRecord.length > 0) {
         const owner = ownerRecord[0]
-        if (!owner.isEmailVerified && owner.emailVerificationExpiresAt && owner.emailVerificationExpiresAt < now) {
+        if (
+          !owner.isEmailVerified &&
+          owner.emailVerificationExpiresAt &&
+          owner.emailVerificationExpiresAt < now
+        ) {
           await deleteExpiredUser(owner.id)
         } else {
           return c.json({ error: 'Workspace URL slug is already taken.' }, 400)
@@ -3236,9 +3377,13 @@ api.post('/auth/signup', async (c) => {
     const hashedPassword = await bcrypt.hash(password, 10)
 
     const isSelfHosted = process.env.IS_SELF_HOSTED === 'true'
-    const verificationToken = isSelfHosted ? null : crypto.randomBytes(32).toString('hex')
+    const verificationToken = isSelfHosted
+      ? null
+      : crypto.randomBytes(32).toString('hex')
     const isEmailVerifiedVal = isSelfHosted
-    const verificationExpiresAt = verificationToken ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null
+    const verificationExpiresAt = verificationToken
+      ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+      : null
 
     // Execute user and workspace creation inside a database transaction
     const onboarding = await db.transaction(async (tx) => {
@@ -3298,7 +3443,10 @@ api.post('/auth/signup', async (c) => {
 
     if (!isSelfHosted && verificationToken) {
       const proto = c.req.header('x-forwarded-proto') || 'http'
-      const reqHost = c.req.header('x-forwarded-host') || c.req.header('host') || 'localhost:3000'
+      const reqHost =
+        c.req.header('x-forwarded-host') ||
+        c.req.header('host') ||
+        'localhost:3000'
       const verificationLink = `${proto}://${reqHost}/verify-email?token=${verificationToken}`
 
       const htmlContent = `
@@ -3324,7 +3472,9 @@ api.post('/auth/signup', async (c) => {
       `
 
       if (process.env.NODE_ENV !== 'production' || isLocalhost) {
-        console.log(`\n✉️  [Local Dev] Email Verification Link:\n👉 ${verificationLink}\n`)
+        console.log(
+          `\n✉️  [Local Dev] Email Verification Link:\n👉 ${verificationLink}\n`
+        )
       }
 
       await sendEmail({
@@ -3403,7 +3553,10 @@ api.post('/auth/login', async (c) => {
 
     // Check if email verification is completed (in Cloud SaaS mode)
     if (process.env.IS_SELF_HOSTED !== 'true' && !user.isEmailVerified) {
-      return c.json({ error: 'Please verify your email address before logging in.' }, 403)
+      return c.json(
+        { error: 'Please verify your email address before logging in.' },
+        403
+      )
     }
 
     const secret = process.env.JWT_SECRET || 'fallback_secret_for_dev_only'
@@ -3809,9 +3962,12 @@ api.post('/collections', async (c) => {
     if (tenantId && userData?.role !== 'super_admin') {
       const features = await getWorkspaceFeatures(tenantId)
       if (body.localized && !features.hasLocalization) {
-        return c.json({
-          error: 'Upgrade to PRO plan to enable Localization features.',
-        }, 403)
+        return c.json(
+          {
+            error: 'Upgrade to PRO plan to enable Localization features.',
+          },
+          403
+        )
       }
       const existingCollections = await db
         .select({ count: sql`count(*)` })
@@ -3824,9 +3980,12 @@ api.post('/collections', async (c) => {
         )
       const count = Number(existingCollections[0]?.count || 0)
       if (count >= features.maxCollections) {
-        return c.json({
-          error: `Upgrade to PRO plan to create more than ${features.maxCollections} collections.`,
-        }, 403)
+        return c.json(
+          {
+            error: `Upgrade to PRO plan to create more than ${features.maxCollections} collections.`,
+          },
+          403
+        )
       }
     }
 
@@ -3912,9 +4071,12 @@ api.put('/collections/:id', async (c) => {
     if (tenantId && userData?.role !== 'super_admin') {
       const features = await getWorkspaceFeatures(tenantId)
       if (body.localized && !features.hasLocalization) {
-        return c.json({
-          error: 'Upgrade to PRO plan to enable Localization features.',
-        }, 403)
+        return c.json(
+          {
+            error: 'Upgrade to PRO plan to enable Localization features.',
+          },
+          403
+        )
       }
     }
 

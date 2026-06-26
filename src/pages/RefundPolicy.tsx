@@ -183,7 +183,7 @@ export default function RefundPolicy() {
               Thank you for selecting Morphic CMS. We strive to provide premium, dependable headless content management services for modern developers.
             </p>
             <p>
-              Because our subscription checkout mechanisms are operated by <strong>Paddle</strong>, our authorized reseller and global Merchant of Record, all payment mutations, charge resolutions, and refund actions are processed natively via Paddle&apos;s administrative networks in alignment with this policy.
+              Because our subscription checkout mechanisms are operated by <strong>Polar</strong>, our authorized reseller and global Merchant of Record, all payment mutations, charge resolutions, and refund actions are processed natively via Polar&apos;s administrative networks in alignment with this policy.
             </p>
 
             <hr className='border-white/5' />
@@ -195,7 +195,7 @@ export default function RefundPolicy() {
               </h2>
               <div className='space-y-3 pl-4 border-l-2 border-primary/20'>
                 <p>
-                  You may cancel your Morphic Pro subscription at any time directly inside your Billing Settings panel or through the Paddle Buyer Portal (<a href='https://paddle.net' target='_blank' rel='noopener noreferrer' className='text-slate-200 hover:text-primary transition-colors underline'>paddle.net</a>).
+                  You may cancel your Morphic Pro subscription at any time directly inside your Billing Settings panel or through the Polar Customer Portal (<a href='https://polar.sh' target='_blank' rel='noopener noreferrer' className='text-slate-200 hover:text-primary transition-colors underline'>polar.sh</a>).
                 </p>
                 <ul className='list-disc pl-5 space-y-2 text-slate-400'>
                   <li>
@@ -262,10 +262,10 @@ export default function RefundPolicy() {
                 </p>
                 <ol className='list-decimal pl-5 space-y-2 text-slate-400'>
                   <li>
-                    Click the &quot;View Receipt&quot; or &quot;Manage Subscription&quot; links included inside your official email payment statement sent by Paddle.
+                    Click the &quot;View Receipt&quot; or &quot;Manage Subscription&quot; links included inside your official email payment statement sent by Polar.
                   </li>
                   <li>
-                    Alternatively, navigate directly to <a href='https://paddle.net' target='_blank' rel='noopener noreferrer' className='text-slate-200 hover:text-primary transition-colors underline'>paddle.net</a> and invoke a &quot;Request Refund&quot; ticket under your specific transaction token.
+                    Alternatively, navigate directly to <a href='https://polar.sh' target='_blank' rel='noopener noreferrer' className='text-slate-200 hover:text-primary transition-colors underline'>polar.sh</a> and manage your subscription or request assistance under your specific transaction.
                   </li>
                   <li>
                     For localized technical issues, please loop in our team at{' '}

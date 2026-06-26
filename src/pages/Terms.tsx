@@ -233,7 +233,7 @@ export default function Terms() {
                   subscription payment mutations, invoicing collections, and
                   sales tax compliance metrics are managed exclusively through
                   our authorized Merchant of Record,{' '}
-                  <strong>Paddle (Paddle.com Market Limited)</strong>.
+                  <strong>Polar (Polar Sh Inc.)</strong>.
                 </p>
                 <p>
                   <strong>Tier Limit Enforcement:</strong>
@@ -395,7 +395,7 @@ export default function Terms() {
                   OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR RELATING TO THE
                   USE OF, OR INABILITY TO USE, THIS SERVICE. OUR TOTAL LIABILITY
                   FOR ANY CLAIMS UNDER THIS AGREEMENT IS STRICTLY CAPPED AT THE
-                  TOTAL AMOUNT PAID BY YOU TO US VIA PADDLE IN THE THREE (3)
+                  TOTAL AMOUNT PAID BY YOU TO US VIA POLAR IN THE THREE (3)
                   MONTHS IMMEDIATELY PRECEDING THE CLAIM.
                 </p>
               </div>

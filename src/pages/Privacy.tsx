@@ -218,12 +218,12 @@ export default function Privacy() {
                   Morphic CMS does not directly process or store your financial instruments or credit card numbers.
                 </p>
                 <p>
-                  All payment operations, subscriptions, and invoicing checkpoints are executed by our merchant partner and authorized reseller, <strong>Paddle</strong> (Paddle.com Market Limited).
+                  All payment operations, subscriptions, and invoicing checkpoints are executed by our merchant partner and authorized reseller, <strong>Polar</strong> (Polar Sh Inc.).
                 </p>
                 <p>
-                  When making a transaction, personal identifiers and billing records are shared securely with Paddle under their distinct regulatory protocols. Your transaction history is governed entirely by the{' '}
-                  <a href='https://www.paddle.com/legal/privacy' target='_blank' rel='noopener noreferrer' className='text-slate-200 hover:text-primary transition-colors underline'>
-                    Paddle Privacy Policy
+                  When making a transaction, personal identifiers and billing records are shared securely with Polar under their distinct regulatory protocols. Your transaction history is governed entirely by the{' '}
+                  <a href='https://polar.sh/legal/privacy' target='_blank' rel='noopener noreferrer' className='text-slate-200 hover:text-primary transition-colors underline'>
+                    Polar Privacy Policy
                   </a>.
                 </p>
               </div>
