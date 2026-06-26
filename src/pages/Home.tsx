@@ -8,6 +8,7 @@ import {
   PhytonIcon,
   RustIcon,
 } from '@/components/icons'
+import { PublicFooter } from '@/components/PublicFooter'
 import Macbook from '@/components/mockup/Macbook'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
@@ -21,13 +22,13 @@ import {
   Copy,
   Database,
   FileCode,
+  Flame,
   Globe,
   History,
   Key,
   Languages,
   Layers,
   Lock,
-  Flame,
   Menu,
   RefreshCw,
   Rocket,
@@ -1887,7 +1888,6 @@ export default function Home({
 
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10'>
             <div className='grid lg:grid-cols-12 gap-12 items-center'>
-              
               {/* Left Column: Copy */}
               <div className='lg:col-span-5 space-y-6'>
                 <div className='inline-flex items-center space-x-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs font-semibold text-primary mb-2'>
@@ -1901,7 +1901,10 @@ export default function Home({
                   </span>
                 </h2>
                 <p className='text-slate-400 text-sm md:text-base leading-relaxed'>
-                  Love Morphic CMS but want to skip database provisioning, SSL setups, edge deployment, and ongoing maintenance? Morphic Cloud gets your content projects online instantly on fully managed, high-performance global cloud infrastructure.
+                  Love Morphic CMS but want to skip database provisioning, SSL
+                  setups, edge deployment, and ongoing maintenance? Morphic
+                  Cloud gets your content projects online instantly on fully
+                  managed, high-performance global cloud infrastructure.
                 </p>
                 <div className='pt-4 flex flex-wrap gap-4'>
                   <Button
@@ -1927,9 +1930,13 @@ export default function Home({
                   <div className='w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
                     <Zap className='w-5 h-5' />
                   </div>
-                  <h3 className='text-lg font-bold text-white mb-2'>Zero-Config Setup</h3>
+                  <h3 className='text-lg font-bold text-white mb-2'>
+                    Zero-Config Setup
+                  </h3>
                   <p className='text-xs text-slate-400 leading-relaxed'>
-                    Deploy a production-ready workspace in 3 seconds. We manage the database clusters, caching layers, and security updates under the hood.
+                    Deploy a production-ready workspace in 3 seconds. We manage
+                    the database clusters, caching layers, and security updates
+                    under the hood.
                   </p>
                 </div>
 
@@ -1938,9 +1945,13 @@ export default function Home({
                   <div className='w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
                     <Users className='w-5 h-5' />
                   </div>
-                  <h3 className='text-lg font-bold text-white mb-2'>Multi-User Workspaces</h3>
+                  <h3 className='text-lg font-bold text-white mb-2'>
+                    Multi-User Workspaces
+                  </h3>
                   <p className='text-xs text-slate-400 leading-relaxed'>
-                    Add up to 3 active users per tenant on our PRO plan. Invite content writers, editors, and administrators with secure role privileges.
+                    Add up to 3 active users per tenant on our PRO plan. Invite
+                    content writers, editors, and administrators with secure
+                    role privileges.
                   </p>
                 </div>
 
@@ -1949,9 +1960,13 @@ export default function Home({
                   <div className='w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
                     <Globe className='w-5 h-5' />
                   </div>
-                  <h3 className='text-lg font-bold text-white mb-2'>Global Localization</h3>
+                  <h3 className='text-lg font-bold text-white mb-2'>
+                    Global Localization
+                  </h3>
                   <p className='text-xs text-slate-400 leading-relaxed'>
-                    Reach global audiences. Build localized content schema structures and serve multi-regional api payloads seamlessly at the edge.
+                    Reach global audiences. Build localized content schema
+                    structures and serve multi-regional api payloads seamlessly
+                    at the edge.
                   </p>
                 </div>
 
@@ -1960,14 +1975,16 @@ export default function Home({
                   <div className='w-10 h-10 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform'>
                     <Webhook className='w-5 h-5' />
                   </div>
-                  <h3 className='text-lg font-bold text-white mb-2'>Webhooks & Forms</h3>
+                  <h3 className='text-lg font-bold text-white mb-2'>
+                    Webhooks & Forms
+                  </h3>
                   <p className='text-xs text-slate-400 leading-relaxed'>
-                    Trigger builds automatically on Netlify/Vercel with webhook hooks, and collect frontend user submissions directly via Form Builder.
+                    Trigger builds automatically on Netlify/Vercel with webhook
+                    hooks, and collect frontend user submissions directly via
+                    Form Builder.
                   </p>
                 </div>
-
               </div>
-              
             </div>
           </div>
         </section>
@@ -2009,59 +2026,7 @@ export default function Home({
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className='py-16 border-t border-white/5 text-slate-500 text-xs mt-12 bg-deep-mocha-900/20'>
-          <div className='max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6'>
-            <div className='flex items-center space-x-2.5'>
-              <Logo stroke='#ffffff' />
-              <span className='font-black text-white tracking-tighter uppercase'>
-                MORPHIC
-              </span>
-            </div>
-            <div className='flex flex-wrap items-center justify-center gap-x-8 gap-y-4'>
-              <a
-                href='#features'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Features
-              </a>
-              <a
-                href='#architecture'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Architecture
-              </a>
-              <a
-                href='#comparison'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Comparison
-              </a>
-              <Link
-                href='/docs'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Docs
-              </Link>
-              <Link
-                href='/changelog'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Changelog
-              </Link>
-              <Link
-                href='/terms'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Terms
-              </Link>
-            </div>
-            <div className='opacity-50 text-center md:text-right italic'>
-              &copy; {new Date().getFullYear()} Morphic CMS. Released under the
-              MIT License.
-            </div>
-          </div>
-        </footer>
+        <PublicFooter />
       </main>
     </div>
   )

@@ -1,4 +1,5 @@
 import { Logo } from '@/components/icons'
+import { PublicFooter } from '@/components/PublicFooter'
 import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
 import { Check, Flame, HelpCircle, Menu, X } from 'lucide-react'
@@ -411,59 +412,7 @@ export default function PricingPublic({
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className='py-16 border-t border-white/5 text-slate-500 text-xs mt-12 bg-deep-mocha-900/20 relative z-10'>
-          <div className='max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6'>
-            <div className='flex items-center space-x-2.5'>
-              <Logo stroke='#ffffff' />
-              <span className='font-black text-white tracking-tighter uppercase'>
-                MORPHIC
-              </span>
-            </div>
-            <div className='flex flex-wrap items-center justify-center gap-x-8 gap-y-4'>
-              <Link
-                href='/#features'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Features
-              </Link>
-              <Link
-                href='/#architecture'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Architecture
-              </Link>
-              <Link
-                href='/#comparison'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Comparison
-              </Link>
-              <Link
-                href='/docs'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Docs
-              </Link>
-              <Link
-                href='/changelog'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Changelog
-              </Link>
-              <Link
-                href='/terms'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Terms
-              </Link>
-            </div>
-            <div className='opacity-50 text-center md:text-right italic'>
-              &copy; {new Date().getFullYear()} Morphic CMS. Released under the
-              MIT License.
-            </div>
-          </div>
-        </footer>
+        <PublicFooter />
       </div>
     </>
   )

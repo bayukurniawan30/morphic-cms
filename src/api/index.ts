@@ -524,6 +524,22 @@ app.get('/terms', async (c) => {
   })
 })
 
+app.get('/privacy', async (c) => {
+  const userData = c.get('user')
+  return c.get('inertia')('Privacy', {
+    user: userData,
+    title: 'Privacy Policy | Morphic CMS',
+  })
+})
+
+app.get('/refund-policy', async (c) => {
+  const userData = c.get('user')
+  return c.get('inertia')('RefundPolicy', {
+    user: userData,
+    title: 'Refund Policy | Morphic CMS',
+  })
+})
+
 const parseMarkdown = (md: string): string => {
   let html = md
   // Escape HTML entities to prevent XSS

@@ -1,4 +1,5 @@
 import { Logo } from '@/components/icons'
+import { PublicFooter } from '@/components/PublicFooter'
 import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
 import { Menu, X } from 'lucide-react'
@@ -231,7 +232,8 @@ export default function Terms() {
                   <strong>The Merchant of Record:</strong> All cloud
                   subscription payment mutations, invoicing collections, and
                   sales tax compliance metrics are managed exclusively through
-                  our authorized Merchant of Record, Lemon Squeezy, LLC.
+                  our authorized Merchant of Record,{' '}
+                  <strong>Paddle (Paddle.com Market Limited)</strong>.
                 </p>
                 <p>
                   <strong>Tier Limit Enforcement:</strong>
@@ -393,8 +395,8 @@ export default function Terms() {
                   OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR RELATING TO THE
                   USE OF, OR INABILITY TO USE, THIS SERVICE. OUR TOTAL LIABILITY
                   FOR ANY CLAIMS UNDER THIS AGREEMENT IS STRICTLY CAPPED AT THE
-                  TOTAL AMOUNT PAID BY YOU TO US VIA LEMON SQUEEZY IN THE THREE
-                  (3) MONTHS IMMEDIATELY PRECEDING THE CLAIM.
+                  TOTAL AMOUNT PAID BY YOU TO US VIA PADDLE IN THE THREE (3)
+                  MONTHS IMMEDIATELY PRECEDING THE CLAIM.
                 </p>
               </div>
             </div>
@@ -427,68 +429,20 @@ export default function Terms() {
                   verifications, or workspace data removal requests, please
                   connect with us directly inside our developer community
                   support channels or email us at{' '}
-                  <a href='mailto:support@morphic-cms.com' className='text-slate-200 hover:text-primary transition-colors underline'>
+                  <a
+                    href='mailto:support@morphic-cms.com'
+                    className='text-slate-200 hover:text-primary transition-colors underline'
+                  >
                     support@morphic-cms.com
-                  </a>.
+                  </a>
+                  .
                 </p>
               </div>
             </div>
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className='py-16 border-t border-white/5 text-slate-500 text-xs mt-12 bg-deep-mocha-900/20 relative z-10'>
-          <div className='max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6'>
-            <div className='flex items-center space-x-2.5'>
-              <Logo stroke='#ffffff' />
-              <span className='font-black text-white tracking-tighter uppercase'>
-                MORPHIC
-              </span>
-            </div>
-            <div className='flex flex-wrap items-center justify-center gap-x-8 gap-y-4'>
-              <Link
-                href='/#features'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Features
-              </Link>
-              <Link
-                href='/#architecture'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Architecture
-              </Link>
-              <Link
-                href='/#comparison'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Comparison
-              </Link>
-              <Link
-                href='/docs'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Docs
-              </Link>
-              <Link
-                href='/changelog'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Changelog
-              </Link>
-              <Link
-                href='/terms'
-                className='hover:text-slate-300 transition-colors'
-              >
-                Terms
-              </Link>
-            </div>
-            <div className='opacity-50 text-center md:text-right italic'>
-              &copy; {new Date().getFullYear()} Morphic CMS. Released under the
-              MIT License.
-            </div>
-          </div>
-        </footer>
+        <PublicFooter />
       </div>
     </>
   )
