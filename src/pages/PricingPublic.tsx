@@ -302,11 +302,17 @@ export default function PricingPublic() {
                   For growing businesses, professional developers, and team
                   collaboration.
                 </p>
-                <div className='flex items-baseline gap-1 mb-8 relative z-10'>
-                  <span className='text-4xl font-extrabold tracking-tight text-white'>
-                    $19
-                  </span>
-                  <span className='text-slate-400 text-sm'>/ month</span>
+                <div className='flex flex-col gap-2 mb-8 relative z-10'>
+                  <div className='flex items-baseline gap-2'>
+                    <span className='text-4xl font-extrabold tracking-tight text-white'>
+                      $9
+                    </span>
+                    <span className='text-lg text-slate-500 line-through'>$19</span>
+                    <span className='text-slate-400 text-sm'>/ month</span>
+                  </div>
+                  <div className='text-xs text-emerald-400 font-medium bg-emerald-950/30 border border-emerald-900/50 px-2 py-1 rounded-md inline-block w-fit'>
+                    Code: <strong className='text-emerald-300 font-bold'>EARLY50</strong> (First 50 users, recurring)
+                  </div>
                 </div>
 
                 <div className='h-px w-full bg-white/5 mb-8 relative z-10' />

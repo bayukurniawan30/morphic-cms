@@ -512,18 +512,17 @@ export default function Home({
 
       {/* Top Banner */}
       <div className='relative z-50 bg-deep-mocha-900/80 backdrop-blur-md border-b border-white/5 text-center py-2.5 px-4 text-xs font-semibold tracking-wide flex items-center justify-center gap-2 text-deep-mocha-300'>
-        <span className='bg-deep-mocha-700/30 text-deep-mocha-100 px-2 py-0.5 rounded-full text-[10px] font-black border border-deep-mocha-700/40 uppercase'>
-          v{APP_VERSION}
+        <span className='bg-emerald-950/40 text-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-black border border-emerald-800/40 uppercase animate-pulse'>
+          Promo
         </span>
         <span>
-          Introducing Morphic CMS: Database-first headless platform built for
-          Neon PostgreSQL.
+          Get $10 off Pro Plan recurring (pay only $9/mo) for the first 50 users! Use code <strong className='text-white font-semibold'>EARLY50</strong>.
         </span>
         <Link
-          href='/docs'
+          href='/pricing'
           className='underline hover:text-white transition-colors flex items-center ml-2 group'
         >
-          Read Docs{' '}
+          Get Offer{' '}
           <ArrowRight className='w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5' />
         </Link>
       </div>

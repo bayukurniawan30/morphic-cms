@@ -160,11 +160,17 @@ export default function Pricing({ user }: PricingProps) {
                 For growing businesses, professional developers, and team
                 collaboration.
               </p>
-              <div className='flex items-baseline gap-1 mb-8 relative z-10'>
-                <span className='text-4xl font-extrabold tracking-tight'>
-                  $19
-                </span>
-                <span className='text-muted-foreground text-sm'>/ month</span>
+              <div className='flex flex-col gap-2 mb-8 relative z-10'>
+                <div className='flex items-baseline gap-2'>
+                  <span className='text-4xl font-extrabold tracking-tight'>
+                    $9
+                  </span>
+                  <span className='text-lg text-muted-foreground/60 line-through'>$19</span>
+                  <span className='text-muted-foreground text-sm'>/ month</span>
+                </div>
+                <div className='text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-md inline-block w-fit'>
+                  Code: <strong className='text-emerald-700 dark:text-emerald-300 font-semibold'>EARLY50</strong> (First 50 users, recurring)
+                </div>
               </div>
 
               <div className='h-px w-full bg-border mb-8 relative z-10' />
