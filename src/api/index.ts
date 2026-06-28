@@ -29,6 +29,7 @@ import {
   getTenantFeatures,
   getWorkspaceFeatures,
   PLAN_LIMITS,
+  isReservedSlug,
 } from '../config/features.js'
 import { db } from '../db/index.js'
 import {
@@ -2576,6 +2577,10 @@ api.post('/tenants', async (c) => {
     if (!name || !slug)
       return c.json({ error: 'Name and slug are required' }, 400)
 
+    if (isReservedSlug(slug)) {
+      return c.json({ error: 'This workspace URL slug is reserved and cannot be used.' }, 400)
+    }
+
     const existingTenant = await db
       .select({ id: tenants.id })
       .from(tenants)
@@ -3221,6 +3226,10 @@ api.post('/auth/signup', async (c) => {
       !workspaceSlug
     ) {
       return c.json({ error: 'All fields are required.' }, 400)
+    }
+
+    if (isReservedSlug(workspaceSlug)) {
+      return c.json({ error: 'This workspace URL slug is reserved and cannot be used.' }, 400)
     }
 
     // Cloudflare Turnstile Verification

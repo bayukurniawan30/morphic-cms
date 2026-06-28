@@ -136,3 +136,5 @@ export async function getWorkspaceStorageUsage(
     return 0
   }
 }
+
+export { RESERVED_SLUGS, isReservedSlug } from './reserved-slugs.js'

@@ -13,6 +13,7 @@ import {
   Mail,
 } from 'lucide-react'
 import React, { useState } from 'react'
+import { RESERVED_SLUGS } from '../../config/reserved-slugs'
 
 export default function SignUp({
   title,
@@ -111,6 +112,11 @@ export default function SignUp({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!data.workspaceName || !data.workspaceSlug) return
+
+    if (RESERVED_SLUGS.has(data.workspaceSlug.toLowerCase().trim())) {
+      setError('email', 'This workspace URL slug is reserved and cannot be used.')
+      return
+    }
 
     setIsSubmitting(true)
     setError('email', '')

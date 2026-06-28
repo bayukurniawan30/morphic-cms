@@ -11,6 +11,8 @@ interface AddTenantProps {
   user: any
 }
 
+import { RESERVED_SLUGS } from '../../config/reserved-slugs'
+
 export default function AddTenant({ user }: AddTenantProps) {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
@@ -31,6 +33,11 @@ export default function AddTenant({ user }: AddTenantProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !slug) return
+
+    if (RESERVED_SLUGS.has(slug.toLowerCase().trim())) {
+      toast.error('This workspace URL slug is reserved and cannot be used.')
+      return
+    }
 
     setLoading(true)
     try {
