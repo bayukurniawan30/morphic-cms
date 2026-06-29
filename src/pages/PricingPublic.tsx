@@ -2,7 +2,7 @@ import { PublicFooter } from '@/components/PublicFooter'
 import { PublicHeader } from '@/components/PublicHeader'
 import { Button } from '@/components/ui/button'
 import { Head, Link } from '@inertiajs/react'
-import { Check, Flame, HelpCircle } from 'lucide-react'
+import { Check, Flame, HelpCircle, X } from 'lucide-react'
 
 export default function PricingPublic() {
 
