@@ -91,6 +91,29 @@ export const inertia = (viewFile: string = 'index.html') => {
           pageImage = mergedProps.meta.ogImage
         }
 
+        let pageImageAlt = pageTitle
+        if (mergedProps.post?.content?.featuredImage?.alt) {
+          pageImageAlt = mergedProps.post.content.featuredImage.alt
+        }
+
+        let pageImageWidth = '1200'
+        let pageImageHeight = '630'
+        
+        if (mergedProps.post?.content?.seo?.og_image?.width) {
+          pageImageWidth = String(mergedProps.post.content.seo.og_image.width)
+          pageImageHeight = String(mergedProps.post.content.seo.og_image.height)
+        } else if (mergedProps.post?.content?.featuredImage?.width) {
+          pageImageWidth = String(mergedProps.post.content.featuredImage.width)
+          pageImageHeight = String(mergedProps.post.content.featuredImage.height)
+        }
+
+        let pageType = 'website'
+        if (component === 'Blog/Detail') {
+          pageType = 'article'
+        }
+
+        const canonicalUrl = c.req.url.split('?')[0]
+
         const inertiaProps = {
           component,
           props: mergedProps,
@@ -143,16 +166,22 @@ export const inertia = (viewFile: string = 'index.html') => {
             <meta name="description" content="${pageDesc.replace(/"/g, '&quot;')}" />
             <meta name="keywords" content="headless cms, edge-ready, multi-tenant, react cms, modern cms" />
             <link rel="icon" type="image/png" href="${new URL(c.req.url).origin}/favicon.png" />
+            <link rel="canonical" href="${canonicalUrl}" />
             
             <!-- Fallback Open Graph / Social Media Meta Tags (Visible to crawlers without JavaScript) -->
-            <meta property="og:type" content="website" />
-            <meta property="og:url" content="${c.req.url}" />
+            <meta property="og:type" content="${pageType}" />
+            <meta property="og:url" content="${canonicalUrl}" />
+            <meta property="og:site_name" content="Morphic CMS" />
+            <meta property="og:locale" content="en_US" />
             <meta property="og:title" content="${pageTitle.replace(/"/g, '&quot;')}" />
             <meta property="og:description" content="${pageDesc.replace(/"/g, '&quot;')}" />
             <meta property="og:image" content="${pageImage}" />
+            <meta property="og:image:alt" content="${pageImageAlt.replace(/"/g, '&quot;')}" />
+            <meta property="og:image:width" content="${pageImageWidth}" />
+            <meta property="og:image:height" content="${pageImageHeight}" />
             <meta property="og:logo" content="${new URL(c.req.url).origin}/favicon.png" />
             <meta property="twitter:card" content="summary_large_image" />
-            <meta property="twitter:url" content="${c.req.url}" />
+            <meta property="twitter:url" content="${canonicalUrl}" />
             <meta property="twitter:title" content="${pageTitle.replace(/"/g, '&quot;')}" />
             <meta property="twitter:description" content="${pageDesc.replace(/"/g, '&quot;')}" />
             <meta property="twitter:image" content="${pageImage}" />
