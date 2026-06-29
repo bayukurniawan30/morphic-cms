@@ -71,6 +71,26 @@ export const inertia = (viewFile: string = 'index.html') => {
         const sharedProps = c.get('inertiaSharedProps' as any) || {}
         const mergedProps = { ...sharedProps, ...props }
 
+        const pageTitle = mergedProps.title || 'Morphic CMS - Modern Headless CMS'
+        
+        let pageDesc = 'The Edge-Ready, High-Performance Headless CMS for Modern Developers.'
+        if (mergedProps.post?.content?.seo?.description) {
+          pageDesc = mergedProps.post.content.seo.description
+        } else if (mergedProps.post?.content?.excerpt) {
+          pageDesc = mergedProps.post.content.excerpt
+        } else if (mergedProps.meta?.description) {
+          pageDesc = mergedProps.meta.description
+        }
+
+        let pageImage = `${new URL(c.req.url).origin}/dashboard.png`
+        if (mergedProps.post?.content?.seo?.og_image?.secureUrl) {
+          pageImage = mergedProps.post.content.seo.og_image.secureUrl
+        } else if (mergedProps.post?.content?.featuredImage?.secureUrl) {
+          pageImage = mergedProps.post.content.featuredImage.secureUrl
+        } else if (mergedProps.meta?.ogImage) {
+          pageImage = mergedProps.meta.ogImage
+        }
+
         const inertiaProps = {
           component,
           props: mergedProps,
@@ -120,21 +140,22 @@ export const inertia = (viewFile: string = 'index.html') => {
         <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <meta name="description" content="Morphic CMS is a high-performance, multi-tenant headless CMS built for the edge." />
+            <meta name="description" content="${pageDesc.replace(/"/g, '&quot;')}" />
             <meta name="keywords" content="headless cms, edge-ready, multi-tenant, react cms, modern cms" />
             <link rel="icon" type="image/png" href="${new URL(c.req.url).origin}/favicon.png" />
             
             <!-- Fallback Open Graph / Social Media Meta Tags (Visible to crawlers without JavaScript) -->
             <meta property="og:type" content="website" />
             <meta property="og:url" content="${c.req.url}" />
-            <meta property="og:tgitle" content="Morphic CMS - Modern Headless CMS" />
-            <meta property="og:description" content="The Edge-Ready, High-Performance Headless CMS for Modern Developers." />
-            <meta property="og:image" content="${new URL(c.req.url).origin}/dashboard.png" />
+            <meta property="og:title" content="${pageTitle.replace(/"/g, '&quot;')}" />
+            <meta property="og:description" content="${pageDesc.replace(/"/g, '&quot;')}" />
+            <meta property="og:image" content="${pageImage}" />
             <meta property="og:logo" content="${new URL(c.req.url).origin}/favicon.png" />
             <meta property="twitter:card" content="summary_large_image" />
             <meta property="twitter:url" content="${c.req.url}" />
-            <meta property="twitter:title" content="Morphic CMS - Modern Headless CMS" />
-            <meta property="twitter:description" content="The Edge-Ready, High-Performance Headless CMS for Modern Developers." />
+            <meta property="twitter:title" content="${pageTitle.replace(/"/g, '&quot;')}" />
+            <meta property="twitter:description" content="${pageDesc.replace(/"/g, '&quot;')}" />
+            <meta property="twitter:image" content="${pageImage}" />
 
             <script>
               window.addEventListener('error', function(e) {
