@@ -469,15 +469,15 @@ export default function Layout({ user, title, children }: LayoutProps) {
             )}
           </nav>
 
-          {isSelfHosted && (
-            <div
-              className={cn(
-                'p-2 border-t space-y-2 bg-muted/20 transition-all',
-                !isSidebarOpen && 'lg:p-1'
-              )}
-            >
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
+          <div
+            className={cn(
+              'p-2 border-t space-y-2 bg-muted/20 transition-all',
+              !isSidebarOpen && 'lg:p-1'
+            )}
+          >
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                {isSelfHosted ? (
                   <a
                     href='https://github.com/bayukurniawan30/morphic-cms'
                     target='_blank'
@@ -497,14 +497,34 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       Support Us
                     </span>
                   </a>
-                </TooltipTrigger>
-                <TooltipContent
-                  side='right'
-                  className={cn('hidden', !isSidebarOpen && 'lg:block')}
-                >
-                  Support Us on GitHub
-                </TooltipContent>
-              </Tooltip>
+                ) : (
+                  <a
+                    href='mailto:support@morphic-cms.com'
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm',
+                      !isSidebarOpen && 'lg:justify-center lg:px-0'
+                    )}
+                  >
+                    <Mail className='h-5 w-5 shrink-0' />
+                    <span
+                      className={cn(
+                        'truncate transition-all duration-300',
+                        !isSidebarOpen && 'lg:hidden lg:w-0'
+                      )}
+                    >
+                      Contact Support
+                    </span>
+                  </a>
+                )}
+              </TooltipTrigger>
+              <TooltipContent
+                side='right'
+                className={cn('hidden', !isSidebarOpen && 'lg:block')}
+              >
+                {isSelfHosted ? 'Support Us on GitHub' : 'Contact Support'}
+              </TooltipContent>
+            </Tooltip>
+            {isSelfHosted && (
               <div
                 className={cn(
                   'px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between transition-all',
@@ -515,8 +535,8 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   Version <span className='uppercase'>{getAppVersion()}</span>
                 </span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </aside>
 
         {/* Main Content */}

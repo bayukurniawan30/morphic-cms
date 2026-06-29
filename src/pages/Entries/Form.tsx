@@ -871,19 +871,28 @@ export default function EntriesForm({
   const [isApiPreviewOpen, setIsApiPreviewOpen] = useState(false)
   const [apiPreviewData, setApiPreviewData] = useState<any>(null)
   const [isFetchingPreview, setIsFetchingPreview] = useState(false)
+  const [previewIncludeDrafts, setPreviewIncludeDrafts] = useState(false)
 
-  const fetchApiPreview = async () => {
+  const fetchApiPreview = async (includeDrafts: boolean) => {
     if (!entry?.id) return
     setIsFetchingPreview(true)
     try {
-      const res = await fetch(`/api/entries/${entry.id}`)
+      let url = `/api/entries/${entry.id}`
+      if (includeDrafts) {
+        url += '?status=all'
+      }
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setApiPreviewData(data)
       } else {
-        toast.error('Failed to fetch API preview')
+        setApiPreviewData(null)
+        if (res.status !== 404) {
+          toast.error('Failed to fetch API preview')
+        }
       }
     } catch (err) {
+      setApiPreviewData(null)
       toast.error('Network error')
     } finally {
       setIsFetchingPreview(false)
@@ -891,10 +900,10 @@ export default function EntriesForm({
   }
 
   useEffect(() => {
-    if (isApiPreviewOpen && !apiPreviewData && mode === 'edit') {
-      fetchApiPreview()
+    if (isApiPreviewOpen && mode === 'edit') {
+      fetchApiPreview(previewIncludeDrafts)
     }
-  }, [isApiPreviewOpen])
+  }, [isApiPreviewOpen, previewIncludeDrafts])
 
   // Block navigation if there are unsaved changes
   useEffect(() => {
@@ -1276,14 +1285,33 @@ export default function EntriesForm({
                       value='rest'
                       className='flex-1 flex flex-col overflow-hidden m-0'
                     >
-                      <div className='relative overflow-hidden rounded-xl border border-white/10 bg-zinc-950 group h-[450px] flex flex-col'>
+                      <div className='flex items-center space-x-3 bg-muted/10 p-3.5 rounded-lg border border-border/40 text-xs mb-3'>
+                        <input
+                          id='include-drafts'
+                          type='checkbox'
+                          checked={previewIncludeDrafts}
+                          onChange={(e) => setPreviewIncludeDrafts(e.target.checked)}
+                          className='h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-primary focus:ring-offset-zinc-950 accent-primary cursor-pointer'
+                        />
+                        <label
+                          htmlFor='include-drafts'
+                          className='font-medium leading-none text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none'
+                        >
+                          Include Draft Entries{' '}
+                          <span className='opacity-60 font-normal'>
+                            (Appends <code className='text-[10px] font-mono bg-muted/50 px-1 py-0.5 rounded'>?status=all</code> to query)
+                          </span>
+                        </label>
+                      </div>
+
+                      <div className='relative overflow-hidden rounded-xl border border-white/10 bg-zinc-950 group h-[400px] flex flex-col'>
                         {/* Decorative Glow */}
                         <div className='absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-blue-500/30 rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-500 pointer-events-none' />
 
                         <ScrollArea className='flex-1 p-4 font-mono text-sm text-zinc-300 bg-transparent'>
                           <div className='relative z-10'>
                             {isFetchingPreview ? (
-                              <div className='h-[416px] flex items-center justify-center text-zinc-500'>
+                              <div className='h-[366px] flex items-center justify-center text-zinc-500'>
                                 <Loader2Icon className='w-6 h-6 animate-spin mr-2' />
                                 Loading preview...
                               </div>
@@ -1295,7 +1323,7 @@ export default function EntriesForm({
                                       GET
                                     </span>
                                     <code className='text-[10px] text-zinc-400'>
-                                      /api/entries/{entry?.id}
+                                      /api/entries/{entry?.id}{previewIncludeDrafts ? '?status=all' : ''}
                                     </code>
                                   </div>
                                   <div className='flex items-center space-x-2'>
@@ -1326,7 +1354,7 @@ export default function EntriesForm({
                                           activeTenant?.id || 'YOUR_TENANT_ID'
                                         const apiKey =
                                           user?.apiKey || 'YOUR_API_KEY'
-                                        const url = `${window.location.origin}/api/entries/${entry?.id}`
+                                        const url = `${window.location.origin}/api/entries/${entry?.id}${previewIncludeDrafts ? '?status=all' : ''}`
                                         const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "X-Tenant-ID: ${tenantId}"`
                                         navigator.clipboard.writeText(curlCmd)
                                         toast.success(
@@ -1344,8 +1372,11 @@ export default function EntriesForm({
                                 </pre>
                               </div>
                             ) : (
-                              <div className='h-[416px] flex items-center justify-center text-zinc-500'>
-                                No data available
+                              <div className='h-[366px] flex flex-col items-center justify-center text-zinc-500 text-center px-6 py-8 space-y-2'>
+                                <span className='font-semibold text-zinc-400'>No published data available for this entry.</span>
+                                <span className='text-xs text-zinc-500 max-w-sm leading-relaxed'>
+                                  This entry might be in draft status. Try checking the <strong>"Include Draft Entries"</strong> option above to preview draft content.
+                                </span>
                               </div>
                             )}
                           </div>

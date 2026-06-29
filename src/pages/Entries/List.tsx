@@ -217,6 +217,7 @@ export default function EntriesList({
   const [isPreviewLoading, setIsPreviewLoading] = React.useState(false)
   const [isPreviewExpanded, setIsPreviewExpanded] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [previewIncludeDrafts, setPreviewIncludeDrafts] = React.useState(false)
 
   React.useEffect(() => {
     if (!isDialogOpen) return
@@ -232,6 +233,10 @@ export default function EntriesList({
 
         if (collection.localized && previewLocale) {
           url += (url.includes('?') ? '&' : '?') + `locale=${previewLocale}`
+        }
+
+        if (previewIncludeDrafts) {
+          url += (url.includes('?') ? '&' : '?') + 'status=all'
         }
 
         const res = await fetch(url)
@@ -252,6 +257,7 @@ export default function EntriesList({
     previewSortBy,
     previewSortDir,
     previewLocale,
+    previewIncludeDrafts,
     collection.slug,
     isDialogOpen,
     collection,
@@ -634,6 +640,27 @@ export default function EntriesList({
                       )}
 
                     {!isPreviewExpanded && (
+                      <div className='flex items-center space-x-3 bg-muted/10 p-3.5 rounded-lg border border-border/40 text-xs'>
+                        <input
+                          id='include-drafts'
+                          type='checkbox'
+                          checked={previewIncludeDrafts}
+                          onChange={(e) => setPreviewIncludeDrafts(e.target.checked)}
+                          className='h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-primary focus:ring-offset-zinc-950 accent-primary cursor-pointer'
+                        />
+                        <label
+                          htmlFor='include-drafts'
+                          className='font-medium leading-none text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none'
+                        >
+                          Include Draft Entries{' '}
+                          <span className='opacity-60 font-normal'>
+                            (Appends <code className='text-[10px] font-mono bg-muted/50 px-1 py-0.5 rounded'>&status=all</code> to queries)
+                          </span>
+                        </label>
+                      </div>
+                    )}
+
+                    {!isPreviewExpanded && (
                       <div className='space-y-2'>
                         <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
                           REST Endpoint URL
@@ -650,6 +677,9 @@ export default function EntriesList({
                               if (collection.localized && previewLocale) {
                                 url += `&locale=${previewLocale}`
                               }
+                              if (previewIncludeDrafts) {
+                                url += `&status=all`
+                              }
                               return url
                             })()}
                             className='font-mono text-xs bg-muted/50'
@@ -665,6 +695,9 @@ export default function EntriesList({
 
                               if (collection.localized && previewLocale) {
                                 url += `&locale=${previewLocale}`
+                              }
+                              if (previewIncludeDrafts) {
+                                url += `&status=all`
                               }
 
                               navigator.clipboard.writeText(url)
@@ -720,10 +753,11 @@ export default function EntriesList({
                                 /[^a-zA-Z0-9]/g,
                                 ''
                               )
-                              let fieldsTs = ''
 
-                              collection.fields.forEach((f: any) => {
-                                let type = 'any'
+                              const getFieldTsType = (f: any, depth = 1): string => {
+                                const indent = '  '.repeat(depth + 1)
+                                const closingIndent = '  '.repeat(depth)
+
                                 if (
                                   [
                                     'text',
@@ -737,15 +771,49 @@ export default function EntriesList({
                                     'select',
                                     'radio',
                                   ].includes(f.type)
-                                )
-                                  type = 'string'
-                                if (['number'].includes(f.type)) type = 'number'
-                                if (['boolean', 'checkbox'].includes(f.type))
-                                  type = 'boolean'
-                                if (f.type === 'array') type = 'any[]'
-                                if (f.type === 'relation')
-                                  type = '{ id: number; [key: string]: any }'
+                                ) {
+                                  return 'string'
+                                }
+                                if (['number'].includes(f.type)) return 'number'
+                                if (['boolean', 'checkbox'].includes(f.type)) return 'boolean'
+                                if (f.type === 'array') {
+                                  if (f.fields && Array.isArray(f.fields)) {
+                                    const childFieldsTs = f.fields
+                                      .map(
+                                        (cf: any) =>
+                                          `${indent}${cf.name}${cf.required ? '' : '?'}: ${getFieldTsType(cf, depth + 1)};`
+                                      )
+                                      .join('\n')
+                                    return `{\n${childFieldsTs}\n${closingIndent}}[]`
+                                  }
+                                  return 'any[]'
+                                }
+                                if (f.type === 'relation') {
+                                  return '{ id: number; [key: string]: any }'
+                                }
+                                if (f.type === 'media') {
+                                  const mediaType =
+                                    '{ id: number; secureUrl: string; filename: string; mimeType: string; size: number; width: number | null; height: number | null; }'
+                                  return f.multiple ? `${mediaType}[]` : mediaType
+                                }
+                                if (f.type === 'group') {
+                                  if (f.fields && Array.isArray(f.fields)) {
+                                    const childFieldsTs = f.fields
+                                      .map(
+                                        (cf: any) =>
+                                          `${indent}${cf.name}${cf.required ? '' : '?'}: ${getFieldTsType(cf, depth + 1)};`
+                                      )
+                                      .join('\n')
+                                    return `{\n${childFieldsTs}\n${closingIndent}}`
+                                  }
+                                  return 'any'
+                                }
+                                return 'any'
+                              }
 
+                              let fieldsTs = ''
+                              collection.fields.forEach((f: any) => {
+                                const type = getFieldTsType(f)
                                 fieldsTs += `  ${f.name}${f.required ? '' : '?'}: ${type};\n`
                               })
 
@@ -789,6 +857,9 @@ export default function EntriesList({
 
                               if (collection.localized && previewLocale) {
                                 url += `&locale=${previewLocale}`
+                              }
+                              if (previewIncludeDrafts) {
+                                url += `&status=all`
                               }
 
                               const tenantId =
@@ -890,6 +961,9 @@ export default function EntriesList({
 
                                   if (collection.localized && previewLocale) {
                                     url += `&locale=${previewLocale}`
+                                  }
+                                  if (previewIncludeDrafts) {
+                                    url += `&status=all`
                                   }
 
                                   const tenantId =

@@ -50,6 +50,8 @@ interface CollectionStat {
   name: string
   slug: string
   count: number
+  tenantName?: string
+  tenantId?: number
 }
 
 interface DashboardProps {
@@ -380,12 +382,18 @@ export default function Dashboard({
                   <LayoutGrid className='w-4 h-4 mr-2' />
                   Collection Breakdown
                 </h3>
+                <p className='text-xs text-muted-foreground mt-0.5 ml-6'>
+                  Showing top 10 collections by entries count
+                </p>
               </div>
               <div className='overflow-x-auto'>
                 <table className='w-full text-sm text-left'>
                   <thead className='text-xs text-muted-foreground uppercase bg-muted/50 border-b'>
                     <tr>
                       <th className='px-6 py-3 font-medium'>Name</th>
+                      {user?.role === 'super_admin' && (
+                        <th className='px-6 py-3 font-medium'>Tenant</th>
+                      )}
                       <th className='px-6 py-3 font-medium'>Slug</th>
                       <th className='px-6 py-3 font-medium text-center'>
                         Entries
@@ -400,6 +408,11 @@ export default function Dashboard({
                         className='hover:bg-muted/30 transition-colors group'
                       >
                         <td className='px-6 py-4 font-semibold'>{col.name}</td>
+                        {user?.role === 'super_admin' && (
+                          <td className='px-6 py-4 text-xs text-muted-foreground'>
+                            {col.tenantName || `ID: ${col.tenantId}`}
+                          </td>
+                        )}
                         <td className='px-6 py-4 font-mono text-xs opacity-60'>
                           /{col.slug}
                         </td>

@@ -1,17 +1,16 @@
+import { PublicFooter } from '@/components/PublicFooter'
+import { PublicHeader } from '@/components/PublicHeader'
 import {
   BashIcon,
   DotNetIcon,
   GoIcon,
   JavascriptIcon,
-  Logo,
   PhpIcon,
   PhytonIcon,
   RustIcon,
 } from '@/components/icons'
-import { PublicFooter } from '@/components/PublicFooter'
 import Macbook from '@/components/mockup/Macbook'
 import { Button } from '@/components/ui/button'
-import { APP_VERSION } from '@/lib/version'
 import { Head, Link } from '@inertiajs/react'
 import {
   ArrowRight,
@@ -29,7 +28,6 @@ import {
   Languages,
   Layers,
   Lock,
-  Menu,
   RefreshCw,
   Rocket,
   Server,
@@ -38,7 +36,6 @@ import {
   TerminalIcon,
   Users,
   Webhook,
-  X,
   Zap,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -208,7 +205,6 @@ export default function Home({
 }: {
   isSimpleHomepage?: boolean
 }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   // Sandbox states
   const [activeSandboxTab, setActiveSandboxTab] = useState<
@@ -516,7 +512,9 @@ export default function Home({
           Promo
         </span>
         <span>
-          Get $10 off Pro Plan recurring (pay only $9/mo) for the first 50 users! Use code <strong className='text-white font-semibold'>EARLY50</strong>.
+          Get $10 off Pro Plan recurring (pay only $9/mo) for the first 50
+          users! Use code{' '}
+          <strong className='text-white font-semibold'>EARLY50</strong>.
         </span>
         <Link
           href='/pricing'
@@ -528,148 +526,7 @@ export default function Home({
       </div>
 
       {/* Navigation */}
-      <nav className='sticky top-0 z-50 border-b border-white/5 bg-deep-mocha-950/60 backdrop-blur-xl'>
-        <div className='max-w-7xl mx-auto px-6 h-20 flex items-center justify-between'>
-          <Link href='/' className='flex items-center space-x-3 group'>
-            <Logo className='scale-150 group-hover:scale-[1.55] transition-transform duration-300' />
-            <span className='text-2xl font-black tracking-tighter text-white uppercase bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400'>
-              MORPHIC
-            </span>
-          </Link>
-
-          <div className='hidden md:flex items-center space-x-8 text-sm font-medium text-slate-400'>
-            <a href='#features' className='hover:text-white transition-colors'>
-              Features
-            </a>
-            <a
-              href='#architecture'
-              className='hover:text-white transition-colors'
-            >
-              Architecture
-            </a>
-            <a
-              href='#comparison'
-              className='hover:text-white transition-colors'
-            >
-              Compare
-            </a>
-            <a
-              href='#deployment'
-              className='hover:text-white transition-colors'
-            >
-              Deployment
-            </a>
-            <Link
-              href='/pricing'
-              className='hover:text-white transition-colors'
-            >
-              Pricing
-            </Link>
-            <Link href='/docs' className='hover:text-white transition-colors'>
-              Docs
-            </Link>
-          </div>
-
-          <div className='hidden md:flex items-center space-x-4'>
-            <Button
-              asChild
-              variant='outline'
-              className='rounded-full border-white/10 bg-deep-mocha-900/40 text-slate-300 hover:text-white hover:bg-deep-mocha-800'
-            >
-              <Link href='/login'>Sign in</Link>
-            </Button>
-            <Button
-              asChild
-              className='rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/10'
-            >
-              <Link href='/signup'>Get Started</Link>
-            </Button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className='md:hidden flex items-center'>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className='p-2 text-slate-400 hover:text-white transition-colors focus:outline-none'
-            >
-              {isMenuOpen ? (
-                <X className='w-6 h-6' />
-              ) : (
-                <Menu className='w-6 h-6' />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu Overlay */}
-        {isMenuOpen && (
-          <div className='md:hidden absolute top-20 left-0 w-full bg-deep-mocha-950 border-b border-white/5 py-8 px-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-300 z-50'>
-            <a
-              href='#features'
-              onClick={() => setIsMenuOpen(false)}
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Features
-            </a>
-            <a
-              href='#architecture'
-              onClick={() => setIsMenuOpen(false)}
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Architecture
-            </a>
-            <a
-              href='#comparison'
-              onClick={() => setIsMenuOpen(false)}
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Compare
-            </a>
-            <a
-              href='#deployment'
-              onClick={() => setIsMenuOpen(false)}
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Deploy
-            </a>
-            <Link
-              href='/docs'
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Documentation
-            </Link>
-            <Link
-              href='/pricing'
-              onClick={() => setIsMenuOpen(false)}
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Pricing
-            </Link>
-            <Link
-              href='/changelog'
-              onClick={() => setIsMenuOpen(false)}
-              className='block text-lg font-medium text-slate-300 hover:text-white transition-colors'
-            >
-              Changelog
-            </Link>
-            <div className='pt-6 space-y-4'>
-              <Button
-                asChild
-                variant='outline'
-                className='w-full rounded-full border-white/10 bg-deep-mocha-900/40 text-slate-300 hover:text-white'
-              >
-                <Link href='/login'>Sign in</Link>
-              </Button>
-              <Button
-                asChild
-                className='w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg'
-              >
-                <Link href='/signup'>Get Started</Link>
-              </Button>
-            </div>
-          </div>
-        )}
-      </nav>
+      <PublicHeader />
 
       {/* Main Container */}
       <main className='relative z-10 max-w-7xl mx-auto px-6'>

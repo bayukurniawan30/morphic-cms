@@ -28,8 +28,8 @@ import path from 'path'
 import {
   getTenantFeatures,
   getWorkspaceFeatures,
-  PLAN_LIMITS,
   isReservedSlug,
+  PLAN_LIMITS,
 } from '../config/features.js'
 import { db } from '../db/index.js'
 import {
@@ -525,6 +525,270 @@ app.get('/docs', async (c) => {
   })
 })
 
+app.get('/sitemap.xml', async (c) => {
+  const baseUrl = process.env.APP_URL || 'https://morphic-cms.com'
+
+  interface SitemapPath {
+    path: string
+    priority: string
+    lastmod?: string
+  }
+
+  const staticPaths: SitemapPath[] = [
+    { path: '/', priority: '1.0' },
+    { path: '/pricing', priority: '0.8' },
+    { path: '/terms', priority: '0.8' },
+    { path: '/privacy', priority: '0.8' },
+    { path: '/refund-policy', priority: '0.8' },
+    { path: '/blog', priority: '0.8' },
+  ]
+
+  const tenantSlug = process.env.MORPHIC_WORKSPACE
+  const collectionSlug = process.env.MORPHIC_POSTS_COLLECTION
+  const dynamicPaths: SitemapPath[] = []
+
+  if (tenantSlug && collectionSlug) {
+    try {
+      const tenant = await db
+        .select()
+        .from(tenants)
+        .where(eq(tenants.slug, tenantSlug))
+        .limit(1)
+        .then((r) => r[0])
+
+      if (tenant) {
+        const collection = await db
+          .select()
+          .from(collections)
+          .where(
+            and(
+              eq(collections.tenantId, tenant.id),
+              eq(collections.slug, collectionSlug)
+            )
+          )
+          .limit(1)
+          .then((r) => r[0])
+
+        if (collection) {
+          const posts = await db
+            .select({
+              content: entries.content,
+              updatedAt: entries.updatedAt,
+            })
+            .from(entries)
+            .where(
+              and(
+                eq(entries.collectionId, collection.id),
+                eq(entries.tenantId, tenant.id),
+                eq(entries.status, 'published'),
+                isNull(entries.deletedAt)
+              )
+            )
+
+          posts.forEach((p) => {
+            const content = p.content as any
+            if (content?.slug) {
+              const lastmod = p.updatedAt
+                ? new Date(p.updatedAt).toISOString().split('T')[0]
+                : undefined
+              dynamicPaths.push({
+                path: `/blog/${content.slug}`,
+                priority: '0.8',
+                lastmod,
+              })
+            }
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error generating sitemap:', err)
+    }
+  }
+
+  const allPaths = [...staticPaths, ...dynamicPaths]
+  const urlsXml = allPaths
+    .map(({ path, priority, lastmod }) => {
+      const fullUrl = `${baseUrl.replace(/\/$/, '')}${path}`
+      const lastmodTag = lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''
+      return `  <url>\n    <loc>${fullUrl}</loc>${lastmodTag}\n    <changefreq>daily</changefreq>\n    <priority>${priority}</priority>\n  </url>`
+    })
+    .join('\n')
+
+  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlsXml}\n</urlset>`
+
+  c.header('Content-Type', 'application/xml')
+  return c.text(sitemapXml)
+})
+
+app.get('/blog', async (c) => {
+  const userData = c.get('user')
+  const tenantSlug = process.env.MORPHIC_WORKSPACE
+  const collectionSlug = process.env.MORPHIC_POSTS_COLLECTION
+
+  if (!tenantSlug || !collectionSlug) {
+    return c.text(
+      'Configuration error: Workspace or Posts Collection not configured in env',
+      500
+    )
+  }
+
+  // Find tenant
+  const tenant = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.slug, tenantSlug))
+    .limit(1)
+    .then((r) => r[0])
+
+  if (!tenant) {
+    return c.text('Tenant not found ' + tenantSlug, 404)
+  }
+
+  // Find collection
+  const collection = await db
+    .select()
+    .from(collections)
+    .where(
+      and(
+        eq(collections.slug, collectionSlug),
+        eq(collections.tenantId, tenant.id)
+      )
+    )
+    .limit(1)
+    .then((r) => r[0])
+
+  if (!collection) {
+    return c.get('inertia')('Blog/Index', {
+      user: userData,
+      posts: [],
+      pagination: { currentPage: 1, totalPages: 0, totalCount: 0, limit: 5 },
+      title: 'Blog | Morphic CMS',
+    })
+  }
+
+  // Pagination query params
+  const page = parseInt(c.req.query('page') || '1', 10)
+  const limit = 5
+  const offset = (page - 1) * limit
+
+  const whereClause = and(
+    eq(entries.collectionId, collection.id),
+    eq(entries.tenantId, tenant.id),
+    eq(entries.status, 'published'),
+    isNull(entries.deletedAt)
+  )
+
+  const countResult = await db
+    .select({ count: sql`count(*)` })
+    .from(entries)
+    .where(whereClause)
+  const totalCount = Number(countResult[0].count)
+  const totalPages = Math.ceil(totalCount / limit)
+
+  const blogEntries = await db
+    .select()
+    .from(entries)
+    .where(whereClause)
+    .orderBy(desc(entries.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+  return c.get('inertia')('Blog/Index', {
+    user: userData,
+    posts: blogEntries.map((e) => ({
+      id: e.id,
+      tenantId: e.tenantId,
+      collectionId: e.collectionId,
+      content: e.content,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    })),
+    pagination: {
+      currentPage: page,
+      totalPages: totalPages,
+      totalCount: totalCount,
+      limit: limit,
+    },
+    title: 'Blog | Morphic CMS',
+  })
+})
+
+app.get('/blog/:slug', async (c) => {
+  const userData = c.get('user')
+  const tenantSlug = process.env.MORPHIC_WORKSPACE
+  const collectionSlug = process.env.MORPHIC_POSTS_COLLECTION
+  const slug = c.req.param('slug')
+
+  if (!tenantSlug || !collectionSlug) {
+    return c.text(
+      'Configuration error: Workspace or Posts Collection not configured in env',
+      500
+    )
+  }
+
+  // Find tenant
+  const tenant = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.slug, tenantSlug))
+    .limit(1)
+    .then((r) => r[0])
+
+  if (!tenant) {
+    return c.text('Tenant not found', 404)
+  }
+
+  // Find collection
+  const collection = await db
+    .select()
+    .from(collections)
+    .where(
+      and(
+        eq(collections.slug, collectionSlug),
+        eq(collections.tenantId, tenant.id)
+      )
+    )
+    .limit(1)
+    .then((r) => r[0])
+
+  if (!collection) {
+    return c.text('Collection not found', 404)
+  }
+
+  // Find entry matching slug inside jsonb content
+  const post = await db
+    .select()
+    .from(entries)
+    .where(
+      and(
+        eq(entries.collectionId, collection.id),
+        eq(entries.tenantId, tenant.id),
+        eq(entries.status, 'published'),
+        isNull(entries.deletedAt),
+        sql`${entries.content}->>'slug' = ${slug}`
+      )
+    )
+    .limit(1)
+    .then((r) => r[0])
+
+  if (!post) {
+    return c.redirect('/blog')
+  }
+
+  return c.get('inertia')('Blog/Detail', {
+    user: userData,
+    post: {
+      id: post.id,
+      tenantId: post.tenantId,
+      collectionId: post.collectionId,
+      content: post.content,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+    },
+    title: `${(post.content as any).title} | Morphic CMS`,
+  })
+})
+
 app.get('/terms', async (c) => {
   const userData = c.get('user')
   return c.get('inertia')('Terms', {
@@ -996,15 +1260,19 @@ app.get('/dashboard', requireAuth, async (c) => {
       name: collections.name,
       slug: collections.slug,
       count: sql`count(${entries.id})`,
+      tenantName: tenants.name,
+      tenantId: collections.tenantId,
     })
     .from(collections)
+    .leftJoin(tenants, eq(collections.tenantId, tenants.id))
     .leftJoin(
       entries,
       and(eq(collections.id, entries.collectionId), isNull(entries.deletedAt))
     )
     .where(and(eq(collections.type, 'collection'), whereTenant(collections)))
-    .groupBy(collections.id)
+    .groupBy(collections.id, tenants.id)
     .orderBy(desc(sql`count(${entries.id})`))
+    .limit(10)
 
   // 4. Fetch Analytics for the last 7 days
   const sevenDaysAgo = new Date()
@@ -1046,6 +1314,8 @@ app.get('/dashboard', requireAuth, async (c) => {
     collectionBreakdown: collectionBreakdown.map((c) => ({
       ...c,
       count: Number(c.count),
+      tenantName: c.tenantName,
+      tenantId: c.tenantId,
     })),
     trafficData,
     performanceData,
@@ -2578,7 +2848,10 @@ api.post('/tenants', async (c) => {
       return c.json({ error: 'Name and slug are required' }, 400)
 
     if (isReservedSlug(slug)) {
-      return c.json({ error: 'This workspace URL slug is reserved and cannot be used.' }, 400)
+      return c.json(
+        { error: 'This workspace URL slug is reserved and cannot be used.' },
+        400
+      )
     }
 
     const existingTenant = await db
@@ -3229,7 +3502,10 @@ api.post('/auth/signup', async (c) => {
     }
 
     if (isReservedSlug(workspaceSlug)) {
-      return c.json({ error: 'This workspace URL slug is reserved and cannot be used.' }, 400)
+      return c.json(
+        { error: 'This workspace URL slug is reserved and cannot be used.' },
+        400
+      )
     }
 
     // Cloudflare Turnstile Verification
@@ -4285,6 +4561,17 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
     if (isGlobal) {
       const requestedLocale = c.req.query('locale') || 'en'
+      const statusQuery = c.req.query('status') || 'published'
+
+      const globalConditions = [
+        eq(entries.collectionId, id),
+        isNull(entries.deletedAt),
+        eq(entries.locale, requestedLocale)
+      ]
+
+      if (statusQuery !== 'all') {
+        globalConditions.push(eq(entries.status, statusQuery))
+      }
 
       let result = await db
         .select({
@@ -4294,12 +4581,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         .from(entries)
         .leftJoin(users, eq(entries.updatedById, users.id))
         .where(
-          and(
-            eq(entries.collectionId, id),
-            isNull(entries.deletedAt),
-            eq(entries.status, 'published'),
-            eq(entries.locale, requestedLocale)
-          )
+          and(...globalConditions)
         )
         .orderBy(desc(entries.createdAt))
         .limit(1)
@@ -4309,10 +4591,12 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         const fallbackConditions = [
           eq(entries.collectionId, id),
           isNull(entries.deletedAt),
-          eq(entries.status, 'published'),
           eq(entries.locale, 'en'),
         ]
         if (tenantId) fallbackConditions.push(eq(entries.tenantId, tenantId))
+        if (statusQuery !== 'all') {
+          fallbackConditions.push(eq(entries.status, statusQuery))
+        }
 
         result = await db
           .select({
@@ -4345,12 +4629,16 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const isTrash = c.req.query('trash') === 'true'
     const localeQuery = c.req.query('locale')
     const requestedLocale = localeQuery || 'en'
+    const statusQuery = c.req.query('status') || 'published'
 
     let whereClause = and(
       eq(entries.collectionId, id),
-      eq(entries.status, 'published'),
       tenantId ? eq(entries.tenantId, tenantId) : sql`true`
     ) as any
+
+    if (statusQuery !== 'all') {
+      whereClause = and(whereClause, eq(entries.status, statusQuery)) as any
+    }
 
     // Only filter by locale if not explicitly requesting all
     if (localeQuery !== '_all') {
@@ -4580,13 +4868,16 @@ api.get('/entries/:id', async (c) => {
     const id = parseInt(c.req.param('id'), 10)
     const tenantId = c.get('tenantId')
     const requestedLocale = c.req.query('locale')
+    const statusQuery = c.req.query('status') || 'published'
 
     const entryConditions = [
       eq(entries.id, id),
       isNull(entries.deletedAt),
-      eq(entries.status, 'published'),
     ]
     if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
+    if (statusQuery !== 'all') {
+      entryConditions.push(eq(entries.status, statusQuery))
+    }
 
     const result = await db
       .select({
