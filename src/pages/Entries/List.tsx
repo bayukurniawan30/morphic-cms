@@ -645,7 +645,9 @@ export default function EntriesList({
                           id='include-drafts'
                           type='checkbox'
                           checked={previewIncludeDrafts}
-                          onChange={(e) => setPreviewIncludeDrafts(e.target.checked)}
+                          onChange={(e) =>
+                            setPreviewIncludeDrafts(e.target.checked)
+                          }
                           className='h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-primary focus:ring-offset-zinc-950 accent-primary cursor-pointer'
                         />
                         <label
@@ -654,7 +656,11 @@ export default function EntriesList({
                         >
                           Include Draft Entries{' '}
                           <span className='opacity-60 font-normal'>
-                            (Appends <code className='text-[10px] font-mono bg-muted/50 px-1 py-0.5 rounded'>&status=all</code> to queries)
+                            (Appends{' '}
+                            <code className='text-[10px] font-mono bg-muted/50 px-1 py-0.5 rounded'>
+                              &status=all
+                            </code>{' '}
+                            to queries)
                           </span>
                         </label>
                       </div>
@@ -754,7 +760,10 @@ export default function EntriesList({
                                 ''
                               )
 
-                              const getFieldTsType = (f: any, depth = 1): string => {
+                              const getFieldTsType = (
+                                f: any,
+                                depth = 1
+                              ): string => {
                                 const indent = '  '.repeat(depth + 1)
                                 const closingIndent = '  '.repeat(depth)
 
@@ -775,7 +784,8 @@ export default function EntriesList({
                                   return 'string'
                                 }
                                 if (['number'].includes(f.type)) return 'number'
-                                if (['boolean', 'checkbox'].includes(f.type)) return 'boolean'
+                                if (['boolean', 'checkbox'].includes(f.type))
+                                  return 'boolean'
                                 if (f.type === 'array') {
                                   if (f.fields && Array.isArray(f.fields)) {
                                     const childFieldsTs = f.fields
@@ -794,7 +804,9 @@ export default function EntriesList({
                                 if (f.type === 'media') {
                                   const mediaType =
                                     '{ id: number; secureUrl: string; filename: string; mimeType: string; size: number; width: number | null; height: number | null; }'
-                                  return f.multiple ? `${mediaType}[]` : mediaType
+                                  return f.multiple
+                                    ? `${mediaType}[]`
+                                    : mediaType
                                 }
                                 if (f.type === 'group') {
                                   if (f.fields && Array.isArray(f.fields)) {

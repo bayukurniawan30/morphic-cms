@@ -32,7 +32,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import TextAlign from '@tiptap/extension-text-align'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Youtube from '@tiptap/extension-youtube'
-import { EditorContent, useEditor } from '@tiptap/react'
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import {
@@ -67,7 +67,7 @@ import {
   Unlink,
   Youtube as YoutubeIcon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import MediaPicker from './MediaPicker'
 
 interface RichTextEditorProps {
@@ -138,6 +138,7 @@ const RichTextEditor = ({
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+  const isInternalChange = useRef(false)
 
   const editor = useEditor({
     extensions: [
@@ -201,6 +202,7 @@ const RichTextEditor = ({
     ],
     content: value,
     onUpdate: ({ editor }) => {
+      isInternalChange.current = true
       onChange(editor.getHTML())
     },
     editorProps: {
@@ -211,8 +213,47 @@ const RichTextEditor = ({
     },
   })
 
+  useEditorState({
+    editor,
+    selector: (ctx) => {
+      if (!ctx.editor) return ''
+      return JSON.stringify([
+        ctx.editor.isActive('bold'),
+        ctx.editor.isActive('italic'),
+        ctx.editor.isActive('strike'),
+        ctx.editor.getAttributes('textStyle').color,
+        ctx.editor.isActive('heading', { level: 1 }),
+        ctx.editor.isActive('heading', { level: 2 }),
+        ctx.editor.isActive('heading', { level: 3 }),
+        ctx.editor.isActive('heading', { level: 4 }),
+        ctx.editor.isActive('heading', { level: 5 }),
+        ctx.editor.isActive('bulletList'),
+        ctx.editor.isActive('orderedList'),
+        ctx.editor.isActive('blockquote'),
+        ctx.editor.isActive('codeBlock'),
+        ctx.editor.isActive({ textAlign: 'left' }),
+        ctx.editor.isActive({ textAlign: 'center' }),
+        ctx.editor.isActive({ textAlign: 'right' }),
+        ctx.editor.isActive({ textAlign: 'justify' }),
+        ctx.editor.isActive('link'),
+        ctx.editor.isActive('image'),
+        ctx.editor.isActive('youtube'),
+        ctx.editor.isActive('table'),
+        ctx.editor.can().undo(),
+        ctx.editor.can().redo(),
+      ])
+    },
+  })
+
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (!editor) return
+
+    if (isInternalChange.current) {
+      isInternalChange.current = false
+      return
+    }
+
+    if (value !== editor.getHTML()) {
       editor.commands.setContent(value)
     }
   }, [value, editor])
@@ -287,8 +328,8 @@ const RichTextEditor = ({
   }
 
   return (
-    <div className='rounded-md border bg-card overflow-hidden focus-within:ring-1 focus-within:ring-ring'>
-      <div className='flex flex-wrap items-center gap-1 border-b bg-muted/50 p-1 shrink-0'>
+    <div className='relative rounded-md border bg-card focus-within:ring-1 focus-within:ring-ring'>
+      <div className='sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-card/95 p-1 shrink-0 backdrop-blur-sm rounded-t-md'>
         <Toggle
           size='sm'
           pressed={editor.isActive('bold')}
@@ -700,7 +741,9 @@ const RichTextEditor = ({
         </div>
       </BubbleMenu>
 
-      <EditorContent editor={editor} />
+      <div className='max-h-[500px] overflow-y-auto custom-scrollbar'>
+        <EditorContent editor={editor} />
+      </div>
 
       <MediaPicker
         open={isMediaPickerOpen}

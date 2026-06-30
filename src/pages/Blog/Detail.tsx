@@ -75,15 +75,27 @@ export default function BlogDetail({ user, post }: BlogDetailProps) {
         {content.seo?.keywords && (
           <meta name='keywords' content={content.seo.keywords} />
         )}
-        <link rel="canonical" href={`${window.location.origin}/blog/${content.slug}`} />
-        
+        <link
+          rel='canonical'
+          href={`${window.location.origin}/blog/${content.slug}`}
+        />
+
         {/* Open Graph / Twitter Tags */}
         <meta property='og:type' content='article' />
-        <meta property='og:url' content={`${window.location.origin}/blog/${content.slug}`} />
+        <meta
+          property='og:url'
+          content={`${window.location.origin}/blog/${content.slug}`}
+        />
         <meta property='og:site_name' content='Morphic CMS' />
         <meta property='og:locale' content='en_US' />
-        <meta property='og:title' content={content.seo?.title || `${content.title} | Morphic CMS`} />
-        <meta property='og:description' content={content.seo?.description || content.excerpt || ''} />
+        <meta
+          property='og:title'
+          content={content.seo?.title || `${content.title} | Morphic CMS`}
+        />
+        <meta
+          property='og:description'
+          content={content.seo?.description || content.excerpt || ''}
+        />
         {content.seo?.og_image?.secureUrl ? (
           <meta property='og:image' content={content.seo.og_image.secureUrl} />
         ) : content.featuredImage?.secureUrl ? (
@@ -94,13 +106,28 @@ export default function BlogDetail({ user, post }: BlogDetailProps) {
         ) : (
           <meta property='og:image:alt' content={content.title} />
         )}
-        <meta property='og:image:width' content={String(content.seo?.og_image?.width || content.featuredImage?.width || 1200)} />
-        <meta property='og:image:height' content={String(content.seo?.og_image?.height || content.featuredImage?.height || 630)} />
+        <meta
+          property='og:image:width'
+          content={String(
+            content.seo?.og_image?.width || content.featuredImage?.width || 1200
+          )}
+        />
+        <meta
+          property='og:image:height'
+          content={String(
+            content.seo?.og_image?.height ||
+              content.featuredImage?.height ||
+              630
+          )}
+        />
         <meta property='twitter:card' content='summary_large_image' />
         {content.seo?.og_image?.secureUrl ? (
           <meta name='twitter:image' content={content.seo.og_image.secureUrl} />
         ) : content.featuredImage?.secureUrl ? (
-          <meta name='twitter:image' content={content.featuredImage.secureUrl} />
+          <meta
+            name='twitter:image'
+            content={content.featuredImage.secureUrl}
+          />
         ) : null}
       </Head>
 
@@ -156,6 +183,17 @@ export default function BlogDetail({ user, post }: BlogDetailProps) {
 
         {/* Content Body */}
         <article className='prose prose-invert max-w-none prose-slate md:prose-lg leading-relaxed selection:bg-primary/20'>
+          <style>{`
+            .prose table {
+              display: block;
+              width: 100%;
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+            }
+            .prose table th, .prose table td {
+              min-width: 150px;
+            }
+          `}</style>
           {content.content ? (
             <div dangerouslySetInnerHTML={{ __html: content.content }} />
           ) : (

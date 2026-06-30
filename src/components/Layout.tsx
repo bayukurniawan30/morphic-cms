@@ -499,7 +499,12 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   </a>
                 ) : (
                   <a
-                    href='mailto:support@morphic-cms.com'
+                    href={`mailto:support@morphic-cms.com?subject=Morphic%20CMS%20Support&body=${encodeURIComponent(
+                      `User: ${user?.email || ''}\nActive Workspace: ${
+                        activeTenant ? activeTenant.name : 'System Global'
+                      }\n\n`
+                    )}`}
+                    title='support@morphic-cms.com'
                     className={cn(
                       'flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm',
                       !isSidebarOpen && 'lg:justify-center lg:px-0'
@@ -542,13 +547,13 @@ export default function Layout({ user, title, children }: LayoutProps) {
         {/* Main Content */}
         <div className='flex-1 flex flex-col min-h-screen transition-all w-full overflow-hidden'>
           {/* Header */}
-          <header className='h-16 flex items-center justify-between px-4 lg:px-8 border-b bg-card'>
+          <header className='h-16 flex items-center justify-between px-3 sm:px-6 lg:px-8 border-b bg-card'>
             <div className='flex items-center'>
               <Button
                 variant='ghost'
                 size='icon'
                 onClick={toggleSidebar}
-                className='mr-4'
+                className='mr-2 sm:mr-4'
               >
                 <Menu className='h-5 w-5' />
               </Button>
@@ -559,47 +564,49 @@ export default function Layout({ user, title, children }: LayoutProps) {
               )}
             </div>
 
-            <div className='flex items-center space-x-2'>
+            <div className='flex items-center space-x-1.5 sm:space-x-2'>
               {/* Tenant Switcher */}
-              <DropdownMenu onOpenChange={(open) => {
-                if (!open) {
-                  setTenantSearchQuery('')
-                }
-              }}>
+              <DropdownMenu
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setTenantSearchQuery('')
+                  }
+                }}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant='outline'
                     size='sm'
-                    className='h-9 md:flex items-center gap-2 border-dashed bg-muted/50 hover:bg-muted transition-colors'
+                    className='h-9 px-2 sm:px-3 md:flex items-center gap-1.5 sm:gap-2 border-dashed bg-muted/50 hover:bg-muted transition-colors'
                   >
-                    <Building2 className='h-4 w-4 text-muted-foreground' />
-                    <div className='flex items-center gap-1.5'>
-                      <span className='max-w-[120px] truncate font-medium'>
+                    <Building2 className='h-4 w-4 text-muted-foreground shrink-0' />
+                    <div className='flex items-center gap-1 sm:gap-1.5 min-w-0'>
+                      <span className='max-w-[75px] sm:max-w-[120px] truncate font-medium'>
                         {activeTenant ? activeTenant.name : 'System Global'}
                       </span>
                       {activeTenant &&
                         (activeTenant.planTier === 'PRO' ? (
-                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-sm border border-purple-400/20'>
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-sm border border-purple-400/20 shrink-0'>
                             PRO
                           </span>
                         ) : (
                           <Link
                             href='/pricing'
-                            className='inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary transition-colors border border-border'
+                            className='inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary transition-colors border border-border shrink-0'
                             onClick={(e) => e.stopPropagation()}
                           >
                             FREE
                           </Link>
                         ))}
                     </div>
-                    <ChevronDown className='h-3 w-3 text-muted-foreground' />
+                    <ChevronDown className='h-3 w-3 text-muted-foreground shrink-0' />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align='end' className='w-64 p-1'>
                   <DropdownMenuLabel className='text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5'>
                     Switch Workspace
                   </DropdownMenuLabel>
-                  
+
                   {/* Search input to filter workspaces */}
                   <div className='px-2 py-1 relative flex items-center mb-1'>
                     <Search className='absolute left-3.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none' />
@@ -678,11 +685,11 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   variant='outline'
                   size='sm'
                   asChild
-                  className='h-9 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/50 hover:border-purple-300 transition-all font-semibold'
+                  className='h-9 px-2.5 sm:px-3 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/50 hover:border-purple-300 transition-all font-semibold shrink-0'
                 >
                   <Link href='/pricing' className='flex items-center gap-1.5'>
                     <Flame className='h-3.5 w-3.5' />
-                    <span>Upgrade Plan</span>
+                    <span className='hidden sm:inline'>Upgrade Plan</span>
                   </Link>
                 </Button>
               )}

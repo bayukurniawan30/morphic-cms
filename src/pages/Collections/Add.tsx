@@ -1228,6 +1228,22 @@ export default function AddCollection({ user }: AddProps) {
                             The slug will be automatically created from this
                             field's value.
                           </p>
+                          <div className='flex items-center justify-between p-2 bg-background rounded-md border border-muted-foreground/10 mt-3'>
+                            <div className='space-y-0.5'>
+                              <Label className='text-xs font-semibold'>
+                                Enable Copy Button
+                              </Label>
+                              <p className='text-[10px] text-muted-foreground'>
+                                Show a button to copy the slug to clipboard.
+                              </p>
+                            </div>
+                            <Switch
+                              checked={field.enableCopyButton || false}
+                              onCheckedChange={(val) =>
+                                updateField(index, { enableCopyButton: val })
+                              }
+                            />
+                          </div>
                         </div>
                       )}
 

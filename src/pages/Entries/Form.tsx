@@ -291,7 +291,7 @@ const GroupFieldInput = ({
                     })
                   }}
                 />
-                {childField.helperText && (
+                {childField.helperText && !['text', 'textarea'].includes(childField.type) && (
                   <p className='text-xs text-muted-foreground mt-1 italic'>
                     {childField.helperText}
                   </p>
@@ -338,12 +338,28 @@ const FieldInput = ({
   switch (field.type) {
     case 'text':
       return (
-        <Input
-          value={value || ''}
-          onChange={(e) => handleValueChange(e.target.value)}
-          placeholder={`Enter ${field.label || field.name}`}
-          className={error ? 'border-destructive' : ''}
-        />
+        <div className='space-y-1'>
+          <Input
+            value={value || ''}
+            onChange={(e) => handleValueChange(e.target.value)}
+            placeholder={`Enter ${field.label || field.name}`}
+            className={error ? 'border-destructive' : ''}
+            minLength={field.validation?.minLength}
+            maxLength={field.validation?.maxLength}
+          />
+          {(field.helperText || field.validation?.maxLength !== undefined) && (
+            <div className='flex items-start justify-between gap-4 mt-1 text-muted-foreground'>
+              <p className='text-xs italic flex-1 text-muted-foreground'>
+                {field.helperText || ''}
+              </p>
+              {field.validation?.maxLength !== undefined && (
+                <span className='text-[10px] shrink-0 self-start mt-0.5'>
+                  {(value || '').length}/{field.validation.maxLength}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       )
 
     case 'email':
@@ -359,13 +375,29 @@ const FieldInput = ({
 
     case 'textarea':
       return (
-        <Textarea
-          value={value || ''}
-          onChange={(e) => handleValueChange(e.target.value)}
-          placeholder={`Enter ${field.label || field.name}`}
-          className={error ? 'border-destructive' : ''}
-          rows={5}
-        />
+        <div className='space-y-1'>
+          <Textarea
+            value={value || ''}
+            onChange={(e) => handleValueChange(e.target.value)}
+            placeholder={`Enter ${field.label || field.name}`}
+            className={error ? 'border-destructive' : ''}
+            rows={5}
+            minLength={field.validation?.minLength}
+            maxLength={field.validation?.maxLength}
+          />
+          {(field.helperText || field.validation?.maxLength !== undefined) && (
+            <div className='flex items-start justify-between gap-4 mt-1 text-muted-foreground'>
+              <p className='text-xs italic flex-1 text-muted-foreground'>
+                {field.helperText || ''}
+              </p>
+              {field.validation?.maxLength !== undefined && (
+                <span className='text-[10px] shrink-0 self-start mt-0.5'>
+                  {(value || '').length}/{field.validation.maxLength}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       )
 
     case 'rich-text':
@@ -637,7 +669,49 @@ const FieldInput = ({
       )
 
     case 'slug':
-      return (
+      return field.enableCopyButton ? (
+        <div className='flex items-center gap-2'>
+          <Input
+            value={value || ''}
+            onChange={(e) => handleValueChange(e.target.value)}
+            placeholder={`Enter ${field.label || field.name}`}
+            className={cn('flex-1', error ? 'border-destructive' : '')}
+          />
+          <Button
+            type='button'
+            variant='outline'
+            size='icon'
+            className='h-9 w-9 shrink-0 hover:bg-muted/80'
+            onClick={() => {
+              if (value) {
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(value)
+                  toast.success('Slug copied to clipboard')
+                } else {
+                  const textarea = document.createElement('textarea')
+                  textarea.value = value
+                  textarea.style.position = 'fixed'
+                  document.body.appendChild(textarea)
+                  textarea.select()
+                  try {
+                    document.execCommand('copy')
+                    toast.success('Slug copied to clipboard')
+                  } catch (err) {
+                    toast.error('Failed to copy slug')
+                  }
+                  document.body.removeChild(textarea)
+                }
+              } else {
+                toast.error('No slug value to copy')
+              }
+            }}
+            disabled={!value}
+            title='Copy slug to clipboard'
+          >
+            <CopyIcon className='h-4 w-4' />
+          </Button>
+        </div>
+      ) : (
         <Input
           value={value || ''}
           onChange={(e) => handleValueChange(e.target.value)}
@@ -746,7 +820,7 @@ const FieldInput = ({
                         })
                       }}
                     />
-                    {childField.helperText && (
+                    {childField.helperText && !['text', 'textarea'].includes(childField.type) && (
                       <p className='text-xs text-muted-foreground mt-1 italic'>
                         {childField.helperText}
                       </p>
@@ -1290,7 +1364,9 @@ export default function EntriesForm({
                           id='include-drafts'
                           type='checkbox'
                           checked={previewIncludeDrafts}
-                          onChange={(e) => setPreviewIncludeDrafts(e.target.checked)}
+                          onChange={(e) =>
+                            setPreviewIncludeDrafts(e.target.checked)
+                          }
                           className='h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-primary focus:ring-offset-zinc-950 accent-primary cursor-pointer'
                         />
                         <label
@@ -1299,7 +1375,11 @@ export default function EntriesForm({
                         >
                           Include Draft Entries{' '}
                           <span className='opacity-60 font-normal'>
-                            (Appends <code className='text-[10px] font-mono bg-muted/50 px-1 py-0.5 rounded'>?status=all</code> to query)
+                            (Appends{' '}
+                            <code className='text-[10px] font-mono bg-muted/50 px-1 py-0.5 rounded'>
+                              ?status=all
+                            </code>{' '}
+                            to query)
                           </span>
                         </label>
                       </div>
@@ -1323,7 +1403,10 @@ export default function EntriesForm({
                                       GET
                                     </span>
                                     <code className='text-[10px] text-zinc-400'>
-                                      /api/entries/{entry?.id}{previewIncludeDrafts ? '?status=all' : ''}
+                                      /api/entries/{entry?.id}
+                                      {previewIncludeDrafts
+                                        ? '?status=all'
+                                        : ''}
                                     </code>
                                   </div>
                                   <div className='flex items-center space-x-2'>
@@ -1373,9 +1456,14 @@ export default function EntriesForm({
                               </div>
                             ) : (
                               <div className='h-[366px] flex flex-col items-center justify-center text-zinc-500 text-center px-6 py-8 space-y-2'>
-                                <span className='font-semibold text-zinc-400'>No published data available for this entry.</span>
+                                <span className='font-semibold text-zinc-400'>
+                                  No published data available for this entry.
+                                </span>
                                 <span className='text-xs text-zinc-500 max-w-sm leading-relaxed'>
-                                  This entry might be in draft status. Try checking the <strong>"Include Draft Entries"</strong> option above to preview draft content.
+                                  This entry might be in draft status. Try
+                                  checking the{' '}
+                                  <strong>"Include Draft Entries"</strong>{' '}
+                                  option above to preview draft content.
                                 </span>
                               </div>
                             )}
@@ -1778,7 +1866,7 @@ export default function EntriesForm({
                               availableDocuments={availableDocuments}
                               onMediaPickerOpen={handleMediaPickerOpen}
                             />
-                            {field.helperText && (
+                            {field.helperText && !['text', 'textarea'].includes(field.type) && (
                               <p className='text-xs text-muted-foreground mt-1 italic'>
                                 {field.helperText}
                               </p>

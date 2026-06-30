@@ -23,8 +23,8 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
 import { generateSecret, generateURI, verifySync } from 'otplib'
-import QRCode from 'qrcode'
 import path from 'path'
+import QRCode from 'qrcode'
 import {
   getTenantFeatures,
   getWorkspaceFeatures,
