@@ -61,6 +61,7 @@ interface DashboardProps {
   collectionBreakdown: CollectionStat[]
   trafficData: { date: string; count: number }[]
   performanceData: { date: string; avgResponseTime: number }[]
+  proUsers?: any[]
 }
 
 export default function Dashboard({
@@ -70,6 +71,7 @@ export default function Dashboard({
   collectionBreakdown,
   trafficData = [],
   performanceData = [],
+  proUsers = [],
 }: DashboardProps) {
   const { activeTenantRole } = usePage().props as any
   const canAccessApiAbilities = user?.role === 'super_admin' || activeTenantRole === 'owner'
@@ -142,7 +144,7 @@ export default function Dashboard({
                     <item.icon className={`w-5 h-5 ${item.color}`} />
                   </div>
                   <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity'>
-                    Real-time
+                    Overview
                   </span>
                 </div>
                 <div className='space-y-1'>
@@ -312,6 +314,68 @@ export default function Dashboard({
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
           {/* Main Column */}
           <div className='lg:col-span-2 space-y-8'>
+            {/* PRO Users & Workspaces (Super Admin only) */}
+            {user?.role === 'super_admin' && (
+              <section className='bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col'>
+                <div className='p-6 border-b flex items-center justify-between bg-muted/20'>
+                  <div className='flex items-center space-x-2'>
+                    <Users className='w-4 h-4 text-purple-500' />
+                    <h3 className='text-lg font-semibold'>PRO Subscribers</h3>
+                  </div>
+                  <span className='text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-full'>
+                    {proUsers.length} Active
+                  </span>
+                </div>
+                <div className='divide-y overflow-x-auto max-h-[280px] overflow-y-auto'>
+                  {proUsers.length > 0 ? (
+                    <table className='w-full text-left border-collapse'>
+                      <thead>
+                        <tr className='bg-muted/5 text-muted-foreground text-xs font-semibold uppercase tracking-wider border-b'>
+                          <th className='px-6 py-3'>User</th>
+                          <th className='px-6 py-3'>Email</th>
+                          <th className='px-6 py-3'>Workspaces</th>
+                        </tr>
+                      </thead>
+                      <tbody className='divide-y divide-border text-sm'>
+                        {proUsers.map((proUser) => (
+                          <tr key={proUser.id} className='hover:bg-muted/30 transition-colors'>
+                            <td className='px-6 py-4 font-medium text-foreground'>
+                              {proUser.name || proUser.username}
+                            </td>
+                            <td className='px-6 py-4 text-muted-foreground'>
+                              {proUser.email}
+                            </td>
+                            <td className='px-6 py-4'>
+                              <div className='flex flex-wrap gap-1.5'>
+                                {proUser.tenants.length > 0 ? (
+                                  proUser.tenants.map((t: any) => (
+                                    <span
+                                      key={t.id}
+                                      className='inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted border text-foreground'
+                                    >
+                                      {t.name}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className='text-xs text-muted-foreground italic'>
+                                    No workspaces
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className='p-6 text-center text-muted-foreground italic text-sm'>
+                      No active PRO plan subscribers found.
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Recent Activity */}
             <section className='bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col'>
               <div className='p-6 border-b flex items-center justify-between bg-muted/20'>

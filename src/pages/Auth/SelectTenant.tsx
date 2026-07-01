@@ -86,7 +86,7 @@ export default function SelectTenant({
   }
 
   return (
-    <div className='min-h-screen flex items-center justify-center bg-background text-foreground p-6 overflow-hidden relative'>
+    <div className='min-h-screen flex flex-col items-center justify-between bg-background text-foreground p-6 relative py-12'>
       {/* Animated Background Elements */}
       <div className='absolute top-[-15%] left-[-15%] w-[60%] h-[60%] bg-cyan-600/30 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]' />
       <div className='absolute bottom-[-15%] right-[-15%] w-[60%] h-[60%] bg-blue-600/20 rounded-full blur-[120px] animate-[pulse_15s_ease-in-out_infinite]' />
@@ -94,7 +94,7 @@ export default function SelectTenant({
 
       <Head title='Select Organization | Morphic CMS' />
 
-      <div className='w-full max-w-2xl z-10'>
+      <div className='w-full max-w-2xl z-10 my-auto'>
         <div className='text-center mb-12 space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-700'>
           <div className='inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-card border shadow-xl shadow-primary/5 mb-6 group transition-transform hover:rotate-3'>
             <Building2 className='w-10 h-10 text-primary' />
@@ -170,7 +170,7 @@ export default function SelectTenant({
       </div>
 
       {/* Footer Branding */}
-      <div className='absolute bottom-8 left-0 right-0 text-center'>
+      <div className='text-center mt-12 w-full z-10 shrink-0'>
         <p className='text-muted-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold'>
           Powered by Morphic CMS
         </p>

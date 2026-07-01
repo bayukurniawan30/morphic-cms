@@ -320,6 +320,132 @@ export default function AddCollection({ user }: AddProps) {
           },
         ]
         break
+      case 'navigation':
+        templateFields = [
+          {
+            id: generateId(),
+            name: 'name',
+            label: 'Name',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'slug',
+            label: 'Slug',
+            type: 'slug',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'items',
+            label: 'Navigation Items',
+            type: 'array',
+            required: false,
+            fields: [
+              {
+                id: generateId(),
+                name: 'label',
+                label: 'Label',
+                type: 'text',
+                required: true,
+              },
+              {
+                id: generateId(),
+                name: 'link',
+                label: 'Link',
+                type: 'text',
+                required: true,
+              },
+              {
+                id: generateId(),
+                name: 'isOpenInNewTab',
+                label: 'Open in new tab',
+                type: 'checkbox',
+                required: false,
+              },
+            ],
+          },
+        ]
+        break
+      case 'testimonial':
+        templateFields = [
+          {
+            id: generateId(),
+            name: 'author',
+            label: 'Author Name',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'position',
+            label: 'Position/Company',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'quote',
+            label: 'Quote',
+            type: 'textarea',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'avatar',
+            label: 'Avatar/Photo',
+            type: 'media',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'rating',
+            label: 'Rating (1-5)',
+            type: 'number',
+            required: false,
+          },
+        ]
+        break
+      case 'cta':
+        templateFields = [
+          {
+            id: generateId(),
+            name: 'heading',
+            label: 'Heading',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: generateId(),
+            name: 'description',
+            label: 'Description',
+            type: 'textarea',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'buttonLabel',
+            label: 'Button Label',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'buttonLink',
+            label: 'Button Link',
+            type: 'text',
+            required: false,
+          },
+          {
+            id: generateId(),
+            name: 'backgroundImage',
+            label: 'Background Image',
+            type: 'media',
+            required: false,
+          },
+        ]
+        break
     }
 
     setData('fields', [...data.fields, ...templateFields])
@@ -652,6 +778,15 @@ export default function AddCollection({ user }: AddProps) {
                       onClick={() => loadTemplate('social_media')}
                     >
                       Social Media Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('navigation')}>
+                      Navigation Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('testimonial')}>
+                      Testimonial Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadTemplate('cta')}>
+                      Call to Action Template
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

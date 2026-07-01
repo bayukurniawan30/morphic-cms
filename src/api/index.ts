@@ -1300,6 +1300,57 @@ app.get('/dashboard', requireAuth, async (c) => {
     .groupBy(sql`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`)
     .orderBy(asc(sql`TO_CHAR(${apiLogs.createdAt}, 'YYYY-MM-DD')`))
 
+  // 5. Fetch PRO users and their workspaces (tenants) - only for super_admin
+  let proUsers: any[] = []
+  if (userData?.role === 'super_admin') {
+    try {
+      const rawProUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          username: users.username,
+          planTier: users.planTier,
+          tenantId: tenants.id,
+          tenantName: tenants.name,
+          tenantSlug: tenants.slug,
+        })
+        .from(users)
+        .leftJoin(usersToTenants, eq(users.id, usersToTenants.userId))
+        .leftJoin(tenants, eq(usersToTenants.tenantId, tenants.id))
+        .where(
+          and(
+            isNull(users.deletedAt),
+            eq(sql`LOWER(${users.planTier})`, 'pro')
+          )
+        )
+
+      const proUsersMap = new Map<number, any>()
+      for (const r of rawProUsers) {
+        if (!proUsersMap.has(r.id)) {
+          proUsersMap.set(r.id, {
+            id: r.id,
+            name: r.name,
+            email: r.email,
+            username: r.username,
+            planTier: r.planTier,
+            tenants: [],
+          })
+        }
+        if (r.tenantId) {
+          proUsersMap.get(r.id).tenants.push({
+            id: r.tenantId,
+            name: r.tenantName,
+            slug: r.tenantSlug,
+          })
+        }
+      }
+      proUsers = Array.from(proUsersMap.values())
+    } catch (e) {
+      console.error('Failed to fetch PRO users:', e)
+    }
+  }
+
   return c.get('inertia')('Dashboard', {
     user: userData,
     stats: {
@@ -1319,6 +1370,7 @@ app.get('/dashboard', requireAuth, async (c) => {
     })),
     trafficData,
     performanceData,
+    proUsers,
   })
 })
 
