@@ -32,6 +32,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import TextAlign from '@tiptap/extension-text-align'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Youtube from '@tiptap/extension-youtube'
+import { NodeSelection } from '@tiptap/pm/state'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
@@ -210,6 +211,20 @@ const RichTextEditor = ({
         class:
           'prose prose-sm dark:prose-invert max-w-none min-h-[150px] p-4 focus:outline-none',
       },
+      handleClickOn(view, pos, node, nodePos, event, direct) {
+        if (node.type.name === 'image') {
+          const { state, dispatch } = view
+          try {
+            view.focus()
+            const selection = NodeSelection.create(state.doc, nodePos)
+            dispatch(state.tr.setSelection(selection))
+            return true
+          } catch (err) {
+            console.error('Failed to create NodeSelection on image click:', err)
+          }
+        }
+        return false
+      },
     },
   })
 
@@ -262,9 +277,18 @@ const RichTextEditor = ({
     return null
   }
 
-  const addImage = (url: string) => {
+  const addImage = (url: string, filename?: string, alt?: string | null) => {
     if (url) {
-      editor.chain().focus().setImage({ src: url }).run()
+      // Use the media's existing alt field first. If it's empty, format the filename.
+      let defaultAlt = alt ? alt.trim() : ''
+      if (!defaultAlt && filename) {
+        defaultAlt = filename
+          .substring(0, filename.lastIndexOf('.'))
+          .replace(/[-_]/g, ' ')
+          .trim()
+      }
+
+      editor.chain().focus().setImage({ src: url, alt: defaultAlt }).run()
     }
   }
 
@@ -668,6 +692,7 @@ const RichTextEditor = ({
 
       <BubbleMenu
         editor={editor}
+        pluginKey='imageBubbleMenu'
         shouldShow={({ editor }) => editor.isActive('image')}
       >
         <div className='flex border bg-card shadow-md rounded-md overflow-hidden p-1 gap-1'>
@@ -696,7 +721,11 @@ const RichTextEditor = ({
 
       <BubbleMenu
         editor={editor}
-        shouldShow={({ editor }) => editor.isActive('link')}
+        pluginKey='linkBubbleMenu'
+        shouldShow={({ editor }) => {
+          const active = editor.isActive('link')
+          return active
+        }}
       >
         <div className='flex items-center gap-1 border bg-card shadow-md rounded-md overflow-hidden p-1 min-w-[300px]'>
           <div className='flex-1 px-2 py-1 text-xs text-muted-foreground truncate max-w-[200px]'>

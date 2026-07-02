@@ -37,12 +37,13 @@ interface MediaFile {
   width: number | null
   height: number | null
   resourceType?: string
+  alt?: string | null
 }
 
 interface MediaPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect?: (url: string) => void
+  onSelect?: (url: string, filename?: string, alt?: string | null) => void
   onSelectMedia?: (media: MediaFile[]) => void
   multiple?: boolean
 }
@@ -148,7 +149,11 @@ export default function MediaPicker({
         onSelectMedia(selectedFiles)
       }
       if (onSelect) {
-        onSelect(selectedFiles[0].secureUrl)
+        onSelect(
+          selectedFiles[0].secureUrl,
+          selectedFiles[0].filename,
+          selectedFiles[0].alt
+        )
       }
       setSelectedFiles([])
       onOpenChange(false)

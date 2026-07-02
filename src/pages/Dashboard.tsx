@@ -296,10 +296,12 @@ export default function Dashboard({
                       border: '1px solid hsl(var(--border))',
                     }}
                     labelFormatter={(str) => format(new Date(str), 'PPPP')}
+                    formatter={(value: any) => [`${Number(value).toFixed(2)} ms`, 'Average Latency']}
                   />
                   <Area
                     type='monotone'
                     dataKey='avgResponseTime'
+                    name='Average Latency'
                     stroke='rgb(168, 85, 247)'
                     strokeWidth={3}
                     fillOpacity={1}
