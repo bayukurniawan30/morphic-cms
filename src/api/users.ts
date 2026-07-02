@@ -104,6 +104,29 @@ apiUsers.post('/', async (c) => {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
+    let finalAbilityId: number | null = null
+    const reqAbility = body.abilityId
+    if (reqAbility !== undefined && reqAbility !== null && reqAbility !== 'none' && reqAbility !== '') {
+      finalAbilityId = parseInt(String(reqAbility), 10)
+    } else {
+      try {
+        const readAccessConditions = [eq(abilities.name, 'Read Access')]
+        if (tenantId) {
+          readAccessConditions.push(eq(abilities.tenantId, tenantId))
+        }
+        const readAccess = await db
+          .select()
+          .from(abilities)
+          .where(and(...readAccessConditions))
+          .limit(1)
+        if (readAccess.length > 0) {
+          finalAbilityId = readAccess[0].id
+        }
+      } catch (e) {
+        console.error('Failed to look up default Read Access ability:', e)
+      }
+    }
+
     const newUser = await db.transaction(async (tx) => {
       const u = await tx
         .insert(users)
@@ -113,7 +136,7 @@ apiUsers.post('/', async (c) => {
           username,
           password: hashedPassword,
           role: userData.role === 'super_admin' ? role || 'editor' : 'editor',
-          abilityId: body.abilityId || null,
+          abilityId: finalAbilityId,
         })
         .returning({
           id: users.id,
@@ -208,7 +231,12 @@ apiUsers.put('/:id', async (c) => {
 
     if (currentUserRole === 'super_admin') {
       if (role !== undefined) updateData.role = role
-      if (body.abilityId !== undefined) updateData.abilityId = body.abilityId
+      if (body.abilityId !== undefined) {
+        updateData.abilityId =
+          body.abilityId === null || body.abilityId === 'none' || body.abilityId === ''
+            ? null
+            : parseInt(String(body.abilityId), 10)
+      }
     } else {
       if (targetUser?.role === 'super_admin') {
         return c.json({ error: 'Forbidden: Cannot edit a Super Admin' }, 403)
@@ -216,7 +244,12 @@ apiUsers.put('/:id', async (c) => {
       
       // Allow tenant owners to update abilities
       if (tenantRole === 'owner') {
-        if (body.abilityId !== undefined) updateData.abilityId = body.abilityId
+        if (body.abilityId !== undefined) {
+          updateData.abilityId =
+            body.abilityId === null || body.abilityId === 'none' || body.abilityId === ''
+              ? null
+              : parseInt(String(body.abilityId), 10)
+        }
       }
     }
 
@@ -318,10 +351,15 @@ apiUsers.post('/:id/api-key', async (c) => {
 
     // Assign "Read Access" if no ability exists
     if (!dbUser.abilityId) {
+      const activeTenantId = c.get('tenantId')
+      const readAccessConditions = [eq(abilities.name, 'Read Access')]
+      if (activeTenantId) {
+        readAccessConditions.push(eq(abilities.tenantId, activeTenantId))
+      }
       const readAccess = await db
         .select()
         .from(abilities)
-        .where(eq(abilities.name, 'Read Access'))
+        .where(and(...readAccessConditions))
         .limit(1)
       if (readAccess.length > 0) {
         updateData.abilityId = readAccess[0].id
