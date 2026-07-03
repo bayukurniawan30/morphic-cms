@@ -82,7 +82,7 @@ export const inertia = (viewFile: string = 'index.html') => {
           pageDesc = mergedProps.meta.description
         }
 
-        let pageImage = `${new URL(c.req.url).origin}/dashboard.png`
+        let pageImage = `${new URL(c.req.url).origin}/twitter_card.png`
         if (mergedProps.post?.content?.seo?.og_image?.secureUrl) {
           pageImage = mergedProps.post.content.seo.og_image.secureUrl
         } else if (mergedProps.post?.content?.featuredImage?.secureUrl) {
