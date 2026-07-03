@@ -554,27 +554,18 @@ export default function Home({
 
           {/* CTA Buttons */}
           <div className='flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-1000'>
-            <Button
-              asChild
-              size='lg'
-              className='h-14 px-8 rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-2xl shadow-primary/20 group border-none transition-all'
+            <a
+              href='https://www.producthunt.com/products/morphic-cms?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-morphic-cms'
+              target='_blank'
+              rel='noopener noreferrer'
             >
-              <Link href='/signup' className='flex items-center'>
-                Get Started
-                <ArrowRight className='ml-2 w-5 h-5 group-hover:translate-x-0.5 transition-transform' />
-              </Link>
-            </Button>
-            <Button
-              onClick={() => {
-                const element = document.getElementById('playground')
-                element?.scrollIntoView({ behavior: 'smooth' })
-              }}
-              variant='outline'
-              size='lg'
-              className='h-14 px-8 rounded-full border-white/10 bg-deep-mocha-900/30 text-slate-300 hover:text-white hover:bg-deep-mocha-800/60 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] font-semibold transition-all duration-300'
-            >
-              Try Playground
-            </Button>
+              <img
+                alt='Morphic CMS - Modern, Edge-Ready Headless CMS | Product Hunt'
+                width='250'
+                height='54'
+                src='https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1186858&theme=light&t=1783062776757'
+              />
+            </a>
           </div>
 
           {/* Hero Terminal Setup */}
