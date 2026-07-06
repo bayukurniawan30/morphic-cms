@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { FieldDefinition, FieldType } from '@/lib/dynamic-schema'
-import { Link, useForm, usePage } from '@inertiajs/react'
+import { Link, router, useForm, usePage } from '@inertiajs/react'
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -42,6 +42,10 @@ import MediaPicker from '@/components/MediaPicker'
 interface EditProps {
   form: any
   user?: any
+}
+
+const generateFieldId = () => {
+  return Math.random().toString(36).substr(2, 9)
 }
 
 export default function EditForm({ form, user }: EditProps) {
@@ -103,7 +107,7 @@ export default function EditForm({ form, user }: EditProps) {
 
   const addField = () => {
     const newField: FieldDefinition = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateFieldId(),
       name: '',
       label: '',
       type: 'text',
@@ -221,7 +225,7 @@ export default function EditForm({ form, user }: EditProps) {
       }
 
       toast.success('Form definition updated successfully')
-      window.location.href = '/forms'
+      router.visit('/forms')
     } catch (err) {
       toast.error('Network error')
       setIsSubmitting(false)
