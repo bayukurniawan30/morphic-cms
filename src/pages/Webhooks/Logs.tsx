@@ -392,7 +392,7 @@ export default function WebhookLogs({ user, initialWebhookId }: Props) {
               <TabsContent value="request" className="space-y-4">
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">Headers</h4>
-                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[150px] custom-scrollbar text-foreground">
+                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[150px] overflow-y-auto custom-scrollbar text-foreground">
                     {activeLog.requestHeaders
                       ? JSON.stringify(activeLog.requestHeaders, null, 2)
                       : '{}'}
@@ -401,7 +401,7 @@ export default function WebhookLogs({ user, initialWebhookId }: Props) {
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">Body Payload</h4>
-                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[300px] custom-scrollbar text-foreground">
+                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[300px] overflow-y-auto custom-scrollbar text-foreground">
                     {parseJSON(activeLog.requestBody)
                       ? JSON.stringify(parseJSON(activeLog.requestBody), null, 2)
                       : activeLog.requestBody || '{}'}
@@ -419,7 +419,7 @@ export default function WebhookLogs({ user, initialWebhookId }: Props) {
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">Headers</h4>
-                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[150px] custom-scrollbar text-foreground">
+                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[150px] overflow-y-auto custom-scrollbar text-foreground">
                     {activeLog.responseHeaders
                       ? JSON.stringify(activeLog.responseHeaders, null, 2)
                       : '{}'}
@@ -428,7 +428,7 @@ export default function WebhookLogs({ user, initialWebhookId }: Props) {
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">Body</h4>
-                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[300px] custom-scrollbar text-foreground">
+                  <pre className="bg-muted/80 p-3 rounded-lg border text-[11px] font-mono whitespace-pre-wrap break-all max-h-[300px] overflow-y-auto custom-scrollbar text-foreground">
                     {parseJSON(activeLog.responseBody)
                       ? JSON.stringify(parseJSON(activeLog.responseBody), null, 2)
                       : activeLog.responseBody || 'No response body'}
