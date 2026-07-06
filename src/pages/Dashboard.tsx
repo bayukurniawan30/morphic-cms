@@ -73,8 +73,14 @@ export default function Dashboard({
   performanceData = [],
   proUsers = [],
 }: DashboardProps) {
-  const { activeTenantRole } = usePage().props as any
+  const { activeTenant, activeTenantRole, features } = usePage().props as any
   const canAccessApiAbilities = user?.role === 'super_admin' || activeTenantRole === 'owner'
+  const isCollectionsLimitReached =
+    user?.role !== 'super_admin' &&
+    !!activeTenant &&
+    !!features &&
+    typeof features.maxCollections === 'number' &&
+    stats.totalCollections >= features.maxCollections
 
   const overviewItems = [
     {
@@ -516,16 +522,18 @@ export default function Dashboard({
                 Quick Actions
               </h3>
               <div className='grid grid-cols-1 gap-2'>
-                <Button
-                  variant='outline'
-                  className='justify-start h-12 rounded-xl border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary transition-all'
-                  asChild
-                >
-                  <Link href='/collections/add'>
-                    <Plus className='w-4 h-4 mr-3' />
-                    New Collection
-                  </Link>
-                </Button>
+                {!isCollectionsLimitReached && (
+                  <Button
+                    variant='outline'
+                    className='justify-start h-12 rounded-xl border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary transition-all'
+                    asChild
+                  >
+                    <Link href='/collections/add'>
+                      <Plus className='w-4 h-4 mr-3' />
+                      New Collection
+                    </Link>
+                  </Button>
+                )}
                 <Button
                   variant='outline'
                   className='justify-start h-12 rounded-xl border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary transition-all'

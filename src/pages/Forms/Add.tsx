@@ -32,6 +32,8 @@ import {
   TrashIcon,
   Palette,
   Upload,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useState, useEffect } from 'react'
@@ -45,6 +47,15 @@ export default function AddForm({ user }: AddProps) {
   const { activeTenant } = usePage().props as any
   const tenantSlug = activeTenant?.slug || 'tenant-slug'
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyEndpoint = () => {
+    const url = `${window.location.origin}/api/forms/${tenantSlug}/${data.slug}/submit`
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    toast.success('Endpoint URL copied to clipboard')
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const { data, setData, post, processing, errors } = useForm({
     name: '',
@@ -658,8 +669,23 @@ export default function AddForm({ user }: AddProps) {
                   <Label className='text-[10px] font-bold uppercase text-primary'>
                     Public Submission Endpoint
                   </Label>
-                  <div className='bg-muted p-2 rounded border font-mono text-[10px] break-all select-all'>
-                    {window.location.origin}/api/forms/{tenantSlug}/{data.slug}/submit
+                  <div className='flex items-center gap-2'>
+                    <div className='flex-1 bg-muted p-2 rounded border font-mono text-[10px] break-all select-all'>
+                      {window.location.origin}/api/forms/{tenantSlug}/{data.slug}/submit
+                    </div>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='icon'
+                      className='h-8 w-8 shrink-0 border-muted-foreground/20 hover:bg-muted/80'
+                      onClick={handleCopyEndpoint}
+                    >
+                      {copied ? (
+                        <Check className='h-3.5 w-3.5 text-green-500' />
+                      ) : (
+                        <Copy className='h-3.5 w-3.5 text-muted-foreground hover:text-foreground' />
+                      )}
+                    </Button>
                   </div>
                   <p className='text-[9px] text-muted-foreground'>
                     Use this URL as the action for your website's contact form.
