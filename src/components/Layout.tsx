@@ -438,7 +438,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       currentUrl={url}
                     />
                   )}
-                  {(!features || features.hasWebhooks) && (
+                  {(user.role === 'super_admin' || !features || features.hasWebhooks) && (
                     <NavItem
                       href='/webhooks'
                       icon={Webhook}

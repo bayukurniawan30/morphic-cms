@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   ExternalLink,
+  History,
 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -77,12 +78,20 @@ export default function WebhooksList({ user }: { user: any }) {
               Manage outgoing HTTP notifications for your content events.
             </p>
           </div>
-          <Button asChild>
-            <Link href='/webhooks/add'>
-              <Plus className='w-4 h-4 mr-2' />
-              Add Webhook
-            </Link>
-          </Button>
+          <div className='flex items-center space-x-2'>
+            <Button variant='outline' asChild>
+              <Link href='/webhooks/logs'>
+                <History className='w-4 h-4 mr-2' />
+                View Logs
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href='/webhooks/add'>
+                <Plus className='w-4 h-4 mr-2' />
+                Add Webhook
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className='bg-card rounded-xl border shadow-sm overflow-hidden'>
@@ -163,6 +172,11 @@ export default function WebhooksList({ user }: { user: any }) {
                       )}
                       <td className='px-6 py-4 text-right whitespace-nowrap'>
                         <div className='flex items-center justify-end gap-2'>
+                          <Button variant='outline' size='sm' asChild title='Webhook Logs'>
+                            <Link href={`/webhooks/logs?webhookId=${webhook.id}`}>
+                              Logs
+                            </Link>
+                          </Button>
                           <Button variant='outline' size='sm' asChild title='Edit Webhook'>
                             <Link href={`/webhooks/edit/${webhook.id}`}>
                               Edit

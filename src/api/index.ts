@@ -9,11 +9,14 @@ import {
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNotNull,
   isNull,
   lt,
   ne,
+  notInArray,
+  or,
   sql,
 } from 'drizzle-orm'
 import fs from 'fs'
@@ -47,6 +50,7 @@ import {
   users,
   usersToTenants,
   webhooks,
+  webhookLogs,
 } from '../db/schema.js'
 import type { FieldDefinition } from '../lib/dynamic-schema.js'
 import { buildZodSchema } from '../lib/dynamic-schema.js'
@@ -1124,6 +1128,23 @@ app.get('/webhooks', requireAuth, async (c) => {
   return c.get('inertia')('Webhooks/List', {
     user: userData,
     title: 'Webhooks',
+  })
+})
+
+app.get('/webhooks/logs', requireAuth, async (c) => {
+  const userData = c.get('user')
+  const tenantRole = c.get('tenantRole')
+
+  if (userData.role !== 'super_admin' && tenantRole !== 'owner') {
+    return c.redirect('/dashboard')
+  }
+
+  const webhookId = c.req.query('webhookId')
+
+  return c.get('inertia')('Webhooks/Logs', {
+    user: userData,
+    title: 'Webhook Logs',
+    initialWebhookId: webhookId ? parseInt(webhookId, 10) : undefined,
   })
 })
 
@@ -2434,6 +2455,7 @@ api.use('*', async (c, next) => {
     path === '/api/auth/forgot-password' ||
     path === '/api/auth/reset-password' ||
     path === '/api/webhooks/polar' ||
+    path === '/api/cron/cleanup-webhook-logs' ||
     path === '/api/test' ||
     c.req.header('X-Morphic-Test') === 'true' ||
     (path.startsWith('/api/forms/') && path.endsWith('/submit'))
@@ -2586,6 +2608,143 @@ api.delete('/webhooks/:id', async (c) => {
 
   await db.delete(webhooks).where(and(...whereClause))
   return c.json({ success: true })
+})
+
+api.get('/webhooks/logs', async (c) => {
+  const tenantId = c.get('tenantId')
+  const webhookId = c.req.query('webhookId')
+  const status = c.req.query('status')
+  const event = c.req.query('event')
+
+  const query = db
+    .select({
+      id: webhookLogs.id,
+      webhookId: webhookLogs.webhookId,
+      webhookName: webhooks.name,
+      tenantId: webhookLogs.tenantId,
+      event: webhookLogs.event,
+      url: webhookLogs.url,
+      statusCode: webhookLogs.statusCode,
+      responseTime: webhookLogs.responseTime,
+      requestHeaders: webhookLogs.requestHeaders,
+      requestBody: webhookLogs.requestBody,
+      responseHeaders: webhookLogs.responseHeaders,
+      responseBody: webhookLogs.responseBody,
+      errorMessage: webhookLogs.errorMessage,
+      createdAt: webhookLogs.createdAt,
+    })
+    .from(webhookLogs)
+    .leftJoin(webhooks, eq(webhookLogs.webhookId, webhooks.id))
+
+  const whereClause: any[] = []
+
+  if (tenantId) {
+    whereClause.push(eq(webhookLogs.tenantId, tenantId))
+  }
+
+  if (webhookId) {
+    whereClause.push(eq(webhookLogs.webhookId, parseInt(webhookId, 10)))
+  }
+
+  if (status === 'success') {
+    whereClause.push(
+      and(
+        gte(webhookLogs.statusCode, 200),
+        lt(webhookLogs.statusCode, 300),
+        isNull(webhookLogs.errorMessage)
+      )
+    )
+  } else if (status === 'error') {
+    whereClause.push(
+      or(
+        lt(webhookLogs.statusCode, 200),
+        gte(webhookLogs.statusCode, 300),
+        isNotNull(webhookLogs.errorMessage),
+        isNull(webhookLogs.statusCode)
+      )
+    )
+  }
+
+  if (event) {
+    whereClause.push(eq(webhookLogs.event, event))
+  }
+
+  if (whereClause.length > 0) {
+    query.where(and(...whereClause))
+  }
+
+  const logs = await query.orderBy(desc(webhookLogs.createdAt)).limit(100)
+
+  return c.json({ logs })
+})
+
+api.get('/cron/cleanup-webhook-logs', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (process.env.NODE_ENV === 'production') {
+    if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+  }
+
+  try {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+    // Find PRO / SELF_HOSTED tenant IDs
+    const proTenantIdsResult = await db
+      .select({ tenantId: usersToTenants.tenantId })
+      .from(usersToTenants)
+      .innerJoin(users, eq(usersToTenants.userId, users.id))
+      .where(
+        and(
+          eq(usersToTenants.role, 'owner'),
+          or(eq(users.planTier, 'PRO'), eq(users.planTier, 'SELF_HOSTED'))
+        )
+      )
+
+    const proTenantIds = Array.from(
+      new Set(
+        proTenantIdsResult
+          .map((r) => r.tenantId)
+          .filter((id): id is number => id !== null)
+      )
+    )
+
+    // 1. Delete PRO/SELF_HOSTED logs older than 30 days
+    if (proTenantIds.length > 0) {
+      await db
+        .delete(webhookLogs)
+        .where(
+          and(
+            inArray(webhookLogs.tenantId, proTenantIds),
+            lt(webhookLogs.createdAt, thirtyDaysAgo)
+          )
+        )
+    }
+
+    // 2. Delete FREE / System Global logs older than 3 days
+    const freeConditions: any[] = [lt(webhookLogs.createdAt, threeDaysAgo)]
+    if (proTenantIds.length > 0) {
+      freeConditions.push(
+        or(
+          isNull(webhookLogs.tenantId),
+          notInArray(webhookLogs.tenantId, proTenantIds)!
+        )
+      )
+    }
+
+    await db
+      .delete(webhookLogs)
+      .where(and(...freeConditions))
+
+    return c.json({ success: true, message: 'Cleanup complete' })
+  } catch (err: any) {
+    console.error('Failed to cleanup webhook logs:', err)
+    return c.json({ error: err.message || 'Internal server error' }, 500)
+  }
 })
 
 api.post('/payments/polar/checkout', async (c) => {

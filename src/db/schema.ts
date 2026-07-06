@@ -7,6 +7,7 @@ import {
   pgEnum,
   pgTable,
   serial,
+  text,
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core'
@@ -293,3 +294,31 @@ export const webhooksRelations = relations(webhooks, ({ one }) => ({
     references: [tenants.id],
   }),
 }))
+
+export const webhookLogs = pgTable('webhook_logs', {
+  id: serial('id').primaryKey(),
+  webhookId: integer('webhook_id').references(() => webhooks.id, { onDelete: 'cascade' }).notNull(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
+  event: varchar('event', { length: 255 }).notNull(),
+  url: varchar('url', { length: 1024 }).notNull(),
+  statusCode: integer('status_code'),
+  responseTime: integer('response_time'), // in milliseconds
+  requestHeaders: jsonb('request_headers'),
+  requestBody: text('request_body'),
+  responseHeaders: jsonb('response_headers'),
+  responseBody: text('response_body'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const webhookLogsRelations = relations(webhookLogs, ({ one }) => ({
+  webhook: one(webhooks, {
+    fields: [webhookLogs.webhookId],
+    references: [webhooks.id],
+  }),
+  tenant: one(tenants, {
+    fields: [webhookLogs.tenantId],
+    references: [tenants.id],
+  }),
+}))
+

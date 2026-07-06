@@ -12,5 +12,11 @@
     "index.ts": {
       "includeFiles": "dist/**"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-webhook-logs",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
