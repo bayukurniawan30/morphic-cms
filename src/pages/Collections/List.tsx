@@ -83,6 +83,7 @@ export default function CollectionsList({
     user?.role !== 'super_admin' &&
     !!activeTenant &&
     !!features &&
+    typeof features.maxCollections === 'number' &&
     totalWorkspaceCollections >= features.maxCollections
 
   const [searchQuery, setSearchQuery] = useState(filters?.q || '')

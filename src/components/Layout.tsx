@@ -138,6 +138,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
     availableTenants,
     appDomain,
     features,
+    canCreateWorkspace = false,
     isSelfHosted = false,
   } = props as any as {
     activeTenant: TenantProps | null
@@ -152,6 +153,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
       hasWebhooks: boolean
       hasFormBuilder: boolean
     }
+    canCreateWorkspace?: boolean
     isSelfHosted?: boolean
   }
   const [globals, setGlobals] = React.useState<any[]>([])
@@ -660,23 +662,20 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       ))
                     )}
                   </div>
-                  {user &&
-                    (user.role === 'super_admin' ||
-                      user.planTier === 'PRO' ||
-                      user.planTier === 'SELF_HOSTED') && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href='/tenants/add'
-                            className='flex items-center gap-2 text-primary font-medium'
-                          >
-                            <Plus className='h-4 w-4' />
-                            <span>Create New Workspace</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
+                  {user && canCreateWorkspace && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href='/tenants/add'
+                          className='flex items-center gap-2 text-primary font-medium'
+                        >
+                          <Plus className='h-4 w-4' />
+                          <span>Create New Workspace</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 

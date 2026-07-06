@@ -107,6 +107,7 @@ export default function List({
     user?.role !== 'super_admin' &&
     !!activeTenant &&
     !!features &&
+    typeof features.maxUsers === 'number' &&
     totalWorkspaceUsers >= features.maxUsers
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null)

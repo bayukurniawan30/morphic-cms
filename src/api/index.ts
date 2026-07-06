@@ -377,10 +377,12 @@ app.use('*', async (c, next) => {
     let availableTenants: any[] = []
     let features = null
 
+    let canCreateWorkspace = false
     if (userData) {
       try {
         if (userData.role === 'super_admin') {
           availableTenants = await db.select().from(tenants)
+          canCreateWorkspace = true
         } else {
           availableTenants = await db
             .select({
@@ -391,6 +393,21 @@ app.use('*', async (c, next) => {
             .from(tenants)
             .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
             .where(eq(usersToTenants.userId, userData.id))
+
+          if (userData.planTier === 'PRO' || userData.planTier === 'SELF_HOSTED') {
+            const ownedWorkspaces = await db
+              .select({ id: tenants.id })
+              .from(tenants)
+              .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+              .where(
+                and(
+                  eq(usersToTenants.userId, userData.id),
+                  eq(usersToTenants.role, 'owner')
+                )
+              )
+            const userFeatures = getTenantFeatures(userData.planTier)
+            canCreateWorkspace = ownedWorkspaces.length < userFeatures.maxWorkspaces
+          }
         }
 
         features = await getWorkspaceFeatures(currentTenant?.id)
@@ -406,6 +423,7 @@ app.use('*', async (c, next) => {
       availableTenants: availableTenants,
       appDomain: process.env.APP_DOMAIN || 'morphic-cms.com',
       features,
+      canCreateWorkspace,
       isSelfHosted: process.env.IS_SELF_HOSTED === 'true',
     })
   }
