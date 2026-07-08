@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -95,7 +95,9 @@ export const entries = pgTable('entries', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at'),
-})
+}, (table) => ({
+  contentGinIdx: index('entries_content_gin_idx').using('gin', sql`${table.content} jsonb_path_ops`),
+}))
 
 export const entriesRelations = relations(entries, ({ one }) => ({
   tenant: one(tenants, {

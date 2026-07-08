@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "entries_content_gin_idx" ON "entries" USING gin ("content" jsonb_path_ops);
