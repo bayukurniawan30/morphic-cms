@@ -58,7 +58,7 @@ const CodeBlock = ({
         </Button>
       </div>
       <pre
-        className='bg-slate-950 text-slate-300 p-6 rounded-xl overflow-x-auto text-sm border border-slate-800 shadow-xl'
+        className='bg-zinc-950 text-zinc-300 p-6 rounded-xl overflow-x-auto text-sm border border-zinc-800/80 shadow-xl'
         style={{
           fontFamily:
             'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace',
@@ -1002,7 +1002,7 @@ export default function Documentation({ user }: { user: any }) {
               </h5>
               <ul className='space-y-2 text-sm'>
                 <li className='flex items-start'>
-                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                  <code className='bg-secondary dark:bg-secondary px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
                     page
                   </code>
                   <span className='text-slate-600 dark:text-slate-400'>
@@ -1010,7 +1010,7 @@ export default function Documentation({ user }: { user: any }) {
                   </span>
                 </li>
                 <li className='flex items-start'>
-                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                  <code className='bg-secondary dark:bg-secondary px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
                     limit
                   </code>
                   <span className='text-slate-600 dark:text-slate-400'>
@@ -1018,7 +1018,7 @@ export default function Documentation({ user }: { user: any }) {
                   </span>
                 </li>
                 <li className='flex items-start'>
-                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                  <code className='bg-secondary dark:bg-secondary px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
                     locale
                   </code>
                   <span className='text-slate-600 dark:text-slate-400'>
@@ -1029,7 +1029,7 @@ export default function Documentation({ user }: { user: any }) {
                   </span>
                 </li>
                 <li className='flex items-start'>
-                  <code className='bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                  <code className='bg-secondary dark:bg-secondary px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
                     trash
                   </code>
                   <span className='text-slate-600 dark:text-slate-400'>
@@ -1464,7 +1464,7 @@ export default function Documentation({ user }: { user: any }) {
                 </span>
               </div>
               <code
-                className='block bg-slate-950 text-slate-200 border border-slate-800/80 p-3 rounded-lg text-xs font-semibold'
+                className='block bg-zinc-950 text-zinc-200 border border-zinc-800/80 p-3 rounded-lg text-xs font-semibold'
                 style={{
                   fontFamily:
                     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace',
@@ -1655,198 +1655,113 @@ function verifyWebhook(payload, signature, secret) {
         <link rel='icon' type='image/png' href='/favicon.png' />
       </Head>
 
-      {user ? (
-        <Layout user={user} title='Documentation'>
-          <div className='flex flex-col lg:flex-row min-h-screen'>
-            {/* Desktop Navigation Sidebar */}
-            <aside className='hidden lg:block w-72 border-r p-8 sticky top-0 h-screen overflow-y-auto'>
-              <div className='flex items-center space-x-2 mb-10'>
-                <Book className='w-5 h-5 text-primary' />
-                <span className='font-bold tracking-tight'>DOCS</span>
-              </div>
-              <nav className='space-y-1'>
-                {menuItems.map((item) => (
-                  <a
-                    key={item.id}
-                    href={`#${item.id}`}
-                    className={cn(
-                      'flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                      activeHash === `#${item.id}`
-                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    )}
-                  >
-                    <item.icon className='w-4 h-4' />
-                    <span>{item.label}</span>
-                  </a>
-                ))}
-              </nav>
-            </aside>
-            <main className='flex-1 bg-background'>{MainContent}</main>
-          </div>
-
-          {/* Mobile Menu Trigger at Bottom */}
-          <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
-            {/* Menu Drawer */}
-            {isMobileMenuOpen && (
-              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300'>
-                <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
-                  Documentation Sections
-                </div>
-                <nav className='grid grid-cols-1 gap-0.5'>
-                  {menuItems.map((item) => (
-                    <a
-                      key={item.id}
-                      href={`#${item.id}`}
-                      onClick={(e) => scrollToSection(e, item.id)}
-                      className={cn(
-                        'flex items-center space-x-3 px-4 py-2.5 transition-all',
-                        activeHash === `#${item.id}`
-                          ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:hover:bg-slate-800/50'
-                      )}
-                    >
-                      <item.icon className='w-4 h-4' />
-                      <span className='text-sm'>{item.label}</span>
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            )}
-
-            {/* Bottom Toggle Bar */}
-            <Button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.4)] flex items-center justify-between px-6 bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-t border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group rounded-none text-foreground'
-              variant='ghost'
-            >
-              <div className='flex items-center space-x-3'>
-                <div className='p-1.5 rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors'>
-                  <Book className='w-4 h-4' />
-                </div>
-                <div className='flex items-baseline space-x-2'>
-                  <span className='text-[10px] text-muted-foreground font-black uppercase tracking-wider'>
-                    On this page:
-                  </span>
-                  <span className='text-xs font-bold'>
-                    {menuItems.find((m) => `#${m.id}` === activeHash)?.label ||
-                      'Introduction'}
-                  </span>
-                </div>
-              </div>
-              <div className='text-muted-foreground group-hover:text-foreground transition-colors'>
-                {isMobileMenuOpen ? (
-                  <ChevronDown className='w-4 h-4' />
-                ) : (
-                  <ChevronUp className='w-4 h-4' />
-                )}
-              </div>
-            </Button>
-          </div>
-        </Layout>
-      ) : (
-        <div className='min-h-screen bg-slate-50 dark:bg-slate-950'>
-          <nav className='border-b bg-background/50 backdrop-blur-md sticky top-0 z-50'>
-            <div className='max-w-7xl mx-auto px-6 h-20 flex items-center justify-between'>
-              <Link href='/' className='flex items-center space-x-2'>
-                <Logo className='scale-150' />
-                <span className='text-xl font-bold tracking-tighter'>
-                  MORPHIC
-                </span>
-              </Link>
-              <div className='flex items-center space-x-4'>
+      <div className='min-h-screen bg-background text-foreground'>
+        <nav className='border-b bg-background/50 backdrop-blur-md sticky top-0 z-50'>
+          <div className='max-w-7xl mx-auto px-6 h-20 flex items-center justify-between'>
+            <Link href='/' className='flex items-center space-x-2'>
+              <Logo className='scale-150' />
+              <span className='text-xl font-bold tracking-tighter'>
+                MORPHIC
+              </span>
+            </Link>
+            <div className='flex items-center space-x-4'>
+              {user ? (
+                <Button asChild size='sm'>
+                  <Link href='/dashboard'>Go to Dashboard</Link>
+                </Button>
+              ) : (
                 <Button asChild size='sm'>
                   <Link href='/'>Back to Home</Link>
                 </Button>
-              </div>
+              )}
             </div>
-          </nav>
-
-          {/* Mobile Menu Trigger at Bottom */}
-          <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
-            {/* Menu Drawer */}
-            {isMobileMenuOpen && (
-              <div className='absolute bottom-full left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300'>
-                <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
-                  Documentation Sections
-                </div>
-                <nav className='grid grid-cols-1 gap-0.5'>
-                  {menuItems.map((item) => (
-                    <a
-                      key={item.id}
-                      href={`#${item.id}`}
-                      onClick={(e) => scrollToSection(e, item.id)}
-                      className={cn(
-                        'flex items-center space-x-3 px-4 py-2.5 transition-all',
-                        activeHash === `#${item.id}`
-                          ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:hover:bg-slate-800/50'
-                      )}
-                    >
-                      <item.icon className='w-4 h-4' />
-                      <span className='text-sm'>{item.label}</span>
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            )}
-
-            {/* Bottom Toggle Bar */}
-            <Button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.4)] flex items-center justify-between px-6 bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-t border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group rounded-none text-foreground'
-              variant='ghost'
-            >
-              <div className='flex items-center space-x-3'>
-                <div className='p-1.5 rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors'>
-                  <Book className='w-4 h-4' />
-                </div>
-                <div className='flex items-baseline space-x-2'>
-                  <span className='text-[10px] text-muted-foreground font-black uppercase tracking-wider'>
-                    On this page:
-                  </span>
-                  <span className='text-xs font-bold'>
-                    {menuItems.find((m) => `#${m.id}` === activeHash)?.label ||
-                      'Introduction'}
-                  </span>
-                </div>
-              </div>
-              <div className='text-muted-foreground group-hover:text-foreground transition-colors'>
-                {isMobileMenuOpen ? (
-                  <ChevronDown className='w-4 h-4' />
-                ) : (
-                  <ChevronUp className='w-4 h-4' />
-                )}
-              </div>
-            </Button>
           </div>
+        </nav>
 
-          <div className='flex flex-col lg:flex-row max-w-7xl mx-auto min-h-screen'>
-            <aside className='hidden lg:block w-64 p-8 sticky top-20 h-[calc(100vh-80px)] overflow-y-auto'>
-              <nav className='space-y-2'>
+        {/* Mobile Menu Trigger at Bottom */}
+        <div className='lg:hidden fixed bottom-0 left-0 right-0 z-50'>
+          {/* Menu Drawer */}
+          {isMobileMenuOpen && (
+            <div className='absolute bottom-full left-0 right-0 p-4 bg-card/95 dark:bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300'>
+              <div className='text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2'>
+                Documentation Sections
+              </div>
+              <nav className='grid grid-cols-1 gap-0.5'>
                 {menuItems.map((item) => (
                   <a
                     key={item.id}
                     href={`#${item.id}`}
+                    onClick={(e) => scrollToSection(e, item.id)}
                     className={cn(
-                      'flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border border-transparent',
+                      'flex items-center space-x-3 px-4 py-2.5 transition-all',
                       activeHash === `#${item.id}`
-                        ? 'bg-primary/10 text-primary border-primary/20'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        ? 'bg-primary/5 text-primary font-bold border-l-2 border-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:hover:bg-muted/50'
                     )}
                   >
                     <item.icon className='w-4 h-4' />
-                    <span>{item.label}</span>
+                    <span className='text-sm'>{item.label}</span>
                   </a>
                 ))}
               </nav>
-            </aside>
-            <main className='flex-1 bg-background/50 border-x lg:border-x-0'>
-              {MainContent}
-            </main>
-          </div>
+            </div>
+          )}
+
+          {/* Bottom Toggle Bar */}
+          <Button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className='w-full h-12 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.4)] flex items-center justify-between px-6 bg-card/90 dark:bg-card/95 backdrop-blur-md border-t border-border hover:bg-muted/50 dark:hover:bg-muted/50 transition-all group rounded-none text-foreground'
+            variant='ghost'
+          >
+            <div className='flex items-center space-x-3'>
+              <div className='p-1.5 rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors'>
+                <Book className='w-4 h-4' />
+              </div>
+              <div className='flex items-baseline space-x-2'>
+                <span className='text-[10px] text-muted-foreground font-black uppercase tracking-wider'>
+                  On this page:
+                </span>
+                <span className='text-xs font-bold'>
+                  {menuItems.find((m) => `#${m.id}` === activeHash)?.label ||
+                    'Introduction'}
+                </span>
+              </div>
+            </div>
+            <div className='text-muted-foreground group-hover:text-foreground transition-colors'>
+              {isMobileMenuOpen ? (
+                <ChevronDown className='w-4 h-4' />
+              ) : (
+                <ChevronUp className='w-4 h-4' />
+              )}
+            </div>
+          </Button>
         </div>
-      )}
+
+        <div className='flex flex-col lg:flex-row max-w-7xl mx-auto min-h-screen'>
+          <aside className='hidden lg:block w-64 p-8 sticky top-20 h-[calc(100vh-80px)] overflow-y-auto'>
+            <nav className='space-y-2'>
+              {menuItems.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className={cn(
+                    'flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border border-transparent',
+                    activeHash === `#${item.id}`
+                      ? 'bg-primary/10 text-primary border-primary/20'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}
+                >
+                  <item.icon className='w-4 h-4' />
+                  <span>{item.label}</span>
+                </a>
+              ))}
+            </nav>
+          </aside>
+          <main className='flex-1 bg-background/50 border-x lg:border-x-0'>
+            {MainContent}
+          </main>
+        </div>
+      </div>
     </>
   )
 }

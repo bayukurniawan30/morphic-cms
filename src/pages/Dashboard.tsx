@@ -1,6 +1,7 @@
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Head, Link, usePage } from '@inertiajs/react'
+import { cn } from '@/lib/utils'
+import { Link, usePage } from '@inertiajs/react'
 import {
   ArrowUpRight,
   ChevronRight,
@@ -62,6 +63,7 @@ interface DashboardProps {
   trafficData: { date: string; count: number }[]
   performanceData: { date: string; avgResponseTime: number }[]
   proUsers?: any[]
+  currentMonthlyRequests?: number
 }
 
 export default function Dashboard({
@@ -72,15 +74,28 @@ export default function Dashboard({
   trafficData = [],
   performanceData = [],
   proUsers = [],
+  currentMonthlyRequests = 0,
 }: DashboardProps) {
   const { activeTenant, activeTenantRole, features } = usePage().props as any
-  const canAccessApiAbilities = user?.role === 'super_admin' || activeTenantRole === 'owner'
+  const canAccessApiAbilities =
+    user?.role === 'super_admin' || activeTenantRole === 'owner'
   const isCollectionsLimitReached =
     user?.role !== 'super_admin' &&
     !!activeTenant &&
     !!features &&
     typeof features.maxCollections === 'number' &&
     stats.totalCollections >= features.maxCollections
+
+  const limit = features?.allowedMonthlyRequests ?? 20000
+  const isUnlimited = limit === Infinity || limit <= 0
+  const isLimitReached = !isUnlimited && currentMonthlyRequests >= limit
+  const isNearLimit =
+    !isUnlimited && !isLimitReached && currentMonthlyRequests >= limit * 0.8
+
+  const percentage = isUnlimited
+    ? 0
+    : Math.min((currentMonthlyRequests / limit) * 100, 100)
+  const limitLabel = isUnlimited ? 'Unlimited' : limit.toLocaleString()
 
   const overviewItems = [
     {
@@ -302,7 +317,10 @@ export default function Dashboard({
                       border: '1px solid hsl(var(--border))',
                     }}
                     labelFormatter={(str) => format(new Date(str), 'PPPP')}
-                    formatter={(value: any) => [`${Number(value).toFixed(2)} ms`, 'Average Latency']}
+                    formatter={(value: any) => [
+                      `${Number(value).toFixed(2)} ms`,
+                      'Average Latency',
+                    ]}
                   />
                   <Area
                     type='monotone'
@@ -346,7 +364,10 @@ export default function Dashboard({
                       </thead>
                       <tbody className='divide-y divide-border text-sm'>
                         {proUsers.map((proUser) => (
-                          <tr key={proUser.id} className='hover:bg-muted/30 transition-colors'>
+                          <tr
+                            key={proUser.id}
+                            className='hover:bg-muted/30 transition-colors'
+                          >
                             <td className='px-6 py-4 font-medium text-foreground'>
                               {proUser.name || proUser.username}
                             </td>
@@ -515,6 +536,65 @@ export default function Dashboard({
 
           {/* Sidebar Area */}
           <div className='space-y-8'>
+            {/* Monthly Requests Usage Tracker */}
+            <section className='bg-card rounded-2xl border shadow-sm p-6 space-y-4 relative overflow-hidden'>
+              <div className='flex items-center justify-between'>
+                <h3 className='text-base font-semibold flex items-center gap-2'>
+                  <ArrowUpRight className='w-4 h-4 text-primary' />
+                  Monthly Requests
+                </h3>
+                <span
+                  className={cn(
+                    'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                    isLimitReached
+                      ? 'bg-red-500/10 text-red-500'
+                      : isNearLimit
+                        ? 'bg-amber-500/10 text-amber-500'
+                        : 'bg-green-500/10 text-green-500'
+                  )}
+                >
+                  {isLimitReached
+                    ? 'Exceeded'
+                    : isNearLimit
+                      ? 'Warning'
+                      : 'Healthy'}
+                </span>
+              </div>
+
+              <div className='space-y-3'>
+                <div className='flex items-baseline justify-between text-sm'>
+                  <span className='font-medium text-foreground'>API Usage</span>
+                  <span className='font-mono font-semibold text-muted-foreground'>
+                    {currentMonthlyRequests.toLocaleString()} / {limitLabel}
+                  </span>
+                </div>
+
+                {/* Progress bar container */}
+                <div className='h-2 w-full bg-secondary rounded-full overflow-hidden relative'>
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all duration-500 ease-out',
+                      isLimitReached
+                        ? 'bg-red-500'
+                        : isNearLimit
+                          ? 'bg-amber-500'
+                          : 'bg-primary'
+                    )}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+
+                {/* Helpful status note */}
+                <p className='text-xs text-muted-foreground leading-relaxed'>
+                  {isLimitReached
+                    ? 'Your workspace has exceeded the monthly request limit. Please upgrade your plan to increase limits.'
+                    : isNearLimit
+                      ? `Warning: You have used ${percentage.toFixed(0)}% of your monthly allowed requests.`
+                      : 'Requests count resets at the beginning of each calendar month.'}
+                </p>
+              </div>
+            </section>
+
             {/* Quick Actions */}
             <section className='bg-card rounded-2xl border shadow-sm p-6 space-y-4'>
               <h3 className='text-lg font-semibold flex items-center'>

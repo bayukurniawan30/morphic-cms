@@ -1390,6 +1390,50 @@ app.get('/dashboard', requireAuth, async (c) => {
     }
   }
 
+  // 6. Fetch Monthly Request Tally from Upstash Redis
+  let currentMonthlyRequests = 0
+  if (redis && tenantId) {
+    try {
+      const cacheKey = `tenant:${tenantId}:owner_metadata`
+      let ownerMeta: { ownerId: number } | null = null
+
+      const cachedMeta = await redis.get<any>(cacheKey)
+      if (cachedMeta) {
+        ownerMeta = typeof cachedMeta === 'string' ? JSON.parse(cachedMeta) : cachedMeta
+      }
+
+      if (!ownerMeta) {
+        const ownerRecords = await db
+          .select({
+            ownerId: users.id,
+          })
+          .from(usersToTenants)
+          .innerJoin(users, eq(usersToTenants.userId, users.id))
+          .where(
+            and(
+              eq(usersToTenants.tenantId, tenantId),
+              eq(usersToTenants.role, 'owner')
+            )
+          )
+        if (ownerRecords.length > 0) {
+          ownerMeta = { ownerId: ownerRecords[0].ownerId }
+        }
+      }
+
+      const currentMonth = new Date().toISOString().slice(0, 7)
+      const redisKey = ownerMeta
+        ? `usage:owner:${ownerMeta.ownerId}:${currentMonth}`
+        : `usage:tenant:${tenantId}:${currentMonth}`
+
+      const rawTally = await redis.get<string | number>(redisKey)
+      if (rawTally !== null) {
+        currentMonthlyRequests = typeof rawTally === 'number' ? rawTally : parseInt(rawTally, 10)
+      }
+    } catch (err) {
+      console.error('Failed to fetch current monthly requests from Redis:', err)
+    }
+  }
+
   return c.get('inertia')('Dashboard', {
     user: userData,
     stats: {
@@ -1410,6 +1454,7 @@ app.get('/dashboard', requireAuth, async (c) => {
     trafficData,
     performanceData,
     proUsers,
+    currentMonthlyRequests,
   })
 })
 
