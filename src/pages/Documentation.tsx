@@ -1,4 +1,3 @@
-import Layout from '@/components/Layout'
 import { Logo } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -105,8 +104,17 @@ const Section = ({
 export default function Documentation({ user }: { user: any }) {
   const [activeHash, setActiveHash] = React.useState('')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+  const [baseUrl, setBaseUrl] = React.useState(
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://your-domain.tld'
+  )
 
   React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBaseUrl(window.location.origin)
+    }
+
     const observerOptions = {
       root: null,
       rootMargin: '-10% 0px -80% 0px',
@@ -1312,7 +1320,7 @@ export default function Documentation({ user }: { user: any }) {
           header.
         </p>
         <CodeBlock
-          code={`curl -H "Authorization: Bearer YOUR_API_KEY" \\ \n     https://morphic-cms.vercel.app/api/collections`}
+          code={`curl -H "Authorization: Bearer YOUR_API_KEY" \\\n     ${baseUrl}/api/collections`}
         />
         <div className='bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl flex items-start space-x-3 mt-6'>
           <Key className='w-5 h-5 text-amber-500 mt-0.5' />

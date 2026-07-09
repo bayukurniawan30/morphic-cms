@@ -566,6 +566,18 @@ export default function Home({
                 src='https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1186858&theme=light&t=1783062776757'
               />
             </a>
+            <a
+              href='https://postyourstartup.co/startup/morphic-cms?ref=badge'
+              target='_blank'
+              rel='noopener noreferrer'
+            >
+              <img
+                src='https://postyourstartup.co/api/badge/morphic-cms?theme=light'
+                alt='Featured on PostYourStartup'
+                width='212'
+                height='55'
+              />
+            </a>
           </div>
 
           {/* Hero Terminal Setup */}

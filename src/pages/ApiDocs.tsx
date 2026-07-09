@@ -3,16 +3,15 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Head } from '@inertiajs/react'
 import {
-  Database,
-  LayoutGrid,
-  FileCheck,
-  Image as ImageIcon,
-  Copy,
   Check,
-  Zap,
-  ShieldCheck,
   Code2,
+  Copy,
+  FileCheck,
   Globe,
+  Image as ImageIcon,
+  LayoutGrid,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
@@ -56,7 +55,9 @@ const CodeBlock = ({
 export default function ApiDocs({ user }: ApiDocsProps) {
   const [copied, setCopied] = React.useState<string | null>(null)
   const [baseUrl, setBaseUrl] = React.useState(
-    'https://your-morphic-cms.vercel.app'
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://your-domain.tld'
   )
 
   React.useEffect(() => {
@@ -415,7 +416,7 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
             </div>
             <h2 className='text-2xl font-bold'>Media & Documents API</h2>
           </div>
-          
+
           <div className='space-y-10'>
             {/* Media Library */}
             <div className='space-y-4'>
@@ -426,7 +427,8 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 List Media Assets
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Retrieve list of folders and media files for a tenant. Pass <code>folderId=null</code> or omit it to fetch the root folder.
+                Retrieve list of folders and media files for a tenant. Pass{' '}
+                <code>folderId=null</code> or omit it to fetch the root folder.
               </p>
               <CodeBlock
                 id='get-media'
@@ -446,7 +448,8 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 Upload Media File
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Upload a new image or video asset. Requires an API key with a super_admin or tenant owner role.
+                Upload a new image or video asset. Requires an API key with a
+                super_admin or tenant owner role.
               </p>
               <CodeBlock
                 id='upload-media'
@@ -468,7 +471,8 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 Create Media Folder
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Create a new media folder. Requires an API key with a super_admin or tenant owner role.
+                Create a new media folder. Requires an API key with a
+                super_admin or tenant owner role.
               </p>
               <CodeBlock
                 id='create-folder'
@@ -493,7 +497,15 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 Delete Media Folder
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Permanently delete a folder by its ID. The folder must be empty; if it contains subfolders or files, the API returns a <code>400 Bad Request</code> with <code>{"{ \"error\": \"Cannot delete folder because it is not empty\" }"}</code>. Requires an API key with a super_admin or tenant owner role.
+                Permanently delete a folder by its ID. The folder must be empty;
+                if it contains subfolders or files, the API returns a{' '}
+                <code>400 Bad Request</code> with{' '}
+                <code>
+                  {
+                    '{ "error": "Cannot delete folder because it is not empty" }'
+                  }
+                </code>
+                . Requires an API key with a super_admin or tenant owner role.
               </p>
               <CodeBlock
                 id='delete-folder'
@@ -514,7 +526,8 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 List Documents
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Fetch a paginated list of uploaded documents, with optional search and sorting capabilities.
+                Fetch a paginated list of uploaded documents, with optional
+                search and sorting capabilities.
               </p>
               <CodeBlock
                 id='get-docs'
@@ -534,7 +547,8 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 Upload Document File
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Upload a document file (PDF, Word, Excel, PPT, TXT). Requires an API key with a super_admin or tenant owner role.
+                Upload a document file (PDF, Word, Excel, PPT, TXT). Requires an
+                API key with a super_admin or tenant owner role.
               </p>
               <CodeBlock
                 id='upload-document'
@@ -555,7 +569,8 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
                 Delete Document
               </h3>
               <p className='text-muted-foreground text-sm'>
-                Permanently delete a document by its ID. Requires an API key with a super_admin or tenant owner role.
+                Permanently delete a document by its ID. Requires an API key
+                with a super_admin or tenant owner role.
               </p>
               <CodeBlock
                 id='delete-document'
