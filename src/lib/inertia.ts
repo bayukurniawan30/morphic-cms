@@ -158,6 +158,17 @@ export const inertia = (viewFile: string = 'index.html') => {
           : ''
 
         // Serve HTML with data-page attribute for initial load
+        let badgeHtml = ''
+        if (component === 'Home') {
+          badgeHtml = `
+            <div style="display: none;">
+              <a href="https://postyourstartup.co/startup/morphic-cms?ref=badge" target="_blank">
+                <img src="https://postyourstartup.co/api/badge/morphic-cms?theme=light" alt="Featured on PostYourStartup" width="212" height="55" />
+              </a>
+            </div>
+          `
+        }
+
         const html = `<!DOCTYPE html>
         <html lang="en">
         <head>
@@ -240,6 +251,7 @@ export const inertia = (viewFile: string = 'index.html') => {
               </div>
             </div>
             <script type="module" src="${jsPath}" onerror="console.error('Failed to load script: ${jsPath}'); document.getElementById('inertia-loading').innerHTML = '<p style=color:red>Failed to load application assets. Check console.</p>'"></script>
+            ${badgeHtml}
         </body>
         </html>`
 
