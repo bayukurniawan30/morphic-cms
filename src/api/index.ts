@@ -4705,6 +4705,134 @@ api.delete('/collections/:id', async (c) => {
   }
 })
 
+function collectRelationIds(
+  content: any,
+  fields: any[],
+  neededIds: Record<number, Set<number>>
+) {
+  if (!content || !fields) return
+  for (const field of fields) {
+    const val = content[field.name]
+    if (val === undefined || val === null) continue
+
+    if (field.type === 'relation' && field.relationCollectionId) {
+      const relColId = field.relationCollectionId
+      if (!neededIds[relColId]) {
+        neededIds[relColId] = new Set()
+      }
+      if (Array.isArray(val)) {
+        val.forEach((v) => {
+          if (typeof v === 'number') neededIds[relColId].add(v)
+          else if (v && typeof v === 'object' && typeof v.id === 'number') {
+            neededIds[relColId].add(v.id)
+          }
+        })
+      } else {
+        if (typeof val === 'number') neededIds[relColId].add(val)
+        else if (val && typeof val === 'object' && typeof val.id === 'number') {
+          neededIds[relColId].add(val.id)
+        }
+      }
+    } else if (field.type === 'group' && field.fields) {
+      collectRelationIds(val, field.fields, neededIds)
+    } else if (field.type === 'array' && field.fields && Array.isArray(val)) {
+      for (const item of val) {
+        collectRelationIds(item, field.fields, neededIds)
+      }
+    }
+  }
+}
+
+function replaceRelationIds(
+  content: any,
+  fields: any[],
+  relationData: Record<number, Record<number, any>>
+): any {
+  if (!content || !fields) return content
+  const newContent = { ...content }
+
+  for (const field of fields) {
+    const val = content[field.name]
+    if (val === undefined || val === null) continue
+
+    if (field.type === 'relation' && field.relationCollectionId) {
+      const relColId = field.relationCollectionId
+      if (Array.isArray(val)) {
+        newContent[field.name] = val.map((v: any) => {
+          const id = typeof v === 'number' ? v : v?.id
+          if (!id) return v
+          const relatedEntry = relationData[relColId]?.[id]
+          return relatedEntry
+            ? { id: relatedEntry.id, ...relatedEntry.content }
+            : v
+        })
+      } else {
+        const id = typeof val === 'number' ? val : val?.id
+        if (id) {
+          const relatedEntry = relationData[relColId]?.[id]
+          if (relatedEntry) {
+            newContent[field.name] = {
+              id: relatedEntry.id,
+              ...relatedEntry.content,
+            }
+          }
+        }
+      }
+    } else if (field.type === 'group' && field.fields) {
+      newContent[field.name] = replaceRelationIds(val, field.fields, relationData)
+    } else if (field.type === 'array' && field.fields && Array.isArray(val)) {
+      newContent[field.name] = val.map((item) =>
+        replaceRelationIds(item, field.fields, relationData)
+      )
+    }
+  }
+
+  return newContent
+}
+
+const populateRelations = async (
+  entriesList: any[],
+  fieldsDef: any[],
+  tenantId: number | null
+) => {
+  if (!entriesList || entriesList.length === 0) return entriesList
+
+  const relationData: Record<number, Record<number, any>> = {}
+  const neededIdsByCollection: Record<number, Set<number>> = {}
+
+  for (const entry of entriesList) {
+    collectRelationIds(entry.content, fieldsDef, neededIdsByCollection)
+  }
+
+  for (const [colIdStr, idsSet] of Object.entries(neededIdsByCollection)) {
+    const ids = Array.from(idsSet) as number[]
+    if (ids.length === 0) continue
+
+    const relationConditions = [
+      eq(entries.collectionId, Number(colIdStr)),
+      inArray(entries.id, ids),
+      isNull(entries.deletedAt),
+      eq(entries.status, 'published'),
+    ]
+    if (tenantId) relationConditions.push(eq(entries.tenantId, tenantId))
+
+    const rels = await db
+      .select()
+      .from(entries)
+      .where(and(...relationConditions))
+
+    relationData[Number(colIdStr)] = {}
+    for (const rel of rels) {
+      relationData[Number(colIdStr)][rel.id] = rel
+    }
+  }
+
+  return entriesList.map((entry) => {
+    const newContent = replaceRelationIds(entry.content, fieldsDef, relationData)
+    return { ...entry, content: newContent }
+  })
+}
+
 api.get('/collections/:idOrSlug/entries', async (c) => {
   try {
     const tenantId = c.get('tenantId')
@@ -4755,83 +4883,6 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
     const isGlobal = col[0]?.type === 'global'
     const fieldsDef: any[] = (col[0]?.fields as any) || []
-
-    const populateRelations = async (entriesList: any[]) => {
-      const relationFields = fieldsDef.filter(
-        (f) => f.type === 'relation' && f.relationCollectionId
-      )
-      if (relationFields.length === 0) return entriesList
-
-      const relationData: Record<number, Record<number, any>> = {}
-      const neededIdsByCollection: Record<number, Set<number>> = {}
-
-      for (const entry of entriesList) {
-        for (const field of relationFields) {
-          const val = entry.content?.[field.name]
-          if (val) {
-            const relColId = field.relationCollectionId
-            if (!neededIdsByCollection[relColId])
-              neededIdsByCollection[relColId] = new Set()
-
-            if (Array.isArray(val)) {
-              val.forEach((v) => neededIdsByCollection[relColId].add(v))
-            } else {
-              neededIdsByCollection[relColId].add(val)
-            }
-          }
-        }
-      }
-
-      for (const [colIdStr, idsSet] of Object.entries(neededIdsByCollection)) {
-        const ids = Array.from(idsSet) as number[]
-        if (ids.length === 0) continue
-
-        const relationConditions = [
-          eq(entries.collectionId, Number(colIdStr)),
-          inArray(entries.id, ids),
-          isNull(entries.deletedAt),
-          eq(entries.status, 'published'),
-        ]
-        if (tenantId) relationConditions.push(eq(entries.tenantId, tenantId))
-
-        const rels = await db
-          .select()
-          .from(entries)
-          .where(and(...relationConditions))
-
-        relationData[Number(colIdStr)] = {}
-        for (const rel of rels) {
-          relationData[Number(colIdStr)][rel.id] = rel
-        }
-      }
-
-      return entriesList.map((entry) => {
-        const newContent = { ...entry.content }
-        for (const field of relationFields) {
-          const val = entry.content?.[field.name]
-          if (val) {
-            const relColId = field.relationCollectionId
-            if (Array.isArray(val)) {
-              newContent[field.name] = val.map((v: any) => {
-                const relatedEntry = relationData[relColId]?.[v]
-                return relatedEntry
-                  ? { id: relatedEntry.id, ...relatedEntry.content }
-                  : v
-              })
-            } else {
-              const relatedEntry = relationData[relColId]?.[val]
-              if (relatedEntry) {
-                newContent[field.name] = {
-                  id: relatedEntry.id,
-                  ...relatedEntry.content,
-                }
-              }
-            }
-          }
-        }
-        return { ...entry, content: newContent }
-      })
-    }
 
     if (isGlobal) {
       const requestedLocale = c.req.query('locale') || 'en'
@@ -4886,7 +4937,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
       const r = result[0]
       if (!r) return c.json({ type: 'global', entry: null })
-      const populated = await populateRelations([r.entry])
+      const populated = await populateRelations([r.entry], fieldsDef, tenantId)
 
       return c.json({
         type: 'global',
@@ -4973,7 +5024,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .limit(limit)
       .offset(offset)
 
-    const populatedEntries = await populateRelations(result.map((r) => r.entry))
+    const populatedEntries = await populateRelations(result.map((r) => r.entry), fieldsDef, tenantId)
 
     return c.json({
       type: 'collection',
@@ -5200,8 +5251,25 @@ api.get('/entries/:id', async (c) => {
         r = translation[0]
       }
     }
+
+    // Populate relations for the single entry response
+    const colResult = await db
+      .select({ fields: collections.fields })
+      .from(collections)
+      .where(eq(collections.id, r.entry.collectionId))
+      .limit(1)
+
+    let populatedEntry = r.entry
+    if (colResult.length > 0) {
+      const fieldsDef = colResult[0].fields as any[]
+      const populated = await populateRelations([r.entry], fieldsDef, tenantId)
+      if (populated.length > 0) {
+        populatedEntry = populated[0]
+      }
+    }
+
     return c.json({
-      entry: r.entry,
+      entry: populatedEntry,
       updatedBy:
         r.updatedBy && 'id' in r.updatedBy && r.updatedBy.id
           ? r.updatedBy
