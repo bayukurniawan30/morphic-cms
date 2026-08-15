@@ -204,6 +204,11 @@ export const inertia = (viewFile: string = 'index.html') => {
               });
               console.log('Inertia loading component: ${component}', 'JS Path: ${jsPath}');
             </script>
+            <script
+              defer
+              src="https://analytics.baycore.dev/script.js"
+              data-website-id="01319189-efab-4b48-9c40-691abc110239"
+            ></script>
             ${cssTags}
             ${vitePreamble}
         </head>
