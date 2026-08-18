@@ -894,10 +894,29 @@ export default function EntriesForm({
   const { props: pageProps } = usePage()
   const activeTenant = (pageProps as any).activeTenant
   const isSystemGlobal = !activeTenant
+  const initializeFormData = (content?: Record<string, any>) => {
+    const data: Record<string, any> = { ...(content || {}) }
+    if (collection?.fields) {
+      const applyDefaults = (target: any, fieldsList: any[]) => {
+        fieldsList.forEach((f) => {
+          if (f.type === 'boolean' && target[f.name] === undefined) {
+            target[f.name] = false
+          } else if (f.type === 'group' && f.fields) {
+            target[f.name] = target[f.name] || {}
+            applyDefaults(target[f.name], f.fields)
+          }
+        })
+      }
+      applyDefaults(data, collection.fields)
+    }
+    return data
+  }
 
-  const [formData, setFormData] = useState<Record<string, any>>(
+  const initialContent = initializeFormData(
     entry?.content || sourceEntry?.content || {}
   )
+
+  const [formData, setFormData] = useState<Record<string, any>>(initialContent)
   const initialLocale =
     entry?.locale ||
     new URLSearchParams(window.location.search).get('locale') ||
@@ -906,7 +925,7 @@ export default function EntriesForm({
   const [allDrafts, setAllDrafts] = useState<
     Record<string, Record<string, any>>
   >({
-    [initialLocale]: entry?.content || sourceEntry?.content || {},
+    [initialLocale]: initialContent,
   })
   const [currentLocale, setCurrentLocale] = useState<string>(initialLocale)
   const [translationGroupId, setTranslationGroupId] = useState<string | null>(
@@ -1722,7 +1741,7 @@ export default function EntriesForm({
 
                       // Load or initialize target draft
                       const targetDraft = allDrafts[targetLocale] || {}
-                      setFormData(targetDraft)
+                      setFormData(initializeFormData(targetDraft))
 
                       toast(`Entry language set to ${l.name}`, {
                         description:

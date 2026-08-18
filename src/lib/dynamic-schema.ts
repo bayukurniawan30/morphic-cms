@@ -154,7 +154,13 @@ export function buildZodSchema(fields: FieldDefinition[]) {
         validator = z.number() // entry ID
         break
       case 'boolean':
-        validator = z.boolean()
+        validator = z.preprocess((val) => {
+          if (typeof val === 'boolean') return val
+          if (val === 'true' || val === '1' || val === 1) return true
+          if (val === 'false' || val === '0' || val === 0) return false
+          if (val === undefined || val === null || val === '') return false
+          return Boolean(val)
+        }, z.boolean())
         break
       case 'array':
         if (field.fields && field.fields.length > 0) {
@@ -176,6 +182,8 @@ export function buildZodSchema(fields: FieldDefinition[]) {
 
     if (field.type === 'group') {
       validator = validator.default({})
+    } else if (field.type === 'boolean') {
+      validator = validator.default(false)
     } else if (!field.required) {
       validator = z.preprocess(
         (val) => (val === '' || val === null ? undefined : val),
