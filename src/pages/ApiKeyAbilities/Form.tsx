@@ -9,7 +9,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Link, useForm } from '@inertiajs/react'
-import { ArrowLeftIcon, HelpCircleIcon, LockIcon, SaveIcon } from 'lucide-react'
+import {
+  ArrowLeftIcon,
+  FolderIcon,
+  HelpCircleIcon,
+  ImageIcon,
+  LayersIcon,
+  LockIcon,
+  SaveIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
 
@@ -17,6 +25,16 @@ interface Collection {
   id: number
   name: string
   slug: string
+}
+
+type PermissionAction = 'read' | 'create' | 'update' | 'delete'
+
+interface PermissionItem {
+  id: string | number
+  name: string
+  slug: string
+  actions: PermissionAction[]
+  isSystemResource?: boolean
 }
 
 interface Ability {
@@ -36,18 +54,46 @@ interface Props {
   mode: 'create' | 'edit'
 }
 
+const SYSTEM_RESOURCES: PermissionItem[] = [
+  {
+    id: 'media',
+    name: 'Media',
+    slug: 'media',
+    actions: ['read', 'create', 'delete'],
+    isSystemResource: true,
+  },
+  {
+    id: 'media_folder',
+    name: 'Media Folder',
+    slug: 'media_folder',
+    actions: ['create', 'delete'],
+    isSystemResource: true,
+  },
+]
+
 export default function AbilityForm({
   user,
-  collections,
+  collections = [],
   ability,
   mode,
 }: Props) {
+  const allPermissionItems: PermissionItem[] = [
+    ...collections.map((col) => ({
+      id: col.id,
+      name: col.name,
+      slug: col.slug,
+      actions: ['read', 'create', 'update', 'delete'] as PermissionAction[],
+      isSystemResource: false,
+    })),
+    ...SYSTEM_RESOURCES,
+  ]
+
   const { data, setData, processing } = useForm({
     name: ability?.name || '',
     permissions:
       ability?.permissions ||
-      collections.reduce((acc, col) => {
-        acc[col.slug] = {
+      allPermissionItems.reduce((acc, item) => {
+        acc[item.slug] = {
           create: false,
           read: false,
           update: false,
@@ -59,7 +105,7 @@ export default function AbilityForm({
 
   const handlePermissionChange = (
     slug: string,
-    action: 'create' | 'read' | 'update' | 'delete',
+    action: PermissionAction,
     checked: boolean
   ) => {
     const newPermissions = { ...data.permissions }
@@ -70,6 +116,8 @@ export default function AbilityForm({
         update: false,
         delete: false,
       }
+    } else {
+      newPermissions[slug] = { ...newPermissions[slug] }
     }
     newPermissions[slug][action] = checked
     setData('permissions', newPermissions)
@@ -77,34 +125,36 @@ export default function AbilityForm({
 
   const handleCheckAll = (checked: boolean) => {
     const newPermissions = { ...data.permissions }
-    collections.forEach((col) => {
-      newPermissions[col.slug] = {
-        create: checked,
-        read: checked,
-        update: checked,
-        delete: checked,
+    allPermissionItems.forEach((item) => {
+      newPermissions[item.slug] = {
+        create: item.actions.includes('create') ? checked : false,
+        read: item.actions.includes('read') ? checked : false,
+        update: item.actions.includes('update') ? checked : false,
+        delete: item.actions.includes('delete') ? checked : false,
       }
     })
     setData('permissions', newPermissions)
   }
 
-  const handleRowCheckAll = (slug: string, checked: boolean) => {
+  const handleRowCheckAll = (item: PermissionItem, checked: boolean) => {
     const newPermissions = { ...data.permissions }
-    newPermissions[slug] = {
-      create: checked,
-      read: checked,
-      update: checked,
-      delete: checked,
+    newPermissions[item.slug] = {
+      create: item.actions.includes('create') ? checked : false,
+      read: item.actions.includes('read') ? checked : false,
+      update: item.actions.includes('update') ? checked : false,
+      delete: item.actions.includes('delete') ? checked : false,
     }
     setData('permissions', newPermissions)
   }
 
+  const isRowAllChecked = (item: PermissionItem) => {
+    const p = data.permissions[item.slug]
+    return !!p && item.actions.every((action) => !!p[action])
+  }
+
   const allChecked =
-    collections.length > 0 &&
-    collections.every((col) => {
-      const p = data.permissions[col.slug]
-      return p && p.create && p.read && p.update && p.delete
-    })
+    allPermissionItems.length > 0 &&
+    allPermissionItems.every((item) => isRowAllChecked(item))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -169,7 +219,7 @@ export default function AbilityForm({
               <p className='text-muted-foreground text-sm'>
                 {ability?.isSystem === '1'
                   ? 'System abilities are protected and cannot be modified.'
-                  : 'Define granular CRUD permissions for your collections.'}
+                  : 'Define granular CRUD permissions for your collections and media assets.'}
               </p>
             </div>
           </div>
@@ -198,18 +248,18 @@ export default function AbilityForm({
           <div className='bg-card rounded-xl border shadow-sm overflow-hidden'>
             <div className='p-4 bg-muted/30 border-b flex items-center justify-between'>
               <h3 className='text-sm font-semibold uppercase tracking-wider text-muted-foreground ml-2 flex items-center gap-2'>
-                Collection Permissions
+                Collection & Resource Permissions
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <HelpCircleIcon className='w-4 h-4 text-muted-foreground cursor-help' />
                   </TooltipTrigger>
                   <TooltipContent>
-                    Define access levels for each collection.
+                    Define access levels for collections, media files, and folders.
                   </TooltipContent>
                 </Tooltip>
               </h3>
 
-              {collections.length > 0 && ability?.isSystem !== '1' && (
+              {allPermissionItems.length > 0 && ability?.isSystem !== '1' && (
                 <div className='flex items-center space-x-2 mr-2 bg-background/50 border border-muted hover:border-border hover:bg-background px-3 py-1.5 rounded-lg transition-all'>
                   <Checkbox
                     id='check-all-permissions'
@@ -227,25 +277,41 @@ export default function AbilityForm({
             </div>
 
             <div className='divide-y'>
-              {collections.length > 0 ? (
-                collections.map((col) => {
-                  const colPerms = data.permissions[col.slug] || {
+              {allPermissionItems.length > 0 ? (
+                allPermissionItems.map((item) => {
+                  const itemPerms = data.permissions[item.slug] || {
                     create: false,
                     read: false,
                     update: false,
                     delete: false,
                   }
+                  const rowChecked = isRowAllChecked(item)
+
                   return (
                     <div
-                      key={col.id}
+                      key={item.slug}
                       className='grid grid-cols-1 md:grid-cols-5 p-6 md:p-4 hover:bg-muted/10 transition-colors'
                     >
                       <div className='md:col-span-1 flex flex-col justify-center'>
-                        <span className='font-semibold text-foreground text-sm'>
-                          {col.name}
-                        </span>
-                        <span className='text-[10px] font-mono text-muted-foreground'>
-                          {col.slug}
+                        <div className='flex items-center gap-2'>
+                          {item.slug === 'media' ? (
+                            <ImageIcon className='w-4 h-4 text-primary shrink-0' />
+                          ) : item.slug === 'media_folder' ? (
+                            <FolderIcon className='w-4 h-4 text-primary shrink-0' />
+                          ) : (
+                            <LayersIcon className='w-4 h-4 text-muted-foreground shrink-0' />
+                          )}
+                          <span className='font-semibold text-foreground text-sm'>
+                            {item.name}
+                          </span>
+                          {item.isSystemResource && (
+                            <span className='text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20'>
+                              System
+                            </span>
+                          )}
+                        </div>
+                        <span className='text-[10px] font-mono text-muted-foreground ml-6'>
+                          {item.slug}
                         </span>
                       </div>
 
@@ -255,57 +321,48 @@ export default function AbilityForm({
                             <TooltipTrigger asChild>
                               <div className='flex items-center justify-center p-2.5 rounded-lg border border-dashed hover:border-border hover:bg-muted/10 transition-all shrink-0 h-10 w-10'>
                                 <Checkbox
-                                  id={`row-check-all-${col.slug}`}
-                                  checked={
-                                    !!(
-                                      colPerms.create &&
-                                      colPerms.read &&
-                                      colPerms.update &&
-                                      colPerms.delete
-                                    )
-                                  }
+                                  id={`row-check-all-${item.slug}`}
+                                  checked={rowChecked}
                                   onCheckedChange={(checked) => {
-                                    handleRowCheckAll(col.slug, !!checked)
+                                    handleRowCheckAll(item, !!checked)
                                   }}
                                 />
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              Toggle all permissions for {col.name}
+                              Toggle all available permissions for {item.name}
                             </TooltipContent>
                           </Tooltip>
                         )}
 
                         <div className='flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4'>
-                          {['read', 'create', 'update', 'delete'].map(
-                            (action) => (
-                              <div
-                                key={action}
-                                className='flex items-center space-x-2 bg-muted/20 p-2.5 rounded-lg border border-transparent hover:border-border transition-all h-10'
+                          {item.actions.map((action) => (
+                            <div
+                              key={action}
+                              className='flex items-center space-x-2 bg-muted/20 p-2.5 rounded-lg border border-transparent hover:border-border transition-all h-10'
+                            >
+                              <Checkbox
+                                id={`perm-${item.slug}-${action}`}
+                                checked={
+                                  itemPerms[action as keyof typeof itemPerms]
+                                }
+                                onCheckedChange={(checked) =>
+                                  handlePermissionChange(
+                                    item.slug,
+                                    action,
+                                    !!checked
+                                  )
+                                }
+                                disabled={ability?.isSystem === '1'}
+                              />
+                              <Label
+                                htmlFor={`perm-${item.slug}-${action}`}
+                                className='text-xs font-medium uppercase tracking-widest cursor-pointer select-none'
                               >
-                                <Checkbox
-                                  id={`perm-${col.slug}-${action}`}
-                                  checked={
-                                    colPerms[action as keyof typeof colPerms]
-                                  }
-                                  onCheckedChange={(checked) =>
-                                    handlePermissionChange(
-                                      col.slug,
-                                      action as any,
-                                      !!checked
-                                    )
-                                  }
-                                  disabled={ability?.isSystem === '1'}
-                                />
-                                <Label
-                                  htmlFor={`perm-${col.slug}-${action}`}
-                                  className='text-xs font-medium uppercase tracking-widest cursor-pointer select-none'
-                                >
-                                  {action}
-                                </Label>
-                              </div>
-                            )
-                          )}
+                                {action}
+                              </Label>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -313,7 +370,7 @@ export default function AbilityForm({
                 })
               ) : (
                 <div className='p-12 text-center text-muted-foreground text-sm italic'>
-                  No collections created yet.
+                  No permissions available.
                 </div>
               )}
             </div>

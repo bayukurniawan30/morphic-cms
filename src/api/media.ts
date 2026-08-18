@@ -17,6 +17,7 @@ import {
 
 import { triggerWebhooks } from '../lib/webhooks.js'
 import { getWorkspaceFeatures, getWorkspaceStorageUsage } from '../config/features.js'
+import { checkPermission } from '../lib/permissions.js'
 
 type Variables = {
   userId?: number
@@ -34,17 +35,6 @@ apiMedia.use('*', async (c, next) => {
   const user = c.get('user')
 
   if (user) {
-    // For write operations, require edit/admin roles
-    if (['POST', 'PUT', 'DELETE'].includes(c.req.method)) {
-      const isAuthorized =
-        user.role === 'super_admin' ||
-        c.get('tenantRole') === 'owner'
-
-      if (!isAuthorized) {
-        return c.json({ error: 'Forbidden: Write access required for this action' }, 403)
-      }
-    }
-
     c.set('userId', user.id)
     return await next()
   }
@@ -90,6 +80,10 @@ apiMedia.use('*', async (c, next) => {
 // GET /api/media
 // Query params: ?folderId=null  (for root) or ?folderId=123
 apiMedia.get('/', async (c) => {
+  if (!checkPermission(c, 'media', 'read')) {
+    return c.json({ error: 'Forbidden: Read access required for media' }, 403)
+  }
+
   try {
     const tenantId = c.get('tenantId')
     const queryFolderId = c.req.query('folderId')
@@ -163,6 +157,16 @@ apiMedia.get('/', async (c) => {
 
 // POST /api/media/folders
 apiMedia.post('/folders', async (c) => {
+  if (
+    !checkPermission(c, 'media_folder', 'create') &&
+    !checkPermission(c, 'media_folders', 'create')
+  ) {
+    return c.json(
+      { error: 'Forbidden: Create access required for media folder' },
+      403
+    )
+  }
+
   try {
     const body = await c.req.json()
     const { name, parentId } = body
@@ -190,6 +194,17 @@ apiMedia.post('/folders', async (c) => {
 
 // PUT /api/media/folders/:id
 apiMedia.put('/folders/:id', async (c) => {
+  if (
+    !checkPermission(c, 'media_folder', 'update') &&
+    !checkPermission(c, 'media_folder', 'create') &&
+    !checkPermission(c, 'media_folders', 'create')
+  ) {
+    return c.json(
+      { error: 'Forbidden: Update access required for media folder' },
+      403
+    )
+  }
+
   try {
     const tenantId = c.get('tenantId')
     const folderId = parseInt(c.req.param('id'), 10)
@@ -224,6 +239,16 @@ apiMedia.put('/folders/:id', async (c) => {
 
 // DELETE /api/media/folders/:id
 apiMedia.delete('/folders/:id', async (c) => {
+  if (
+    !checkPermission(c, 'media_folder', 'delete') &&
+    !checkPermission(c, 'media_folders', 'delete')
+  ) {
+    return c.json(
+      { error: 'Forbidden: Delete access required for media folder' },
+      403
+    )
+  }
+
   try {
     const tenantId = c.get('tenantId')
     const folderId = parseInt(c.req.param('id'), 10)
@@ -257,9 +282,18 @@ apiMedia.delete('/folders/:id', async (c) => {
 
 // POST /api/media/upload
 apiMedia.post('/upload', async (c) => {
+  if (!checkPermission(c, 'media', 'create')) {
+    return c.json({ error: 'Forbidden: Write access required for this action' }, 403)
+  }
+
   try {
     const tenantId = c.get('tenantId')
-    const formData = await c.req.formData()
+    let formData: FormData
+    try {
+      formData = await c.req.formData()
+    } catch (e) {
+      return c.json({ error: 'No file provided' }, 400)
+    }
     const file = formData.get('file') as File
     const folderId = formData.get('folderId')
       ? parseInt(formData.get('folderId') as string, 10)
@@ -360,6 +394,10 @@ apiMedia.post('/upload', async (c) => {
 
 // DELETE /api/media/:id
 apiMedia.delete('/:id', async (c) => {
+  if (!checkPermission(c, 'media', 'delete')) {
+    return c.json({ error: 'Forbidden: Delete access required for media' }, 403)
+  }
+
   try {
     const mediaId = parseInt(c.req.param('id'), 10)
     const tenantId = c.get('tenantId')
@@ -412,6 +450,13 @@ apiMedia.delete('/:id', async (c) => {
 
 // PUT /api/media/:id
 apiMedia.put('/:id', async (c) => {
+  if (
+    !checkPermission(c, 'media', 'update') &&
+    !checkPermission(c, 'media', 'create')
+  ) {
+    return c.json({ error: 'Forbidden: Update access required for media' }, 403)
+  }
+
   try {
     const mediaId = parseInt(c.req.param('id'), 10)
     const tenantId = c.get('tenantId')
