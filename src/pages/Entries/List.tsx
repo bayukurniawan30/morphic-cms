@@ -30,22 +30,93 @@ import {
   ArrowDown,
   ArrowLeftIcon,
   ArrowUp,
+  BookOpen,
   CalendarIcon,
+  Check,
   ChevronLeft,
   ChevronRight,
   CodeIcon,
+  Copy,
   CopyIcon,
   DatabaseIcon,
   FileCheckIcon,
+  FileText,
+  Image as ImageIcon,
   Maximize2,
   Minimize2,
   MoreVertical,
   PlusIcon,
+  Shield,
   TerminalIcon,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React from 'react'
 import { format } from 'date-fns'
+
+const truncateStringValues = (obj: any): any => {
+  if (typeof obj === 'string') {
+    return obj.length > 100 ? `${obj.slice(0, 100)}...` : obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(truncateStringValues)
+  }
+  if (obj && typeof obj === 'object') {
+    const res: Record<string, any> = {}
+    for (const [key, val] of Object.entries(obj)) {
+      res[key] = truncateStringValues(val)
+    }
+    return res
+  }
+  return obj
+}
+
+const DocCodeBlock = ({
+  code,
+  language = 'bash',
+  label,
+}: {
+  code: string
+  language?: string
+  label?: string
+}) => {
+  const [copied, setCopied] = React.useState(false)
+
+  const copy = () => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    toast.success('Copied to clipboard')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className='relative group my-2.5 rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-sm'>
+      {label && (
+        <div className='flex items-center justify-between px-3 py-1.5 bg-zinc-900/80 border-b border-zinc-800 text-[11px] font-mono text-zinc-400'>
+          <span className='font-semibold'>{label}</span>
+          <span className='uppercase text-[10px] opacity-60'>{language}</span>
+        </div>
+      )}
+      <div className='absolute right-2.5 top-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity'>
+        <Button
+          size='icon'
+          variant='secondary'
+          className='h-6 w-6 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+          onClick={copy}
+        >
+          {copied ? (
+            <Check className='h-3.5 w-3.5 text-green-400' />
+          ) : (
+            <Copy className='h-3.5 w-3.5' />
+          )}
+        </Button>
+      </div>
+      <div className='p-3.5 max-h-72 overflow-x-auto overflow-y-auto font-mono text-xs text-zinc-300'>
+        <pre className='whitespace-pre font-mono leading-relaxed'>{code}</pre>
+      </div>
+    </div>
+  )
+}
 
 interface Field {
   name: string
@@ -69,6 +140,7 @@ interface Entry {
   updatedBy?: { id: number; name: string }
   status: 'published' | 'draft'
   locale?: string
+  translationGroupId?: string
   createdAt: string
   updatedAt: string
 }
@@ -261,6 +333,122 @@ export default function EntriesList({
     collection.slug,
     isDialogOpen,
     collection,
+  ])
+
+  const hasMediaField = React.useMemo(() => {
+    const checkFields = (fields: any[]): boolean => {
+      return (
+        fields?.some((f) => {
+          if (f.type === 'media') return true
+          if (f.type === 'group' && Array.isArray(f.fields))
+            return checkFields(f.fields)
+          if (f.type === 'array' && Array.isArray(f.fields))
+            return checkFields(f.fields)
+          return false
+        }) || false
+      )
+    }
+    return checkFields(collection.fields || [])
+  }, [collection.fields])
+
+  const mediaFieldNames = React.useMemo(() => {
+    const names: string[] = []
+    const collectNames = (fields: any[]) => {
+      fields?.forEach((f) => {
+        if (f.type === 'media') names.push(f.name)
+        if (f.type === 'group' && Array.isArray(f.fields))
+          collectNames(f.fields)
+        if (f.type === 'array' && Array.isArray(f.fields))
+          collectNames(f.fields)
+      })
+    }
+    collectNames(collection.fields || [])
+    return names
+  }, [collection.fields])
+
+  const sampleContent = React.useMemo(() => {
+    const generateContent = (fields: any[]) => {
+      const obj: Record<string, any> = {}
+      fields?.forEach((f) => {
+        if (f.type === 'text') obj[f.name] = `Sample ${f.label || f.name}`
+        else if (f.type === 'textarea' || f.type === 'rich-text')
+          obj[f.name] = `<p>Sample text for ${f.label || f.name}...</p>`
+        else if (f.type === 'number') obj[f.name] = 42
+        else if (f.type === 'boolean') obj[f.name] = true
+        else if (f.type === 'date') obj[f.name] = '2026-08-30'
+        else if (f.type === 'datetime')
+          obj[f.name] = '2026-08-30T10:00:00.000Z'
+        else if (f.type === 'time') obj[f.name] = '14:30'
+        else if (f.type === 'email') obj[f.name] = 'user@example.com'
+        else if (f.type === 'select' || f.type === 'radio') {
+          obj[f.name] = f.options?.[0]?.value || 'option_1'
+        } else if (f.type === 'checkbox') {
+          obj[f.name] = f.options?.map((o: any) => o.value) || ['option_1']
+        } else if (f.type === 'slug') {
+          obj[f.name] = 'sample-entry-slug'
+        } else if (f.type === 'relation') {
+          obj[f.name] = { id: 1, name: 'Related Item' }
+        } else if (f.type === 'media') {
+          const sampleMedia = {
+            id: 10,
+            filename: 'image.jpg',
+            secureUrl: 'https://storage.morphic-cms.com/tenants/1/image.jpg',
+            mimeType: 'image/jpeg',
+            size: 204800,
+            width: 1200,
+            height: 800,
+          }
+          obj[f.name] = f.multiple ? [sampleMedia] : sampleMedia
+        } else if (f.type === 'documents') {
+          const sampleDoc = {
+            id: 5,
+            filename: 'document.pdf',
+            fileUrl: 'https://storage.morphic-cms.com/tenants/1/document.pdf',
+            size: 1048576,
+          }
+          obj[f.name] = f.multiple ? [sampleDoc] : sampleDoc
+        } else if (f.type === 'group') {
+          obj[f.name] = f.fields ? generateContent(f.fields) : {}
+        } else if (f.type === 'array') {
+          obj[f.name] = f.fields ? [generateContent(f.fields)] : []
+        } else {
+          obj[f.name] = 'value'
+        }
+      })
+      return obj
+    }
+    return generateContent(collection.fields || [])
+  }, [collection.fields])
+
+  const sampleEntry = React.useMemo(() => {
+    const rawContent = entries?.[0]?.content
+      ? truncateStringValues(entries[0].content)
+      : truncateStringValues(sampleContent)
+    return {
+      id: entries?.[0]?.id || 1,
+      tenantId: activeTenant?.id || 1,
+      collectionId: collection.id,
+      content: rawContent,
+      status: entries?.[0]?.status || 'published',
+      locale: entries?.[0]?.locale || (collection.localized ? 'en' : 'en'),
+      translationGroupId:
+        entries?.[0]?.translationGroupId ||
+        '3d7258f9-1147-4ddc-b212-6eb30d5110fe',
+      createdAt: entries?.[0]?.createdAt || new Date().toISOString(),
+      updatedAt: entries?.[0]?.updatedAt || new Date().toISOString(),
+      deletedAt: null,
+      updatedBy: {
+        id: user?.id || 1,
+        name: user?.name || 'Admin User',
+      },
+    }
+  }, [
+    entries,
+    sampleContent,
+    activeTenant?.id,
+    collection.id,
+    collection.localized,
+    user,
   ])
 
   React.useEffect(() => {
@@ -495,32 +683,365 @@ export default function EntriesList({
                   API Preview
                 </Button>
               </DialogTrigger>
-              <DialogContent className='max-w-3xl max-h-[90vh] flex flex-col'>
+              <DialogContent className='max-w-4xl max-h-[90vh] flex flex-col min-h-0 overflow-hidden'>
                 <DialogHeader>
                   <DialogTitle className='flex items-center'>
                     <TerminalIcon className='w-5 h-5 mr-2 text-primary' />
                     API Documentation & Preview
                   </DialogTitle>
                   <DialogDescription>
-                    Interactive preview of the API responses for this
-                    collection.
+                    API reference, endpoints, schemas, and live responses for{' '}
+                    <strong>{collection.name}</strong>.
                   </DialogDescription>
                 </DialogHeader>
 
                 <Tabs
-                  defaultValue='rest'
-                  className='flex-1 flex flex-col mt-4 overflow-hidden'
+                  defaultValue='docs'
+                  className='flex-1 flex flex-col mt-4 overflow-hidden min-h-0'
                 >
-                  <TabsList className='grid w-full grid-cols-2 mb-4'>
+                  <TabsList className='grid w-full grid-cols-3 mb-4 shrink-0'>
+                    <TabsTrigger value='docs' className='flex items-center'>
+                      <BookOpen className='w-4 h-4 mr-2' />
+                      Documentation
+                    </TabsTrigger>
                     <TabsTrigger value='rest' className='flex items-center'>
                       <TerminalIcon className='w-4 h-4 mr-2' />
-                      REST API
+                      REST Preview
                     </TabsTrigger>
                     <TabsTrigger value='graphql' className='flex items-center'>
                       <DatabaseIcon className='w-4 h-4 mr-2' />
-                      GraphQL API
+                      GraphQL Preview
                     </TabsTrigger>
                   </TabsList>
+
+                  <TabsContent
+                    value='docs'
+                    className='flex-1 overflow-y-auto min-h-0 m-0 pr-3 pb-4 space-y-6 text-sm text-foreground focus-visible:outline-none'
+                  >
+                        {/* Auth & Mandatory Header Info */}
+                        <div className='bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start space-x-3'>
+                          <Shield className='w-5 h-5 text-primary mt-0.5 shrink-0' />
+                          <div className='text-xs space-y-1.5 flex-1'>
+                            <p className='font-bold text-foreground text-sm'>
+                              Authentication & Required Headers
+                            </p>
+                            <p className='text-muted-foreground'>
+                              Include your API key as a Bearer token and your workspace ID in the <code>X-Tenant-ID</code> header:
+                            </p>
+                            <div className='font-mono bg-background/80 p-2.5 rounded border text-[11px] space-y-1 text-primary mt-1 shadow-sm'>
+                              <div>Authorization: Bearer {user?.apiKey || '<YOUR_API_KEY>'}</div>
+                              <div>X-Tenant-ID: {activeTenant?.id || '<TENANT_ID>'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 1. GET Entries */}
+                        <div className='space-y-3 border-b pb-6'>
+                          <div className='flex items-center justify-between'>
+                            <h4 className='font-bold flex items-center text-xs uppercase tracking-widest text-foreground'>
+                              <span className='w-2 h-2 rounded-full bg-green-500 mr-2' />
+                              1. Get Collection Entries
+                            </h4>
+                            <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-600 border border-green-500/20'>
+                              GET
+                            </span>
+                          </div>
+                          <DocCodeBlock
+                            code={`GET ${typeof window !== 'undefined' ? window.location.origin : ''}/api/collections/${collection.slug}/entries?page=1&limit=10`}
+                            language='http'
+                          />
+                          <p className='text-xs text-muted-foreground'>
+                            Retrieve paginated entries for <strong>{collection.name}</strong>.
+                          </p>
+
+                          <div className='bg-muted/30 p-3 rounded-lg border text-xs space-y-2'>
+                            <p className='font-semibold text-[11px] uppercase tracking-wider text-muted-foreground'>
+                              Query Parameters
+                            </p>
+                            <ul className='space-y-1.5 text-xs text-muted-foreground'>
+                              <li>
+                                <code className='text-primary font-mono font-semibold'>page</code>: Page number (default: <code>1</code>)
+                              </li>
+                              <li>
+                                <code className='text-primary font-mono font-semibold'>limit</code>: Items per page (default: <code>10</code>, max: <code>100</code>)
+                              </li>
+                              <li>
+                                <code className='text-primary font-mono font-semibold'>sortBy</code>: Field name to sort by (e.g. <code>createdAt</code>, <code>id</code>)
+                              </li>
+                              <li>
+                                <code className='text-primary font-mono font-semibold'>sortDir</code>: Sort direction (<code>asc</code> or <code>desc</code>)
+                              </li>
+                              {collection.localized && (
+                                <li>
+                                  <code className='text-primary font-mono font-semibold'>locale</code>: Language code (e.g. <code>en</code>, <code>id</code>, or <code>_all</code> for all translations)
+                                </li>
+                              )}
+                              <li>
+                                <code className='text-primary font-mono font-semibold'>status</code>: Entry status (<code>published</code>, <code>draft</code>, or <code>all</code>)
+                              </li>
+                              {collection.enableTrash && (
+                                <li>
+                                  <code className='text-primary font-mono font-semibold'>trash</code>: Set to <code>true</code> to retrieve deleted items from trash
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Response Payload (200 OK)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify(
+                              {
+                                type: collection.type || 'collection',
+                                entries: [sampleEntry],
+                                pagination: {
+                                  currentPage: 1,
+                                  totalPages: 1,
+                                  totalCount: 1,
+                                  limit: 10,
+                                },
+                              },
+                              null,
+                              2
+                            )}
+                            language='json'
+                          />
+                        </div>
+
+                        {/* 2. GET Single Entry */}
+                        <div className='space-y-3 border-b pb-6'>
+                          <div className='flex items-center justify-between'>
+                            <h4 className='font-bold flex items-center text-xs uppercase tracking-widest text-foreground'>
+                              <span className='w-2 h-2 rounded-full bg-green-500 mr-2' />
+                              2. Get Single Entry
+                            </h4>
+                            <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-600 border border-green-500/20'>
+                              GET
+                            </span>
+                          </div>
+                          <DocCodeBlock
+                            code={`GET ${typeof window !== 'undefined' ? window.location.origin : ''}/api/entries/${sampleEntry.id}`}
+                            language='http'
+                          />
+                          <p className='text-xs text-muted-foreground'>
+                            Retrieve a single entry by its numeric ID (e.g. <code>{sampleEntry.id}</code>).
+                          </p>
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Response Payload (200 OK)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify(sampleEntry, null, 2)}
+                            language='json'
+                          />
+                        </div>
+
+                        {/* 3. POST Create Entry */}
+                        <div className='space-y-3 border-b pb-6'>
+                          <div className='flex items-center justify-between'>
+                            <h4 className='font-bold flex items-center text-xs uppercase tracking-widest text-foreground'>
+                              <span className='w-2 h-2 rounded-full bg-blue-500 mr-2' />
+                              3. Create Entry
+                            </h4>
+                            <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20'>
+                              POST
+                            </span>
+                          </div>
+                          <DocCodeBlock
+                            code={`POST ${typeof window !== 'undefined' ? window.location.origin : ''}/api/collections/${collection.slug}/entries\nContent-Type: application/json`}
+                            language='http'
+                          />
+                          <p className='text-xs text-muted-foreground'>
+                            Create a new entry in this collection. Requires an API key with <code>create</code> permissions for <code>{collection.slug}</code>.
+                          </p>
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Request Body Payload (JSON)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify(
+                              {
+                                ...sampleContent,
+                                status: 'published',
+                                ...(collection.localized ? { locale: 'en' } : {}),
+                              },
+                              null,
+                              2
+                            )}
+                            language='json'
+                          />
+                          {collection.localized && (
+                            <>
+                              <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                                Alternative: Bulk Multi-Language Save
+                              </p>
+                              <DocCodeBlock
+                                code={JSON.stringify(
+                                  {
+                                    locales: {
+                                      en: sampleContent,
+                                      id: sampleContent,
+                                    },
+                                    status: 'published',
+                                  },
+                                  null,
+                                  2
+                                )}
+                                language='json'
+                              />
+                            </>
+                          )}
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Response Payload (201 Created)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify(
+                              { success: true, entry: sampleEntry },
+                              null,
+                              2
+                            )}
+                            language='json'
+                          />
+                        </div>
+
+                        {/* 4. PUT Update Entry */}
+                        <div className='space-y-3 border-b pb-6'>
+                          <div className='flex items-center justify-between'>
+                            <h4 className='font-bold flex items-center text-xs uppercase tracking-widest text-foreground'>
+                              <span className='w-2 h-2 rounded-full bg-amber-500 mr-2' />
+                              4. Update Entry
+                            </h4>
+                            <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20'>
+                              PUT
+                            </span>
+                          </div>
+                          <DocCodeBlock
+                            code={`PUT ${typeof window !== 'undefined' ? window.location.origin : ''}/api/entries/${sampleEntry.id}\nContent-Type: application/json`}
+                            language='http'
+                          />
+                          <p className='text-xs text-muted-foreground'>
+                            Update an existing entry by its ID (e.g. <code>{sampleEntry.id}</code>). Requires an API key with <code>update</code> permissions for <code>{collection.slug}</code>.
+                          </p>
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Request Body Payload (JSON)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify(
+                              {
+                                ...sampleContent,
+                                status: 'published',
+                              },
+                              null,
+                              2
+                            )}
+                            language='json'
+                          />
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Response Payload (200 OK)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify(
+                              { success: true, entry: sampleEntry },
+                              null,
+                              2
+                            )}
+                            language='json'
+                          />
+                        </div>
+
+                        {/* 5. DELETE Entry */}
+                        <div className='space-y-3 border-b pb-6'>
+                          <div className='flex items-center justify-between'>
+                            <h4 className='font-bold flex items-center text-xs uppercase tracking-widest text-foreground'>
+                              <span className='w-2 h-2 rounded-full bg-red-500 mr-2' />
+                              5. Delete Entry
+                            </h4>
+                            <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20'>
+                              DELETE
+                            </span>
+                          </div>
+                          <DocCodeBlock
+                            code={`DELETE ${typeof window !== 'undefined' ? window.location.origin : ''}/api/entries/${sampleEntry.id}`}
+                            language='http'
+                          />
+                          <p className='text-xs text-muted-foreground'>
+                            Permanently delete an entry by its ID (e.g. <code>{sampleEntry.id}</code>) or move to trash if trash is enabled for this collection. Requires an API key with <code>delete</code> permissions.
+                          </p>
+                          <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1'>
+                            Response Payload (200 OK)
+                          </p>
+                          <DocCodeBlock
+                            code={JSON.stringify({ success: true }, null, 2)}
+                            language='json'
+                          />
+                        </div>
+
+                        {/* 6. Media Upload Section */}
+                        {hasMediaField && (
+                          <div className='space-y-4 bg-primary/5 p-4 rounded-xl border border-primary/20'>
+                            <div className='flex items-center space-x-2'>
+                              <ImageIcon className='w-5 h-5 text-primary' />
+                              <h3 className='font-bold text-sm text-foreground'>
+                                How to Upload & Attach Media
+                              </h3>
+                            </div>
+                            <p className='text-xs text-muted-foreground'>
+                              This collection contains media field(s):{' '}
+                              <strong className='text-foreground'>{mediaFieldNames.join(', ')}</strong>.
+                              To attach media files, first upload the binary file to the Media API, then pass the returned media object or URL in your entry payload.
+                            </p>
+
+                            <div className='space-y-2'>
+                              <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                                Step 1: Upload File to Media API
+                              </p>
+                              <DocCodeBlock
+                                code={`POST ${typeof window !== 'undefined' ? window.location.origin : ''}/api/media/upload\nContent-Type: multipart/form-data\n\nfile: <binary_file>\nfolderId: 123 (optional)`}
+                                language='http'
+                              />
+                              <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                                Upload Response (200 OK)
+                              </p>
+                              <DocCodeBlock
+                                code={JSON.stringify(
+                                  {
+                                    id: 10,
+                                    tenantId: activeTenant?.id || 1,
+                                    filename: 'banner.jpg',
+                                    originalName: 'banner.jpg',
+                                    mimeType: 'image/jpeg',
+                                    size: 524288,
+                                    secureUrl: 'https://storage.morphic-cms.com/tenants/1/banner.jpg',
+                                    createdAt: new Date().toISOString(),
+                                  },
+                                  null,
+                                  2
+                                )}
+                                language='json'
+                              />
+                            </div>
+
+                            <div className='space-y-2 pt-2'>
+                              <p className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                                Step 2: Attach Media Object to Entry
+                              </p>
+                              <p className='text-xs text-muted-foreground'>
+                                Pass the uploaded media object into the <code>{mediaFieldNames[0] || 'media_field'}</code> field when creating or updating entries in <code>POST ${typeof window !== 'undefined' ? window.location.origin : ''}/api/collections/{collection.slug}/entries</code>:
+                              </p>
+                              <DocCodeBlock
+                                code={JSON.stringify(
+                                  {
+                                    ...sampleContent,
+                                    status: 'published',
+                                  },
+                                  null,
+                                  2
+                                )}
+                                language='json'
+                              />
+                            </div>
+                          </div>
+                        )}
+                  </TabsContent>
 
                   <TabsContent
                     value='rest'
