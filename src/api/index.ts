@@ -993,6 +993,29 @@ app.get('/public-form/:tenantSlug/:slug', async (c) => {
     }
 
     const form = formResult[0]
+
+    // Auto-close check for max entries on public page load
+    if (
+      form.isActive &&
+      form.storageType === 'internal' &&
+      form.maxEntries !== null &&
+      form.maxEntries !== undefined &&
+      form.maxEntries > 0
+    ) {
+      const entryCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(formEntries)
+        .where(eq(formEntries.formId, form.id))
+      const currentCount = Number(entryCountResult[0]?.count || 0)
+      if (currentCount >= form.maxEntries) {
+        await db
+          .update(forms)
+          .set({ isActive: false, updatedAt: new Date() })
+          .where(eq(forms.id, form.id))
+        form.isActive = false
+      }
+    }
+
     if (!form.isActive) {
       return c.get('inertia')('Forms/PublicForm', {
         error: 'This form is currently closed for submissions.',
@@ -5657,6 +5680,7 @@ api.post('/forms', async (c) => {
       collectionId,
       emailNotifications,
       isActive,
+      maxEntries,
       theme,
     } = body
 
@@ -5685,6 +5709,10 @@ api.post('/forms', async (c) => {
         tenantId,
         emailNotifications: emailNotifications || false,
         isActive: isActive !== undefined ? isActive : true,
+        maxEntries:
+          maxEntries !== undefined && maxEntries !== null && maxEntries !== ''
+            ? Number(maxEntries)
+            : null,
         theme: theme || {},
       })
       .returning()
@@ -5717,6 +5745,7 @@ api.put('/forms/:id', async (c) => {
       collectionId,
       emailNotifications,
       isActive,
+      maxEntries,
       theme,
     } = body
 
@@ -5738,6 +5767,10 @@ api.put('/forms/:id', async (c) => {
         collectionId: collectionId || null,
         emailNotifications: emailNotifications ?? false,
         isActive: isActive ?? true,
+        maxEntries:
+          maxEntries !== undefined && maxEntries !== null && maxEntries !== ''
+            ? Number(maxEntries)
+            : null,
         theme: theme || {},
         updatedAt: new Date(),
       })
@@ -5914,6 +5947,30 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
         { error: 'This form is currently closed for submissions.' },
         400
       )
+    }
+
+    // Check if max entries is reached for internal storage forms
+    if (
+      form.storageType === 'internal' &&
+      form.maxEntries !== null &&
+      form.maxEntries !== undefined &&
+      form.maxEntries > 0
+    ) {
+      const entryCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(formEntries)
+        .where(eq(formEntries.formId, form.id))
+      const currentCount = Number(entryCountResult[0]?.count || 0)
+      if (currentCount >= form.maxEntries) {
+        await db
+          .update(forms)
+          .set({ isActive: false, updatedAt: new Date() })
+          .where(eq(forms.id, form.id))
+        return c.json(
+          { error: 'This form has reached its maximum entries limit and is now closed.' },
+          400
+        )
+      }
     }
 
     let body: Record<string, any> = {}
@@ -6166,6 +6223,25 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
           tenantId: form.tenantId, // Ensure entry gets the same tenant as the form
         })
         .returning()
+
+      // Auto-close form if max entries reached after this insert
+      if (
+        form.maxEntries !== null &&
+        form.maxEntries !== undefined &&
+        form.maxEntries > 0
+      ) {
+        const entryCountResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(formEntries)
+          .where(eq(formEntries.formId, form.id))
+        const updatedCount = Number(entryCountResult[0]?.count || 0)
+        if (updatedCount >= form.maxEntries) {
+          await db
+            .update(forms)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(eq(forms.id, form.id))
+        }
+      }
 
       // Trigger webhooks
       triggerWebhooks(form.tenantId, 'form.submitted', {

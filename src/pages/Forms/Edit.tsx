@@ -76,6 +76,7 @@ export default function EditForm({ form, user }: EditProps) {
     collectionId: form.collectionId || (null as number | null),
     emailNotifications: !!form.emailNotifications,
     isActive: form.isActive !== false,
+    maxEntries: form.maxEntries ?? '',
     theme: form.theme || {
       themeColor: 'emerald',
       headerImageUrl: '',
@@ -210,10 +211,19 @@ export default function EditForm({ form, user }: EditProps) {
     setIsSubmitting(true)
 
     try {
+      const payload = {
+        ...data,
+        maxEntries:
+          data.maxEntries === '' ||
+          data.maxEntries === null ||
+          data.maxEntries === undefined
+            ? null
+            : Number(data.maxEntries),
+      }
       const res = await fetch(`/api/forms/${form.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       })
 
       const result = await res.json()
@@ -678,6 +688,24 @@ export default function EditForm({ form, user }: EditProps) {
                   </p>
                 </div>
               )}
+
+              <div className='space-y-2 pt-4 border-t mt-4'>
+                <Label htmlFor='maxEntries'>Max Entries (Optional)</Label>
+                <Input
+                  id='maxEntries'
+                  type='number'
+                  min='1'
+                  placeholder='Leave empty for unlimited'
+                  value={data.maxEntries}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setData('maxEntries', val === '' ? '' : parseInt(val, 10))
+                  }}
+                />
+                <p className='text-[10px] text-muted-foreground'>
+                  Maximum allowed submissions. Once reached, the form is automatically closed.
+                </p>
+              </div>
 
               <div className='flex items-center justify-between space-x-2 pt-4 border-t mt-4'>
                 <div className='space-y-0.5'>

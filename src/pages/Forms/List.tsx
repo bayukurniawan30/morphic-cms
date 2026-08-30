@@ -11,6 +11,8 @@ interface Form {
   fields: any[]
   storageType: 'internal' | 'external'
   apiUrl?: string
+  isActive?: boolean
+  maxEntries?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -118,10 +120,19 @@ export default function FormsList({ forms, user }: ListProps) {
                       className='hover:bg-muted/50 transition-colors group'
                     >
                       <td className='px-6 py-4'>
-                        <div className='flex items-center'>
+                        <div className='flex items-center gap-2'>
                           <span className='font-semibold text-foreground text-base'>
                             {form.name}
                           </span>
+                          {form.isActive === false ? (
+                            <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20'>
+                              Closed
+                            </span>
+                          ) : form.maxEntries ? (
+                            <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-muted-foreground/20' title={`Max limit: ${form.maxEntries} entries`}>
+                              Limit: {form.maxEntries}
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                       <td className='px-6 py-4 font-mono text-xs'>

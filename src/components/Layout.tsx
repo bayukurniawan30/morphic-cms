@@ -316,7 +316,9 @@ export default function Layout({ user, title, children }: LayoutProps) {
                   isSidebarOpen={isSidebarOpen}
                   currentUrl={url}
                 />
-                {(!features || features.hasFormBuilder) && (
+                {(user.role === 'super_admin' ||
+                  !features ||
+                  features.hasFormBuilder) && (
                   <NavItem
                     href='/forms'
                     icon={FileCheckIcon}
@@ -440,7 +442,9 @@ export default function Layout({ user, title, children }: LayoutProps) {
                       currentUrl={url}
                     />
                   )}
-                  {(user.role === 'super_admin' || !features || features.hasWebhooks) && (
+                  {(user.role === 'super_admin' ||
+                    !features ||
+                    features.hasWebhooks) && (
                     <NavItem
                       href='/webhooks'
                       icon={Webhook}

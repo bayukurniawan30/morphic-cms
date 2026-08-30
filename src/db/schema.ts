@@ -233,6 +233,7 @@ export const forms = pgTable('forms', {
   collectionId: integer('collection_id').references(() => collections.id),
   emailNotifications: boolean('email_notifications').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
+  maxEntries: integer('max_entries'),
   theme: jsonb('theme')
     .$type<{
       themeColor?: string

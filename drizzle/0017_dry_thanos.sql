@@ -1,0 +1,1 @@
+ALTER TABLE "forms" ADD COLUMN "max_entries" integer;
