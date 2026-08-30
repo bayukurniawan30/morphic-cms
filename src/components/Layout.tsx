@@ -267,7 +267,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
                 <span className='text-xl font-bold tracking-tight leading-none uppercase text-[#514849] dark:text-white'>
                   Morphic
                 </span>
-                <span className='text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1'>
+                <span className='text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1 ml-[1px]'>
                   Headless CMS
                 </span>
               </div>
