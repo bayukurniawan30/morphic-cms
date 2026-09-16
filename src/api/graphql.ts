@@ -1,7 +1,8 @@
+import { and, eq, desc, asc, isNull, sql } from 'drizzle-orm'
 import { createSchema, createYoga } from 'graphql-yoga'
 import { db } from '../db/index.js'
 import { collections, entries, media } from '../db/schema.js'
-import { and, eq, desc, asc, isNull, sql } from 'drizzle-orm'
+import { normalizeExactEntryFilters } from '../lib/entry-filters.js'
 
 interface YogaContext {
   tenantId: number | null
@@ -46,7 +47,16 @@ export const createGraphQLHandler = () => {
       type Query {
         collections: [Collection!]!
         collection(slug: String!): Collection
-        entries(collectionSlug: String!, limit: Int, page: Int, offset: Int, sortBy: String, sortDir: String, locale: String): [Entry!]!
+        entries(
+          collectionSlug: String!
+          limit: Int
+          page: Int
+          offset: Int
+          sortBy: String
+          sortDir: String
+          locale: String
+          filters: JSON
+        ): [Entry!]!
         media(limit: Int, offset: Int): [Media!]!
       }
     `,
@@ -72,33 +82,66 @@ export const createGraphQLHandler = () => {
           const result = await db
             .select()
             .from(collections)
-            .where(and(eq(collections.slug, slug), eq(collections.tenantId, tenantId)))
+            .where(
+              and(
+                eq(collections.slug, slug),
+                eq(collections.tenantId, tenantId)
+              )
+            )
             .limit(1)
           return result[0] || null
         },
-        entries: async (_, { collectionSlug, limit = 10, offset = 0, page, sortBy = 'createdAt', sortDir = 'desc', locale }, context) => {
+        entries: async (
+          _,
+          {
+            collectionSlug,
+            limit = 10,
+            offset = 0,
+            page,
+            sortBy = 'createdAt',
+            sortDir = 'desc',
+            locale,
+            filters,
+          },
+          context
+        ) => {
           const { tenantId } = context
-          const computedOffset = page ? (page - 1) * limit : offset;
+          const computedOffset = page ? (page - 1) * limit : offset
           if (!tenantId) return []
 
           // First find the collection ID
           const collectionResult = await db
-            .select({ id: collections.id })
+            .select({ id: collections.id, fields: collections.fields })
             .from(collections)
-            .where(and(eq(collections.slug, collectionSlug), eq(collections.tenantId, tenantId)))
+            .where(
+              and(
+                eq(collections.slug, collectionSlug),
+                eq(collections.tenantId, tenantId)
+              )
+            )
             .limit(1)
-          
+
           if (collectionResult.length === 0) return []
           const collectionId = collectionResult[0].id
 
           const conditions = [
             eq(entries.collectionId, collectionId),
             eq(entries.tenantId, tenantId),
-            isNull(entries.deletedAt)
+            isNull(entries.deletedAt),
           ]
 
           if (locale) {
             conditions.push(eq(entries.locale, locale))
+          }
+
+          const exactFilters = normalizeExactEntryFilters(
+            collectionResult[0].fields as any[],
+            filters
+          )
+          for (const filter of exactFilters) {
+            conditions.push(
+              sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+            )
           }
 
           return await db
@@ -107,7 +150,11 @@ export const createGraphQLHandler = () => {
             .where(and(...conditions))
             .limit(limit)
             .offset(computedOffset)
-            .orderBy(sortDir === 'asc' ? asc(sortBy === 'id' ? entries.id : entries.createdAt) : desc(sortBy === 'id' ? entries.id : entries.createdAt))
+            .orderBy(
+              sortDir === 'asc'
+                ? asc(sortBy === 'id' ? entries.id : entries.createdAt)
+                : desc(sortBy === 'id' ? entries.id : entries.createdAt)
+            )
         },
         media: async (_, { limit = 20, offset = 0 }, context) => {
           const { tenantId } = context
@@ -119,14 +166,14 @@ export const createGraphQLHandler = () => {
             .limit(limit)
             .offset(offset)
             .orderBy(desc(media.createdAt))
-        }
-      }
-    }
+        },
+      },
+    },
   })
 
   return createYoga<YogaContext>({
     schema,
     graphqlEndpoint: '/api/graphql',
-    fetchAPI: { Response, Request }
+    fetchAPI: { Response, Request },
   })
 }

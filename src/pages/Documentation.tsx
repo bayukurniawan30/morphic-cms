@@ -1045,6 +1045,16 @@ export default function Documentation({ user }: { user: any }) {
                     trash is enabled for the collection).
                   </span>
                 </li>
+                <li className='flex items-start'>
+                  <code className='bg-secondary dark:bg-secondary px-1.5 py-0.5 rounded mr-2 text-primary shrink-0'>
+                    filter[fieldName]
+                  </code>
+                  <span className='text-slate-600 dark:text-slate-400'>
+                    Exact-match a top-level Select, Radio, or Boolean field. For
+                    example: <code>filter[is_in_review]=Yes</code>. Multiple
+                    filters can be combined and are applied before pagination.
+                  </span>
+                </li>
               </ul>
             </div>
 

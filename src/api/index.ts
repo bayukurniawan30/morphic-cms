@@ -55,6 +55,11 @@ import {
 import type { FieldDefinition } from '../lib/dynamic-schema.js'
 import { buildZodSchema } from '../lib/dynamic-schema.js'
 import { sendEmail } from '../lib/email.js'
+import {
+  EntryFilterValidationError,
+  normalizeExactEntryFilters,
+  parseRestExactFilters,
+} from '../lib/entry-filters.js'
 import { inertia } from '../lib/inertia.js'
 import { triggerWebhooks } from '../lib/webhooks.js'
 import { redis, usageTracker } from '../middleware/usageTracker.js'
@@ -4875,7 +4880,9 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .limit(1)
 
     const isGlobal = col[0]?.type === 'global'
-    const fieldsDef: any[] = (col[0]?.fields as any) || []
+    const fieldsDef: FieldDefinition[] = (col[0]?.fields as FieldDefinition[]) || []
+    const rawFilters = parseRestExactFilters(new URL(c.req.url).searchParams)
+    const exactFilters = normalizeExactEntryFilters(fieldsDef, rawFilters)
 
     if (isGlobal) {
       const requestedLocale = c.req.query('locale') || 'en'
@@ -4889,6 +4896,11 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
 
       if (statusQuery !== 'all') {
         globalConditions.push(eq(entries.status, statusQuery))
+      }
+      for (const filter of exactFilters) {
+        globalConditions.push(
+          sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+        )
       }
 
       let result = await db
@@ -4914,6 +4926,11 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         if (tenantId) fallbackConditions.push(eq(entries.tenantId, tenantId))
         if (statusQuery !== 'all') {
           fallbackConditions.push(eq(entries.status, statusQuery))
+        }
+        for (const filter of exactFilters) {
+          fallbackConditions.push(
+            sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+          )
         }
 
         result = await db
@@ -4953,6 +4970,13 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       eq(entries.collectionId, id),
       tenantId ? eq(entries.tenantId, tenantId) : sql`true`
     ) as any
+
+    for (const filter of exactFilters) {
+      whereClause = and(
+        whereClause,
+        sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+      ) as any
+    }
 
     if (statusQuery !== 'all') {
       whereClause = and(whereClause, eq(entries.status, statusQuery)) as any
@@ -5033,6 +5057,9 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       },
     })
   } catch (err) {
+    if (err instanceof EntryFilterValidationError) {
+      return c.json({ error: err.message }, 400)
+    }
     return c.json({ error: 'Internal server error' }, 500)
   }
 })

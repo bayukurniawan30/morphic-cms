@@ -204,6 +204,18 @@ export default function ApiDocs({ user }: ApiDocsProps) {
 curl -X GET "${baseUrl}/api/collections/blog-posts/entries?page=1&limit=10" \\
   -H "Authorization: Bearer YOUR_API_KEY"`}
               />
+              <CodeBlock
+                id='get-entries-filtered'
+                copiedId={copied}
+                onCopy={copyToClipboard}
+                code={`# Exact-match a single Select, Radio, or Boolean field
+curl -G "${baseUrl}/api/collections/blog-posts/entries" \\
+  --data-urlencode "filter[is_in_review]=Yes" \\
+  --data-urlencode "filter[featured]=true" \\
+  --data-urlencode "page=1" \\
+  --data-urlencode "limit=10" \\
+  -H "Authorization: Bearer YOUR_API_KEY"`}
+              />
 
               <div className='bg-muted/50 border rounded-lg p-4 space-y-3'>
                 <h4 className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
@@ -248,6 +260,20 @@ curl -X GET "${baseUrl}/api/collections/blog-posts/entries?page=1&limit=10" \\
                       Set to <code className='text-foreground'>true</code> to
                       retrieve deleted items (only if trash is enabled for the
                       collection).
+                    </span>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <code className='bg-muted px-1.5 py-0.5 rounded text-primary font-bold shrink-0'>
+                      filter[fieldName]
+                    </code>
+                    <span className='text-muted-foreground'>
+                      Exact-match a top-level Select, Radio, or Boolean field.
+                      Select and Radio values must match a configured option;
+                      Boolean values must be{' '}
+                      <code className='text-foreground'>true</code> or{' '}
+                      <code className='text-foreground'>false</code>. You can
+                      combine filters, and pagination is calculated from the
+                      matching entries.
                     </span>
                   </div>
                 </div>

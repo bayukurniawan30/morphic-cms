@@ -779,6 +779,16 @@ export default function EntriesList({
                               <li>
                                 <code className='text-primary font-mono font-semibold'>status</code>: Entry status (<code>published</code>, <code>draft</code>, or <code>all</code>)
                               </li>
+                              {collection.fields.some(
+                                (field: any) =>
+                                  (field.type === 'select' && !field.multiple) ||
+                                  field.type === 'radio' ||
+                                  field.type === 'boolean'
+                              ) && (
+                                <li>
+                                  <code className='text-primary font-mono font-semibold'>filter[fieldName]</code>: Exact-match top-level Select, Radio, or Boolean fields (e.g. <code>filter[is_in_review]=Yes</code> or <code>filter[featured]=true</code>). Multiple filters are supported and use AND logic before pagination.
+                                </li>
+                              )}
                               {collection.enableTrash && (
                                 <li>
                                   <code className='text-primary font-mono font-semibold'>trash</code>: Set to <code>true</code> to retrieve deleted items from trash
