@@ -1,18 +1,10 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
+  "framework": "hono",
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.ts"
-    }
-  ],
-  "functions": {
-    "index.ts": {
-      "includeFiles": "dist/**"
-    }
-  },
+  "outputDirectory": "dist",
   "crons": [
     {
       "path": "/api/cron/cleanup-webhook-logs",
