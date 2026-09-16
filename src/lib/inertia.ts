@@ -13,10 +13,12 @@ const isDev = process.env.NODE_ENV !== 'production'
 if (!isDev) {
   const possiblePaths = [
     path.join(process.cwd(), 'dist', '.vite', 'manifest.json'),
+    path.join(process.cwd(), 'public', '.vite', 'manifest.json'),
     path.join(process.cwd(), '.vite', 'manifest.json'),
     path.join(__dirname, '..', '..', 'dist', '.vite', 'manifest.json'),
     path.join(__dirname, '..', 'dist', '.vite', 'manifest.json'),
     path.join('/var/task', 'dist', '.vite', 'manifest.json'),
+    path.join('/var/task', 'public', '.vite', 'manifest.json'),
     path.join('/var/task', '.vite', 'manifest.json'),
     './dist/.vite/manifest.json',
   ]

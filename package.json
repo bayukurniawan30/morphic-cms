@@ -12,7 +12,7 @@
   "scripts": {
     "start": "tsx server.ts",
     "dev": "vite",
-    "build": "vite build && rm dist/index.html",
+    "build": "vite build && rm dist/index.html && mkdir -p public/assets public/.vite && cp -R dist/assets/. public/assets/ && cp dist/.vite/manifest.json public/.vite/manifest.json",
     "preview": "vite preview",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
