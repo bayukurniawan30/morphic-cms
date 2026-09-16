@@ -76,6 +76,23 @@ interface NavItemProps {
   currentUrl: string
 }
 
+const SPONSORS = [
+  {
+    id: 'shotage-studio',
+    name: 'Shotage Studio',
+    description: 'Turn Screenshots into Stunning Mockups',
+    href: 'https://shotage.studio?ref=morphic-cms.com',
+    favicon: 'https://shotage.studio/favicon.ico',
+  },
+  {
+    id: 'heylookatme',
+    name: 'Heylookat.me',
+    description: 'Digital Card for Your Identity',
+    href: 'https://heylookat.me?ref=morphic-cms.com',
+    favicon: 'https://heylookat.me/favicon.ico',
+  },
+] as const
+
 const NavItem = ({
   href,
   icon: Icon,
@@ -122,6 +139,9 @@ const NavItem = ({
 
 export default function Layout({ user, title, children }: LayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [sponsor, setSponsor] = useState<(typeof SPONSORS)[number] | null>(
+    null
+  )
 
   React.useEffect(() => {
     // Open sidebar by default on large screens
@@ -129,6 +149,27 @@ export default function Layout({ user, title, children }: LayoutProps) {
       setSidebarOpen(true)
     }
   }, [])
+
+  React.useEffect(() => {
+    if (sessionStorage.getItem('morphic-sponsored-dismissed')) return
+
+    const savedSponsorId = sessionStorage.getItem('morphic-sponsored-choice')
+    const savedSponsor = SPONSORS.find(
+      (candidate) => candidate.id === savedSponsorId
+    )
+    const selectedSponsor =
+      savedSponsor || SPONSORS[Math.floor(Math.random() * SPONSORS.length)]
+
+    if (!savedSponsor) {
+      sessionStorage.setItem('morphic-sponsored-choice', selectedSponsor.id)
+    }
+    setSponsor(selectedSponsor)
+  }, [])
+
+  const dismissSponsor = () => {
+    sessionStorage.setItem('morphic-sponsored-dismissed', 'true')
+    setSponsor(null)
+  }
 
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { url, props } = usePage()
@@ -474,6 +515,49 @@ export default function Layout({ user, title, children }: LayoutProps) {
               />
             )}
           </nav>
+
+          {sponsor && (
+            <div
+              className={cn(
+                'px-2 pt-2 pb-3',
+                !isSidebarOpen && 'lg:hidden'
+              )}
+            >
+              <div className='relative overflow-hidden rounded-lg border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-transparent p-3 transition-all'>
+                <button
+                  type='button'
+                  onClick={dismissSponsor}
+                  className='absolute right-1.5 top-1.5 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                  aria-label='Dismiss sponsored recommendation'
+                >
+                  <X className='h-3 w-3' />
+                </button>
+                <a
+                  href={sponsor.href}
+                  target='_blank'
+                  rel='noopener noreferrer sponsored'
+                  className='flex items-start gap-2.5 pr-4 group'
+                >
+                  <img
+                    src={sponsor.favicon}
+                    alt=''
+                    className='mt-0.5 h-5 w-5 shrink-0 rounded-sm'
+                  />
+                  <span className='min-w-0 flex flex-col gap-0.5'>
+                    <span className='text-[9px] font-bold uppercase tracking-widest text-muted-foreground'>
+                      Sponsored
+                    </span>
+                    <span className='truncate text-xs font-semibold text-foreground group-hover:text-primary transition-colors'>
+                      {sponsor.name}
+                    </span>
+                    <span className='text-[11px] leading-snug text-muted-foreground'>
+                      {sponsor.description}
+                    </span>
+                  </span>
+                </a>
+              </div>
+            </div>
+          )}
 
           <div
             className={cn(

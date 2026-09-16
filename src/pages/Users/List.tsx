@@ -257,8 +257,8 @@ export default function List({
 
   return (
     <Layout user={user} title='Users'>
-      <div className='max-w-6xl mx-auto space-y-6'>
-        <div className='flex flex-col sm:flex-row justify-between items-end gap-4'>
+      <div className='flex flex-col space-y-6'>
+        <div className='flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0'>
           <div>
             <div className='flex items-center space-x-2 mb-1'>
               <UsersIcon className='w-5 h-5 text-primary' />

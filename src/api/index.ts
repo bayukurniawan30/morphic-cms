@@ -1497,9 +1497,22 @@ app.get('/email-settings', requireAuth, async (c) => {
 
 app.get('/api-playground', requireAuth, async (c) => {
   const userData = c.get('user')
+  const tenantId = c.get('tenantId')
+  const availableCollections = await db
+    .select({
+      id: collections.id,
+      name: collections.name,
+      slug: collections.slug,
+      type: collections.type,
+    })
+    .from(collections)
+    .where(tenantId ? eq(collections.tenantId, tenantId) : sql`true`)
+    .orderBy(asc(collections.name))
+
   return c.get('inertia')('ApiPlayground', {
     user: userData,
     title: 'API Playground',
+    collections: availableCollections,
   })
 })
 

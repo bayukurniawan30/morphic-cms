@@ -22,13 +22,22 @@ import {
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+interface CollectionEndpoint {
+  id: number
+  name: string
+  slug: string
+  type: 'collection' | 'global'
+}
+
 export default function ApiPlayground() {
   const { props } = usePage()
   const user = (props as any).user
   const activeTenant = (props as any).activeTenant
+  const collections = ((props as any).collections || []) as CollectionEndpoint[]
 
   const [method, setMethod] = useState<'GET' | 'POST' | 'PUT' | 'DELETE'>('GET')
   const [path, setPath] = useState('/api/collections')
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>('')
   const [apiKey, setApiKey] = useState(user?.apiKey || '')
   const [body, setBody] = useState('{\n  \n}')
 
@@ -149,6 +158,17 @@ export default function ApiPlayground() {
     toast.success('Response copied to clipboard')
   }
 
+  const handleCollectionEndpointChange = (collectionId: string) => {
+    const collection = collections.find(
+      (item) => item.id.toString() === collectionId
+    )
+    if (!collection) return
+
+    setSelectedCollectionId(collectionId)
+    setMethod('GET')
+    setPath(`/api/collections/${collection.slug}/entries`)
+  }
+
   return (
     <Layout user={user} title="API Playground">
       <div className="w-full space-y-8 pb-12">
@@ -192,7 +212,10 @@ export default function ApiPlayground() {
               </span>
               <input
                 value={path}
-                onChange={(e) => setPath(e.target.value)}
+                onChange={(e) => {
+                  setPath(e.target.value)
+                  setSelectedCollectionId('')
+                }}
                 placeholder="/api/collections"
                 className="flex-1 bg-transparent px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none min-w-0"
               />
@@ -216,6 +239,34 @@ export default function ApiPlayground() {
               )}
             </Button>
           </div>
+          {collections.length > 0 && (
+            <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row sm:items-center gap-2">
+              <Label
+                htmlFor="collection-endpoint"
+                className="text-xs text-muted-foreground shrink-0"
+              >
+                Quick collection endpoint
+              </Label>
+              <Select
+                value={selectedCollectionId}
+                onValueChange={handleCollectionEndpointChange}
+              >
+                <SelectTrigger id="collection-endpoint" className="h-9 w-full sm:w-80 bg-background text-xs">
+                  <SelectValue placeholder="Choose a collection to fill its entries URL" />
+                </SelectTrigger>
+                <SelectContent>
+                  {collections.map((collection) => (
+                    <SelectItem key={collection.id} value={collection.id.toString()}>
+                      {collection.name} ({collection.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Fills the selected collection&apos;s entries endpoint.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
