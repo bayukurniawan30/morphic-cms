@@ -653,74 +653,102 @@ export default function Documentation({ user }: { user: any }) {
       </Section>
 
       <Section id='getting-started' title='Quick Start' icon={Zap}>
-        <p>Get up and running locally in less than 2 minutes.</p>
-        <div className='space-y-4 pt-4'>
-          <div className='flex items-center space-x-2 text-sm'>
-            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
-              1
-            </span>
-            <span className='font-bold'>Clone and Install</span>
-          </div>
-          <CodeBlock
-            code={`git clone https://github.com/bayukurniawan30/morphic-cms\npnpm install`}
-          />
+        <p>
+          Create a self-hosted Morphic CMS project in a few minutes with the
+          recommended CLI.
+        </p>
+        <CodeBlock code={`npx create-morphic-cms@latest my-cms`} />
+        <p className='mt-4'>
+          The CLI guides you through database, initial super-admin, and domain
+          configuration, then installs dependencies and initializes the database
+          when connection details are provided.
+        </p>
+        <CodeBlock code={`cd my-cms\npnpm dev`} />
+        <p className='mb-4'>
+          Open <code>/login</code> to access the admin panel with the
+          credentials chosen during setup. Run{' '}
+          <code>npx create-morphic-cms@latest --help</code> to see automation
+          options such as <code>--yes</code>, <code>--skip-install</code>, and{' '}
+          <code>--skip-db</code>.
+        </p>
 
-          <div className='flex items-center space-x-2 text-sm pt-4'>
-            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
-              2
-            </span>
-            <span className='font-bold'>Setup Environment</span>
-          </div>
-          <p className='mb-4'>
-            Rename <code>.env.example</code> to <code>.env</code>, configure
-            your <code>DATABASE_URL</code>, and optionally set{' '}
-            <code>APP_DOMAIN</code> to configure multi-tenant subdomain routing.
+        <details className='mt-8 rounded-2xl border bg-card/40 p-4 lg:p-6'>
+          <summary className='cursor-pointer font-bold text-sm'>
+            Manual repository setup
+          </summary>
+          <p className='mt-4 text-sm text-muted-foreground'>
+            Use this option when you want to work directly from the repository
+            instead of creating a new project through the CLI.
           </p>
-          <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4 mt-4'>
-            <div className='text-sm space-y-2 w-full flex-1'>
-              <p className='font-bold'>Recommended: Neon Database</p>
-              <p className='text-muted-foreground'>
-                You can use{' '}
-                <a
-                  href='https://neon.tech'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='underline'
-                >
-                  Neon.tech
-                </a>{' '}
-                for a free Postgres database. Copy your connection string and
-                paste it into <code>DATABASE_URL</code>:
-              </p>
-              <CodeBlock
-                code={`DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"`}
-              />
+          <div className='space-y-4 pt-4'>
+            <div className='flex items-center space-x-2 text-sm'>
+              <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+                1
+              </span>
+              <span className='font-bold'>Clone and Install</span>
             </div>
-          </div>
+            <CodeBlock
+              code={`git clone https://github.com/bayukurniawan30/morphic-cms.git\ncd morphic-cms\npnpm install`}
+            />
 
-          <div className='flex items-center space-x-2 text-sm pt-4'>
-            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
-              3
-            </span>
-            <span className='font-bold'>Push Schema & Seed</span>
-          </div>
-          <CodeBlock code={`pnpm db:push\npnpm db:seed`} />
+            <div className='flex items-center space-x-2 text-sm pt-4'>
+              <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+                2
+              </span>
+              <span className='font-bold'>Setup Environment</span>
+            </div>
+            <p className='mb-4'>
+              Rename <code>.env.example</code> to <code>.env</code>, configure
+              your <code>DATABASE_URL</code>, and optionally set{' '}
+              <code>APP_DOMAIN</code> to configure multi-tenant subdomain
+              routing.
+            </p>
+            <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4 mt-4'>
+              <div className='text-sm space-y-2 w-full flex-1'>
+                <p className='font-bold'>Recommended: Neon Database</p>
+                <p className='text-muted-foreground'>
+                  You can use{' '}
+                  <a
+                    href='https://neon.tech'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='underline'
+                  >
+                    Neon.tech
+                  </a>{' '}
+                  for a free Postgres database. Copy your connection string and
+                  paste it into <code>DATABASE_URL</code>:
+                </p>
+                <CodeBlock
+                  code={`DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"`}
+                />
+              </div>
+            </div>
 
-          <div className='flex items-center space-x-2 text-sm pt-4'>
-            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
-              4
-            </span>
-            <span className='font-bold'>Run & Login</span>
+            <div className='flex items-center space-x-2 text-sm pt-4'>
+              <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+                3
+              </span>
+              <span className='font-bold'>Push Schema & Seed</span>
+            </div>
+            <CodeBlock code={`pnpm db:push\npnpm db:seed`} />
+
+            <div className='flex items-center space-x-2 text-sm pt-4'>
+              <span className='flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+                4
+              </span>
+              <span className='font-bold'>Run & Login</span>
+            </div>
+            <p className='mb-4'>
+              Launch the development server and access the admin panel:
+            </p>
+            <CodeBlock code={`pnpm dev`} />
+            <p className='mb-4'>
+              Open your browser and navigate to <code>/login</code> to start
+              managing your content.
+            </p>
           </div>
-          <p className='mb-4'>
-            Launch the development server and access the admin panel:
-          </p>
-          <CodeBlock code={`pnpm dev`} />
-          <p className='mb-4'>
-            Open your browser and navigate to <code>/login</code> to start
-            managing your content.
-          </p>
-        </div>
+        </details>
       </Section>
 
       <Section id='field-types' title='Field Types' icon={Layers}>

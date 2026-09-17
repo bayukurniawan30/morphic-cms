@@ -139,9 +139,7 @@ const NavItem = ({
 
 export default function Layout({ user, title, children }: LayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
-  const [sponsor, setSponsor] = useState<(typeof SPONSORS)[number] | null>(
-    null
-  )
+  const [sponsor, setSponsor] = useState<(typeof SPONSORS)[number] | null>(null)
 
   React.useEffect(() => {
     // Open sidebar by default on large screens
@@ -518,10 +516,7 @@ export default function Layout({ user, title, children }: LayoutProps) {
 
           {sponsor && (
             <div
-              className={cn(
-                'px-2 pt-2 pb-3',
-                !isSidebarOpen && 'lg:hidden'
-              )}
+              className={cn('px-2 pt-2 pb-3', !isSidebarOpen && 'lg:hidden')}
             >
               <div className='relative overflow-hidden rounded-lg border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-transparent p-3 transition-all'>
                 <button
@@ -565,6 +560,26 @@ export default function Layout({ user, title, children }: LayoutProps) {
               !isSidebarOpen && 'lg:p-1'
             )}
           >
+            <a
+              href='https://github.com/bayukurniawan30/morphic-cms'
+              target='_blank'
+              rel='noopener noreferrer'
+              title={`Morphic CMS ${getAppVersion()} on GitHub`}
+              className={cn(
+                'flex items-center gap-3 px-4 py-2 rounded-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm',
+                !isSidebarOpen && 'lg:justify-center lg:px-0'
+              )}
+            >
+              <GithubIcon className='h-5 w-5 shrink-0' />
+              <span
+                className={cn(
+                  'truncate transition-all duration-300',
+                  !isSidebarOpen && 'lg:hidden lg:w-0'
+                )}
+              >
+                Morphic <span className='font-mono'>{getAppVersion()}</span>
+              </span>
+            </a>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 {isSelfHosted ? (
@@ -619,18 +634,6 @@ export default function Layout({ user, title, children }: LayoutProps) {
                 {isSelfHosted ? 'Support Us on GitHub' : 'Contact Support'}
               </TooltipContent>
             </Tooltip>
-            {isSelfHosted && (
-              <div
-                className={cn(
-                  'px-4 py-1 text-[10px] text-muted-foreground font-mono flex items-center justify-between transition-all',
-                  !isSidebarOpen && 'lg:hidden'
-                )}
-              >
-                <span>
-                  Version <span className='uppercase'>{getAppVersion()}</span>
-                </span>
-              </div>
-            )}
           </div>
         </aside>
 

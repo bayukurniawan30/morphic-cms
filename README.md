@@ -107,6 +107,18 @@ Morphic leverages the most cutting-edge tools in the ecosystem:
 
 ### 📦 Quick Start
 
+#### Create a New Self-Hosted Instance
+
+The guided installer creates a new Morphic CMS project, writes its initial environment file, and can apply database migrations and seed the first administrator:
+
+```bash
+npx create-morphic-cms@latest my-cms
+cd my-cms
+pnpm dev
+```
+
+To pin the CMS starter to a release, use `--ref v1.4.1`. Run `npx create-morphic-cms@latest --help` for database, administrator, and deployment options.
+
 #### One-Click Deploy
 
 The fastest way to get Morphic running is to click the **Deploy with Vercel** button above. It will set up your repository, environment variables, and initial deployment in seconds.

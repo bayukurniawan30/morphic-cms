@@ -52,8 +52,10 @@ async function seed() {
     }
 
     // 2. Create Super Admin
-    const email = 'admin@morphic.cms'
-    const hashedPassword = await bcrypt.hash('password123', 10)
+    const email = process.env.SEED_ADMIN_EMAIL || 'admin@morphic.cms'
+    const username = process.env.SEED_ADMIN_USERNAME || 'superadmin'
+    const password = process.env.SEED_ADMIN_PASSWORD || 'password123'
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     let userId: number
     const existingUser = await db
@@ -68,7 +70,7 @@ async function seed() {
         .insert(users)
         .values({
           email,
-          username: 'superadmin',
+          username,
           password: hashedPassword,
           role: 'super_admin',
           isEmailVerified: true,
