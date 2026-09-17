@@ -117,7 +117,7 @@ cd my-cms
 pnpm dev
 ```
 
-To pin the CMS starter to a release, use `--ref v1.4.0`. Run `npx create-morphic-cms@latest --help` for database, administrator, and deployment options.
+To pin the CMS starter to a release, use `--ref v1.4.1`. Run `npx create-morphic-cms@latest --help` for database, administrator, and deployment options.
 
 #### One-Click Deploy
 

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 export const REPOSITORY_URL =
   'https://github.com/bayukurniawan30/morphic-cms.git'
-export const DEFAULT_REF = 'v1.4.0'
+export const DEFAULT_REF = 'v1.4.1'
 
 const HELP = `
 Create a self-hosted Morphic CMS project.
@@ -18,7 +18,7 @@ Usage:
   npx create-morphic-cms@latest <project-directory> [options]
 
 Options:
-  --ref <ref>                 CMS branch, tag, or commit to scaffold (default: v1.4.0)
+  --ref <ref>                 CMS branch, tag, or commit to scaffold (default: v1.4.1)
   --database-url <url>        PostgreSQL connection string
   --admin-email <email>       Initial super-admin email
   --admin-password <password> Initial super-admin password

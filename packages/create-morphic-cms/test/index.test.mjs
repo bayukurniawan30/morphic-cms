@@ -7,14 +7,14 @@ test('parses project setup options', () => {
     parseArgs([
       'my-cms',
       '--ref',
-      'v1.4.0',
+      'v1.4.1',
       '--database-url',
       'postgres://example',
       '--skip-install',
     ]),
     {
       directory: 'my-cms',
-      ref: 'v1.4.0',
+      ref: 'v1.4.1',
       databaseUrl: 'postgres://example',
       adminEmail: '',
       adminPassword: '',

@@ -12,7 +12,7 @@ The CLI clones the selected Morphic CMS release, writes a secure local `.env`, i
 
 ```bash
 npx create-morphic-cms@latest my-cms \
-  --ref v1.4.0 \
+  --ref v1.4.1 \
   --database-url "postgresql://..." \
   --admin-email admin@example.com \
   --admin-password "use-a-strong-password" \
