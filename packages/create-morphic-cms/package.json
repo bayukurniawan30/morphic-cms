@@ -1,0 +1,27 @@
+{
+  "name": "create-morphic-cms",
+  "version": "0.1.0",
+  "description": "Create a self-hosted Morphic CMS project.",
+  "type": "module",
+  "bin": {
+    "create-morphic-cms": "./bin/create-morphic-cms.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bayukurniawan30/morphic-cms.git",
+    "directory": "packages/create-morphic-cms"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "node ./bin/create-morphic-cms.js",
+    "test": "node --test ./test/*.test.mjs"
+  }
+}

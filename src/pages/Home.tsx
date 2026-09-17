@@ -50,11 +50,11 @@ const fetchEntries = async () => {
       'X-Tenant-ID': '1' // tenant scope header
     }
   });
-  
+
   if (!response.ok) {
     throw new Error(\`HTTP error! status: \${response.status}\`);
   }
-  
+
   const data = await response.json();
   console.log('Morphic Entries:', data.entries);
 };
@@ -118,7 +118,7 @@ import (
 func main() {
 	url := "https://morphic-cms.app/api/collections/posts/entries?page=1&limit=10"
 	req, _ := http.NewRequest("GET", url, nil)
-	
+
 	// Headers
 	req.Header.Set("Authorization", "Bearer YOUR_API_KEY")
 	req.Header.Set("X-Tenant-ID", "1") // tenant scope header
@@ -172,10 +172,10 @@ class Program
     static async Task Main(string[] args)
     {
         using var client = new HttpClient();
-        
-        var request = new HttpRequestMessage(HttpMethod.Get, 
+
+        var request = new HttpRequestMessage(HttpMethod.Get,
             "https://morphic-cms.app/api/collections/posts/entries?page=1&limit=10");
-            
+
         request.Headers.Add("Authorization", "Bearer YOUR_API_KEY");
         request.Headers.Add("X-Tenant-ID", "1"); // tenant scope header
 
@@ -183,7 +183,7 @@ class Program
         {
             var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
-            
+
             var jsonString = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"Morphic Entries: {jsonString}");
         }
@@ -458,7 +458,7 @@ export default function Home({
     2
   )
 
-  const quickStartCmds = `git clone https://github.com/bayukurniawan30/morphic-cms\ncd morphic-cms && pnpm install\npnpm db:push && pnpm db:seed\npnpm dev`
+  const quickStartCmds = `npx create-morphic-cms@latest my-cms\ncd my-cms\npnpm dev`
 
   return (
     <div className='min-h-screen bg-deep-mocha-950 text-slate-100 selection:bg-primary/30 overflow-x-hidden font-sans relative antialiased'>
@@ -485,7 +485,7 @@ export default function Home({
           box-shadow: 0 0 40px -5px rgba(59, 130, 246, 0.25);
         }
         .neon-border-grid {
-          background-image: 
+          background-image:
             radial-gradient(circle at 50% 0%, rgba(135, 120, 122, 0.15), transparent 60%),
             radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.05), transparent 50%),
             radial-gradient(circle at 0% 50%, rgba(16, 185, 129, 0.05), transparent 50%),
@@ -607,27 +607,22 @@ export default function Home({
             <pre className='font-mono text-sm leading-relaxed text-deep-mocha-300 overflow-x-auto selection:bg-primary/20'>
               <code>
                 <span className='text-slate-500'>
-                  # 1. Clone & install repository
+                  # 1. Create a new Morphic CMS project
                 </span>
                 <br />
-                <span className='text-emerald-400'>$</span> git clone
-                https://github.com/bayukurniawan30/morphic-cms.git
-                <br />
-                <span className='text-emerald-400'>$</span> cd morphic-cms &&
-                pnpm install
+                <span className='text-emerald-400'>$</span> npx
+                create-morphic-cms@latest my-cms
                 <br />
                 <span className='text-slate-500'>
-                  # 2. Push database schema & seed admin panel
+                  # 2. Follow the prompts to configure your database and admin
                 </span>
-                <br />
-                <span className='text-emerald-400'>$</span> pnpm db:push && pnpm
-                db:seed
                 <br />
                 <span className='text-slate-500'>
                   # 3. Start development server
                 </span>
                 <br />
-                <span className='text-emerald-400'>$</span> pnpm dev
+                <span className='text-emerald-400'>$</span> cd my-cms && pnpm
+                dev
               </code>
             </pre>
           </div>
@@ -1334,7 +1329,7 @@ export default function Home({
               <thead>
                 <tr className='border-b border-white/5 bg-deep-mocha-900/80 text-white font-semibold'>
                   <th className='p-6 font-bold text-slate-400'>Capability</th>
-                  <th className='p-6 font-extrabold text-primary-foreground bg-primary/20 border-x border-white/5'>
+                  <th className='p-6 font-extrabold text-white bg-deep-mocha-700/80 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]'>
                     Morphic CMS
                   </th>
                   <th className='p-6 font-semibold text-slate-400'>Strapi</th>
