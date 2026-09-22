@@ -26,8 +26,8 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
 import { generateSecret, generateURI, verifySync } from 'otplib'
-import path from 'path'
 import QRCode from 'qrcode'
+import path from 'path'
 import {
   getTenantFeatures,
   getWorkspaceFeatures,
@@ -61,9 +61,9 @@ import {
   parseRestExactFilters,
 } from '../lib/entry-filters.js'
 import { inertia } from '../lib/inertia.js'
+import { checkPermission } from '../lib/permissions.js'
 import { triggerWebhooks } from '../lib/webhooks.js'
 import { redis, usageTracker } from '../middleware/usageTracker.js'
-import { checkPermission } from '../lib/permissions.js'
 import apiDocuments from './documents.js'
 import { createGraphQLHandler } from './graphql.js'
 import apiMedia from './media.js'
@@ -402,11 +402,17 @@ app.use('*', async (c, next) => {
             .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
             .where(eq(usersToTenants.userId, userData.id))
 
-          if (userData.planTier === 'PRO' || userData.planTier === 'SELF_HOSTED') {
+          if (
+            userData.planTier === 'PRO' ||
+            userData.planTier === 'SELF_HOSTED'
+          ) {
             const ownedWorkspaces = await db
               .select({ id: tenants.id })
               .from(tenants)
-              .innerJoin(usersToTenants, eq(tenants.id, usersToTenants.tenantId))
+              .innerJoin(
+                usersToTenants,
+                eq(tenants.id, usersToTenants.tenantId)
+              )
               .where(
                 and(
                   eq(usersToTenants.userId, userData.id),
@@ -414,7 +420,8 @@ app.use('*', async (c, next) => {
                 )
               )
             const userFeatures = getTenantFeatures(userData.planTier)
-            canCreateWorkspace = ownedWorkspaces.length < userFeatures.maxWorkspaces
+            canCreateWorkspace =
+              ownedWorkspaces.length < userFeatures.maxWorkspaces
           }
         }
 
@@ -1389,10 +1396,7 @@ app.get('/dashboard', requireAuth, async (c) => {
         .leftJoin(usersToTenants, eq(users.id, usersToTenants.userId))
         .leftJoin(tenants, eq(usersToTenants.tenantId, tenants.id))
         .where(
-          and(
-            isNull(users.deletedAt),
-            eq(sql`LOWER(${users.planTier})`, 'pro')
-          )
+          and(isNull(users.deletedAt), eq(sql`LOWER(${users.planTier})`, 'pro'))
         )
 
       const proUsersMap = new Map<number, any>()
@@ -1430,7 +1434,8 @@ app.get('/dashboard', requireAuth, async (c) => {
 
       const cachedMeta = await redis.get<any>(cacheKey)
       if (cachedMeta) {
-        ownerMeta = typeof cachedMeta === 'string' ? JSON.parse(cachedMeta) : cachedMeta
+        ownerMeta =
+          typeof cachedMeta === 'string' ? JSON.parse(cachedMeta) : cachedMeta
       }
 
       if (!ownerMeta) {
@@ -1458,7 +1463,8 @@ app.get('/dashboard', requireAuth, async (c) => {
 
       const rawTally = await redis.get<string | number>(redisKey)
       if (rawTally !== null) {
-        currentMonthlyRequests = typeof rawTally === 'number' ? rawTally : parseInt(rawTally, 10)
+        currentMonthlyRequests =
+          typeof rawTally === 'number' ? rawTally : parseInt(rawTally, 10)
       }
     } catch (err) {
       console.error('Failed to fetch current monthly requests from Redis:', err)
@@ -2843,9 +2849,7 @@ api.get('/cron/cleanup-webhook-logs', async (c) => {
       )
     }
 
-    await db
-      .delete(webhookLogs)
-      .where(and(...freeConditions))
+    await db.delete(webhookLogs).where(and(...freeConditions))
 
     return c.json({ success: true, message: 'Cleanup complete' })
   } catch (err: any) {
@@ -3104,6 +3108,7 @@ api.all('/graphql', async (c) => {
   return await yoga.fetch(c.req.raw, {
     tenantId,
     user: userData,
+    requestContext: c,
   })
 })
 
@@ -3626,8 +3631,6 @@ api.delete('/locales/:id', async (c) => {
     return c.json({ error: 'Failed to delete locale' }, 500)
   }
 })
-
-
 
 api.post('/test-email', async (c) => {
   const userData = c.get('user')
@@ -4790,7 +4793,11 @@ function replaceRelationIds(
         }
       }
     } else if (field.type === 'group' && field.fields) {
-      newContent[field.name] = replaceRelationIds(val, field.fields, relationData)
+      newContent[field.name] = replaceRelationIds(
+        val,
+        field.fields,
+        relationData
+      )
     } else if (field.type === 'array' && field.fields && Array.isArray(val)) {
       newContent[field.name] = val.map((item) =>
         replaceRelationIds(item, field.fields, relationData)
@@ -4839,7 +4846,11 @@ const populateRelations = async (
   }
 
   return entriesList.map((entry) => {
-    const newContent = replaceRelationIds(entry.content, fieldsDef, relationData)
+    const newContent = replaceRelationIds(
+      entry.content,
+      fieldsDef,
+      relationData
+    )
     return { ...entry, content: newContent }
   })
 }
@@ -4893,7 +4904,8 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .limit(1)
 
     const isGlobal = col[0]?.type === 'global'
-    const fieldsDef: FieldDefinition[] = (col[0]?.fields as FieldDefinition[]) || []
+    const fieldsDef: FieldDefinition[] =
+      (col[0]?.fields as FieldDefinition[]) || []
     const rawFilters = parseRestExactFilters(new URL(c.req.url).searchParams)
     const exactFilters = normalizeExactEntryFilters(fieldsDef, rawFilters)
 
@@ -4904,7 +4916,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       const globalConditions = [
         eq(entries.collectionId, id),
         isNull(entries.deletedAt),
-        eq(entries.locale, requestedLocale)
+        eq(entries.locale, requestedLocale),
       ]
 
       if (statusQuery !== 'all') {
@@ -4923,9 +4935,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         })
         .from(entries)
         .leftJoin(users, eq(entries.updatedById, users.id))
-        .where(
-          and(...globalConditions)
-        )
+        .where(and(...globalConditions))
         .orderBy(desc(entries.createdAt))
         .limit(1)
 
@@ -5054,7 +5064,11 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .limit(limit)
       .offset(offset)
 
-    const populatedEntries = await populateRelations(result.map((r) => r.entry), fieldsDef, tenantId)
+    const populatedEntries = await populateRelations(
+      result.map((r) => r.entry),
+      fieldsDef,
+      tenantId
+    )
 
     return c.json({
       type: 'collection',
@@ -5228,10 +5242,7 @@ api.get('/entries/:id', async (c) => {
     const requestedLocale = c.req.query('locale')
     const statusQuery = c.req.query('status') || 'published'
 
-    const entryConditions = [
-      eq(entries.id, id),
-      isNull(entries.deletedAt),
-    ]
+    const entryConditions = [eq(entries.id, id), isNull(entries.deletedAt)]
     if (tenantId) entryConditions.push(eq(entries.tenantId, tenantId))
     if (statusQuery !== 'all') {
       entryConditions.push(eq(entries.status, statusQuery))
@@ -6007,7 +6018,10 @@ api.post('/forms/:tenantSlug/:slug/submit', formSubmitLimiter, async (c) => {
           .set({ isActive: false, updatedAt: new Date() })
           .where(eq(forms.id, form.id))
         return c.json(
-          { error: 'This form has reached its maximum entries limit and is now closed.' },
+          {
+            error:
+              'This form has reached its maximum entries limit and is now closed.',
+          },
           400
         )
       }

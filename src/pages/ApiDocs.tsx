@@ -618,12 +618,13 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
           <div className='space-y-2'>
             <div className='inline-flex items-center space-x-2 bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider'>
               <Code2 className='w-3 h-3' />
-              <span>Javascript Example</span>
+              <span>JavaScript / TypeScript SDK</span>
             </div>
             <h2 className='text-3xl font-bold'>Connect your frontend</h2>
             <p className='text-zinc-400'>
-              Fetch your content in a few lines of code using the native Fetch
-              API.
+              Use the official SDK for typed entries, pagination, tenant
+              headers, and exact field filters. Keep API keys in server-side
+              environment variables.
             </p>
           </div>
 
@@ -631,18 +632,24 @@ curl -X GET "${baseUrl}/api/collections/site-settings/entries" \\
             id='js-example'
             copiedId={copied}
             onCopy={copyToClipboard}
-            code={`const MORPHIC_API_URL = "${baseUrl}/api";
-const API_KEY = "your_secret_api_key";
+            code={`pnpm add @morphic-cms/sdk
 
-async function getBlogPosts() {
-  const response = await fetch(\`\${MORPHIC_API_URL}/collections/blog-posts/entries\`, {
-    headers: {
-      'Authorization': \`Bearer \${API_KEY}\`
-    }
-  });
-  
-  const data = await response.json();
-  return data.entries;
+import { createMorphicClient } from '@morphic-cms/sdk'
+
+const cms = createMorphicClient({
+  baseUrl: '${baseUrl}',
+  apiKey: process.env.MORPHIC_API_KEY,
+  tenantId: process.env.MORPHIC_TENANT_ID,
+})
+
+const posts = await cms.entries.list('blog-posts', {
+  page: 1,
+  limit: 10,
+  filters: { is_in_review: 'Yes' },
+})
+
+if (posts.type === 'collection') {
+  console.log(posts.entries, posts.pagination.totalCount)
 }`}
           />
         </section>

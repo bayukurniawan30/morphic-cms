@@ -894,6 +894,41 @@ export default function Documentation({ user }: { user: any }) {
             isolation.
           </p>
         </div>
+        <div className='bg-primary/5 border border-primary/20 p-4 lg:p-6 rounded-2xl my-6 space-y-4'>
+          <div>
+            <h3 className='font-bold'>JavaScript / TypeScript SDK</h3>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Install <code>@morphic-cms/sdk</code> for a typed,
+              framework-neutral client that handles API-key authentication,
+              tenant headers, pagination, and exact field filters.
+            </p>
+          </div>
+          <CodeBlock
+            code={`pnpm add @morphic-cms/sdk
+
+import { createMorphicClient } from '@morphic-cms/sdk'
+
+const cms = createMorphicClient({
+  baseUrl: 'https://your-cms-domain.com',
+  apiKey: process.env.MORPHIC_API_KEY,
+  tenantId: process.env.MORPHIC_TENANT_ID,
+})
+
+const posts = await cms.entries.list('posts', { page: 1, limit: 10 })`}
+          />
+          <p className='text-xs text-muted-foreground'>
+            Use API keys only in server-side code. Visit{' '}
+            <a
+              href='https://www.npmjs.com/package/@morphic-cms/sdk'
+              target='_blank'
+              rel='noopener noreferrer'
+              className='underline hover:text-primary'
+            >
+              npm
+            </a>{' '}
+            for the full SDK reference.
+          </p>
+        </div>
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
             <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>

@@ -271,6 +271,8 @@ importers:
         specifier: 2.1.8
         version: 2.1.8(@types/node@22.19.13)(sass-embedded@1.99.0)(sass@1.99.0)
 
+  packages/create-morphic-cms: {}
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

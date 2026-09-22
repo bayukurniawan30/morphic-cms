@@ -45,12 +45,16 @@ Morphic CMS isn't just another content manager. It's a lightweight, developer-fi
 Morphic CMS lets you publish collection schemas as public forms. You can brand them with customized header images (integrated with media manager), custom titles/footers, and 8 curated HSL color themes (`slate`, `emerald`, `blue`, `indigo`, `violet`, `rose`, `orange`, `yellow`).
 
 #### Form Status Control
+
 Each public form can be turned online or offline instantly:
+
 - **Active Toggle**: Control form availability via the **"Status: Open for submissions"** switch in the dashboard.
 - **Closed Screen**: When toggled off, visitors are greeted with a premium restricted/closed screen, and the API rejects any programmatic submits.
 
 #### Bot Mitigation Setup
+
 To protect your public forms from spam, Morphic integrates Cloudflare Turnstile:
+
 1. Register your site on [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/).
 2. Add the site key and secret key to your `.env` file:
    ```env
@@ -64,17 +68,18 @@ To protect your public forms from spam, Morphic integrates Cloudflare Turnstile:
 
 ### 🌐 Multi-Tenant Subdomain Routing
 
-Morphic CMS supports isolated multi-tenant routing using subdomains (e.g. `tenant-slug.yourdomain.com`). 
+Morphic CMS supports isolated multi-tenant routing using subdomains (e.g. `tenant-slug.yourdomain.com`).
 
 To configure subdomains for your custom domain:
+
 1. In Vercel or your hosting provider, add a wildcard domain mapping (e.g., `*.yourdomain.com`).
 2. Add the `APP_DOMAIN` environment variable in your `.env` file:
    ```env
    APP_DOMAIN=yourdomain.com
    ```
-If `APP_DOMAIN` is not set, it defaults to `morphic-cms.com`.
+   If `APP_DOMAIN` is not set, it defaults to `morphic-cms.com`.
 
-*Note: For local development, subdomain redirects are automatically bypassed when accessing raw `localhost` to avoid browser cookie domain restrictions.*
+_Note: For local development, subdomain redirects are automatically bypassed when accessing raw `localhost` to avoid browser cookie domain restrictions._
 
 ---
 
@@ -95,13 +100,13 @@ IS_SELF_HOSTED=true
 
 Morphic leverages the most cutting-edge tools in the ecosystem:
 
-| Layer        | Technology                               | Why?                                                           |
-| ------------ | ---------------------------------------- | -------------------------------------------------------------- |
-| **Core**     | [Hono](https://hono.dev/)                | Sub-millisecond overhead, runs on any runtime.                 |
+| Layer        | Technology                               | Why?                                                                        |
+| ------------ | ---------------------------------------- | --------------------------------------------------------------------------- |
+| **Core**     | [Hono](https://hono.dev/)                | Sub-millisecond overhead, runs on any runtime.                              |
 | **Database** | [Neon PostgreSQL](https://neon.tech/)    | Serverless, autoscaling, and perfect for ultra-fast JSONB document queries. |
-| **ORM**      | [Drizzle ORM](https://orm.drizzle.team/) | TypeScript-first, zero-runtime overhead.                       |
-| **Bridge**   | [Inertia.js](https://inertiajs.com/)     | The feel of an SPA with the simplicity of server-side routing. |
-| **Styling**  | [Tailwind CSS](https://tailwindcss.com/) | Rapid, beautiful, utility-first design.                        |
+| **ORM**      | [Drizzle ORM](https://orm.drizzle.team/) | TypeScript-first, zero-runtime overhead.                                    |
+| **Bridge**   | [Inertia.js](https://inertiajs.com/)     | The feel of an SPA with the simplicity of server-side routing.              |
+| **Styling**  | [Tailwind CSS](https://tailwindcss.com/) | Rapid, beautiful, utility-first design.                                     |
 
 ---
 
@@ -118,6 +123,28 @@ pnpm dev
 ```
 
 To pin the CMS starter to a release, use `--ref v1.4.1`. Run `npx create-morphic-cms@latest --help` for database, administrator, and deployment options.
+
+#### JavaScript / TypeScript SDK
+
+Use the framework-neutral [`@morphic-cms/sdk`](https://www.npmjs.com/package/@morphic-cms/sdk) to consume the REST API with typed entries, pagination, and exact field filters:
+
+```bash
+pnpm add @morphic-cms/sdk
+```
+
+```ts
+import { createMorphicClient } from '@morphic-cms/sdk'
+
+const cms = createMorphicClient({
+  baseUrl: 'https://your-cms-domain.com',
+  apiKey: process.env.MORPHIC_API_KEY,
+  tenantId: process.env.MORPHIC_TENANT_ID,
+})
+
+const posts = await cms.entries.list('posts', { page: 1, limit: 10 })
+```
+
+Keep API keys in server-side environment variables; do not expose a write-capable key in browser code.
 
 #### One-Click Deploy
 
@@ -157,6 +184,7 @@ The fastest way to get Morphic running is to click the **Deploy with Vercel** bu
 Morphic CMS includes a fully configured `Dockerfile` and `docker-compose.yml` for easy deployment to any VPS (DigitalOcean, Hetzner, AWS EC2, etc.).
 
 1. **Clone the repository on your server**:
+
    ```bash
    git clone https://github.com/bayukurniawan30/morphic-cms.git
    cd morphic-cms
@@ -166,6 +194,7 @@ Morphic CMS includes a fully configured `Dockerfile` and `docker-compose.yml` fo
    Open `docker-compose.yml` and set up your Cloudinary credentials under the `environment` section.
 
 3. **Start the containers**:
+
    ```bash
    docker compose up -d
    ```
@@ -183,10 +212,10 @@ Your CMS is now running on `http://your-server-ip:3000`. We recommend putting it
 
 For an enterprise-grade setup entirely on AWS, you can utilize a true Serverless architecture using AWS Lambda, S3, CloudFront, and Amazon RDS.
 
-1. **Database (Amazon Aurora)**: 
+1. **Database (Amazon Aurora)**:
    Provision an **Amazon Aurora Serverless v2 (PostgreSQL)** database. Copy the connection string and set it as your `DATABASE_URL`.
-2. **API (AWS Lambda)**: 
-   Morphic is built on Hono, which has first-class AWS Lambda support. 
+2. **API (AWS Lambda)**:
+   Morphic is built on Hono, which has first-class AWS Lambda support.
    - Install the adapter: `pnpm add hono/aws-lambda`
    - Create a Lambda entry point (`lambda.ts`) using the `handle` function from `hono/aws-lambda` wrapping the app from `src/api/index.ts`.
    - Deploy this function using AWS SAM, CDK, or Serverless Framework.
