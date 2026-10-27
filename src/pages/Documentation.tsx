@@ -929,6 +929,82 @@ const posts = await cms.entries.list('posts', { page: 1, limit: 10 })`}
             for the full SDK reference.
           </p>
         </div>
+        <div id='graphql-entry-filters' className='space-y-4 my-8'>
+          <h3 className='font-bold'>GraphQL Entry Filters</h3>
+          <div className='space-y-3'>
+            <h3 className='font-bold'>API Preview filter controls</h3>
+            <p className='text-sm text-muted-foreground'>
+              Open a collection&apos;s Entries → API Preview → REST Preview or GraphQL Preview.
+              Choose Add filter, select a field and match type, enter a value, then Apply filters.
+              All filters must match; applying resets pagination to page 1. Dates offer single dates
+              and inclusive ranges with optional boundaries; Relation fields accept connected entry IDs.
+              Filters are shared between tabs and included in copied URLs, cURL, GraphQL queries,
+              and live responses. Edits take effect after applying. Clear filters removes all immediately.
+            </p>
+            <h3 className='font-bold'>Sorting entries</h3>
+            <p className='text-sm text-muted-foreground'>
+              REST: <code>?sortBy=price&amp;sortDir=asc</code>.
+              GraphQL: <code>sortBy: &quot;price&quot;, sortDir: &quot;asc&quot;</code> on
+              {' '}<code>entriesPage</code> or the legacy <code>entries</code> query.
+              Use a top-level schema field name, not its label. Only Number, Text, Email, Date,
+              and Boolean schema fields support sorting. Number sorts numerically; Text and Email
+              alphabetically ignoring case; Date chronologically using valid YYYY-MM-DD values;
+              Boolean false-to-true ascending. Other types, multi-value fields and nested paths are unsupported.
+            </p>
+            <p className='text-sm text-muted-foreground'>
+              System fields <code>id</code> and <code>createdAt</code> remain supported and take precedence
+              over schema fields with those names. Defaults: <code>sortBy=createdAt</code> and
+              {' '}<code>sortDir=desc</code>. Use <code>asc</code> or <code>desc</code>.
+              Missing, null, empty-string, invalidly typed values and invalid dates go last in either direction.
+              Equal values use ID ascending as a tie-breaker. Filters and sorting apply before pagination.
+              Unknown/unsupported fields or invalid directions return REST HTTP 400 or GraphQL
+              {' '}<code>BAD_USER_INPUT</code>.
+            </p>
+          </div>
+
+            <p className='text-sm text-muted-foreground'>
+              POST to <code>/api/graphql</code> with <code>Authorization: Bearer YOUR_API_KEY</code>,
+              {' '}<code>X-Tenant-ID: YOUR_TENANT_ID</code>, and <code>Content-Type: application/json</code>.
+              Send the query in the JSON body&apos;s <code>query</code> property.
+              The <code>filters</code> argument is a JSON scalar. Filters combine with AND before pagination.
+            </p>
+          <CodeBlock language='graphql' code={`query FilteredPosts {
+  entriesPage(
+    collectionSlug: "posts"
+    page: 1
+    limit: 10
+    sortBy: "publish_date"
+    sortDir: "desc"
+    filters: {
+      title: { icontains: "hello" }
+      publish_date: { gte: "2026-10-01", lte: "2026-10-31" }
+      category: { eq: 42 }
+    }
+  ) {
+    entries { id content }
+    pagination { currentPage totalPages totalCount limit }
+  }
+}`} />
+            <p className='text-sm text-muted-foreground'>
+              Replace the example field names with your collection&apos;s schema field names.
+              Here <code>category</code> is the relation field inside Posts, and <code>42</code> is the
+              connected Categories entry ID, not its title or slug. If the field is named
+              {' '}<code>post_category</code>, use that name instead. Relation IDs must be positive integers;
+              matching uses stored references even for unpublished or deleted targets.
+              Multi-ID and related title/slug filters are unsupported.
+            </p>
+            <ul className='list-disc pl-5 space-y-2 text-sm text-muted-foreground'>
+              <li>Text equality: <code>{'filters: { title: "Hello" }'}</code> or <code>{'filters: { title: { eq: "Hello" } }'}</code>. Equality is case-sensitive; <code>icontains</code> ignores case and treats %, _ and backslashes literally.</li>
+              <li>Single date: <code>{'filters: { publish_date: "2026-10-25" }'}</code> or <code>{'filters: { publish_date: { eq: "2026-10-25" } }'}</code>. Dates must be valid YYYY-MM-DD values.</li>
+              <li>Date ranges use inclusive <code>gte</code>/<code>lte</code> boundaries; either can be omitted. Reversed ranges are rejected. Missing or empty dates do not match. Time/Datetime fields and timezone conversion are not supported.</li>
+              <li>Relation equality also accepts <code>{'filters: { category: 42 }'}</code>.</li>
+              <li>Select/Radio values must match configured options; Boolean filters use true or false. Example: <code>{'filters: { priority: "high", featured: true }'}</code>.</li>
+            </ul>
+            <p className='text-sm text-muted-foreground'>
+              Invalid filters return a GraphQL error with code <code>BAD_USER_INPUT</code>.
+              The legacy <code>entries</code> query also accepts filters; use <code>entriesPage</code> for pagination metadata.
+            </p>
+        </div>
         <div className='space-y-8 mt-8'>
           <div className='space-y-4'>
             <h4 className='font-bold flex items-center text-sm uppercase tracking-widest text-black dark:text-slate-400'>
@@ -1113,7 +1189,19 @@ const posts = await cms.entries.list('posts', { page: 1, limit: 10 })`}
                     filter[fieldName]
                   </code>
                   <span className='text-slate-600 dark:text-slate-400'>
-                    Exact-match a top-level Select, Radio, or Boolean field. For
+                    Exact-match a top-level Text, Textarea, Date, Relation, Select, Radio, or Boolean field.
+                    Text equality is case-sensitive. Use <code>filter[title][eq]=Hello</code>
+                    {' '}or case-insensitive contains with <code>filter[title][icontains]=hello</code>.
+                    Contains treats %, _ and backslashes literally.{' '}
+                    Date fields use valid YYYY-MM-DD dates: <code>filter[publish_date]=2026-10-25</code>.
+                    For an inclusive range, combine <code>filter[publish_date][gte]=2026-10-01</code>
+                    {' '}and <code>filter[publish_date][lte]=2026-10-31</code>.
+                    Either boundary can be omitted. Reversed ranges are rejected.
+                    Missing or empty dates do not match. No time or timezone conversion is applied.{' '}
+                    Relation fields match a connected entry ID: <code>filter[category]=42</code>
+                    {' '}or <code>filter[category][eq]=42</code>. Use the relation field name, not the connected collection slug.
+                    IDs must be positive integers. Matching uses the stored reference, even if the connected entry is unpublished or deleted.
+                    Filtering by connected entry titles/slugs or multiple IDs is not supported. For
                     example: <code>filter[is_in_review]=Yes</code>. Multiple
                     filters can be combined and are applied before pagination.
                   </span>

@@ -1,3 +1,5 @@
+import { ApiPreviewFilters } from '@/components/ApiPreviewFilters'
+import { buildPreviewFilters, graphqlPreviewFilters, type PreviewFilter } from '@/lib/api-preview-filters'
 import Layout from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import {
@@ -122,6 +124,7 @@ interface Field {
   name: string
   label: string
   type: string
+  multiple?: boolean
   options?: { label: string; value: string }[]
 }
 
@@ -290,50 +293,86 @@ export default function EntriesList({
   const [isPreviewExpanded, setIsPreviewExpanded] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [previewIncludeDrafts, setPreviewIncludeDrafts] = React.useState(false)
+  const [previewFilterRows, setPreviewFilterRows] = React.useState<PreviewFilter[]>([])
+  const [appliedPreviewFilters, setAppliedPreviewFilters] = React.useState<ReturnType<typeof buildPreviewFilters>>({ params: '', filters: {} })
+  const [previewTab, setPreviewTab] = React.useState('docs')
+  const [graphqlPreviewData, setGraphqlPreviewData] = React.useState<any>(null)
+  const [previewError, setPreviewError] = React.useState('')
+  React.useEffect(() => {
+    setPreviewFilterRows([])
+    setPreviewSortBy('createdAt')
+    setPreviewSortDir('desc')
+    setPreviewLocale('')
+    setAppliedPreviewFilters({ params: '', filters: {} })
+    setPreviewPage(1)
+    setPreviewData(null)
+    setGraphqlPreviewData(null)
+  }, [collection.id])
+  const applyPreviewFilters = (filters: ReturnType<typeof buildPreviewFilters>) => {
+    setAppliedPreviewFilters(filters)
+    setPreviewPage(1)
+    setPreviewData(null)
+    setGraphqlPreviewData(null)
+  }
+  const previewPath = React.useMemo(() => {
+    const params = new URLSearchParams(appliedPreviewFilters.params)
+    if (collection.type !== 'global') {
+      params.set('page', String(previewPage))
+      params.set('limit', String(previewLimit))
+      params.set('sortBy', previewSortBy)
+      params.set('sortDir', previewSortDir)
+    }
+    if (collection.localized && previewLocale) params.set('locale', previewLocale)
+    if (previewIncludeDrafts) params.set('status', 'all')
+    const query = params.toString()
+    return `/api/collections/${encodeURIComponent(collection.slug)}/entries${query ? `?${query}` : ''}`
+  }, [appliedPreviewFilters, collection.type, collection.slug, collection.localized, previewPage, previewLimit, previewSortBy, previewSortDir, previewLocale, previewIncludeDrafts])
+  const previewUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${previewPath}`
+  const previewGraphqlQuery = `query {
+  entries(collectionSlug: ${JSON.stringify(collection.slug)}, limit: ${previewLimit}, page: ${previewPage}, sortBy: ${JSON.stringify(previewSortBy)}, sortDir: ${JSON.stringify(previewSortDir)}${collection.localized && previewLocale ? `, locale: ${JSON.stringify(previewLocale)}` : ''}${previewIncludeDrafts ? ', status: "all"' : ''}${graphqlPreviewFilters(appliedPreviewFilters.filters)}) {
+    id
+    content
+    status
+    locale
+    createdAt
+  }
+}`
+  const filterControls = <ApiPreviewFilters key={collection.id} fields={collection.fields} rows={previewFilterRows}
+    onChange={setPreviewFilterRows} onApply={applyPreviewFilters}
+    activeCount={Object.keys(appliedPreviewFilters.filters).length} />
+
 
   React.useEffect(() => {
-    if (!isDialogOpen) return
-
-    const collectionType = (collection as any).type
+    if (!isDialogOpen || previewTab === 'docs') return
+    const controller = new AbortController()
+    setIsPreviewLoading(true)
+    setPreviewError('')
     const fetchPreview = async () => {
-      setIsPreviewLoading(true)
       try {
-        let url =
-          collectionType === 'global'
-            ? `/api/collections/${collection.slug}/entries`
-            : `/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
-
-        if (collection.localized && previewLocale) {
-          url += (url.includes('?') ? '&' : '?') + `locale=${previewLocale}`
-        }
-
-        if (previewIncludeDrafts) {
-          url += (url.includes('?') ? '&' : '?') + 'status=all'
-        }
-
-        const res = await fetch(url)
+        const isGraphql = previewTab === 'graphql'
+        const res = await fetch(isGraphql ? '/api/graphql' : previewPath, {
+          signal: controller.signal,
+          headers: { ...(activeTenant?.id ? { 'X-Tenant-ID': String(activeTenant.id) } : {}), ...(isGraphql ? { 'Content-Type': 'application/json' } : {}) },
+          ...(isGraphql ? { method: 'POST', body: JSON.stringify({ query: previewGraphqlQuery }) } : {}),
+        })
         const data = await res.json()
-        setPreviewData(data)
+        if (controller.signal.aborted) return
+        if (isGraphql) setGraphqlPreviewData(data)
+        else setPreviewData(data)
+        if (!res.ok || data.errors) setPreviewError(data.error || data.errors?.[0]?.message || `Request failed (${res.status})`)
       } catch (err) {
-        console.error('Failed to fetch API preview:', err)
+        if (!controller.signal.aborted) {
+          setPreviewData(null)
+          setGraphqlPreviewData(null)
+          setPreviewError(err instanceof Error ? err.message : 'Failed to fetch API preview')
+        }
       } finally {
-        setIsPreviewLoading(false)
+        if (!controller.signal.aborted) setIsPreviewLoading(false)
       }
     }
-
-    const timer = setTimeout(fetchPreview, 300) // Debounce
-    return () => clearTimeout(timer)
-  }, [
-    previewPage,
-    previewLimit,
-    previewSortBy,
-    previewSortDir,
-    previewLocale,
-    previewIncludeDrafts,
-    collection.slug,
-    isDialogOpen,
-    collection,
-  ])
+    const timer = setTimeout(fetchPreview, 300)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [previewPath, previewGraphqlQuery, previewTab, isDialogOpen, activeTenant?.id])
 
   const hasMediaField = React.useMemo(() => {
     const checkFields = (fields: any[]): boolean => {
@@ -696,7 +735,8 @@ export default function EntriesList({
                 </DialogHeader>
 
                 <Tabs
-                  defaultValue='docs'
+                  value={previewTab}
+                  onValueChange={setPreviewTab}
                   className='flex-1 flex flex-col mt-4 overflow-hidden min-h-0'
                 >
                   <TabsList className='grid w-full grid-cols-3 mb-4 shrink-0'>
@@ -766,7 +806,7 @@ export default function EntriesList({
                                 <code className='text-primary font-mono font-semibold'>limit</code>: Items per page (default: <code>10</code>, max: <code>100</code>)
                               </li>
                               <li>
-                                <code className='text-primary font-mono font-semibold'>sortBy</code>: Field name to sort by (e.g. <code>createdAt</code>, <code>id</code>)
+                                <code className='text-primary font-mono font-semibold'>sortBy</code>: System field <code>createdAt</code>/<code>id</code> or a top-level Number, Text, Email, Date, or Boolean field (e.g. <code>price</code>). No other schema types are supported. Text and Email ignore case; Number sorts numerically; Date chronologically; Boolean false-to-true ascending. Missing/empty or invalid values go last in either direction. Ties use ID ascending. Defaults to createdAt descending; system names take precedence.
                               </li>
                               <li>
                                 <code className='text-primary font-mono font-semibold'>sortDir</code>: Sort direction (<code>asc</code> or <code>desc</code>)
@@ -786,7 +826,7 @@ export default function EntriesList({
                                   field.type === 'boolean'
                               ) && (
                                 <li>
-                                  <code className='text-primary font-mono font-semibold'>filter[fieldName]</code>: Exact-match top-level Select, Radio, or Boolean fields (e.g. <code>filter[is_in_review]=Yes</code> or <code>filter[featured]=true</code>). Multiple filters are supported and use AND logic before pagination.
+                                  <code className='text-primary font-mono font-semibold'>filter[fieldName]</code>: Exact-match top-level Text, Textarea, Date, Relation, Select, Radio, or Boolean fields (e.g. <code>filter[is_in_review]=Yes</code> or <code>filter[featured]=true</code>). Text and Textarea also support <code>filter[title][eq]=Hello</code> and case-insensitive contains: <code>filter[title][icontains]=hello</code>. Date fields support <code>filter[publish_date]=2026-10-25</code> or inclusive ranges with <code>filter[publish_date][gte]=2026-10-01</code> and <code>filter[publish_date][lte]=2026-10-31</code>. Either boundary can be omitted. Relation fields filter by the connected entry ID, e.g. <code>filter[category]=42</code> or <code>filter[category][eq]=42</code>. Multiple filters are supported and use AND logic before pagination.
                                 </li>
                               )}
                               {collection.enableTrash && (
@@ -1055,7 +1095,7 @@ export default function EntriesList({
 
                   <TabsContent
                     value='rest'
-                    className='flex-1 flex flex-col overflow-hidden space-y-4 m-0'
+                    className='flex-1 min-h-0 overflow-y-auto space-y-4 m-0 pr-2 pb-2'
                   >
                     {!isPreviewExpanded &&
                       (collection as any).type !== 'global' && (
@@ -1122,6 +1162,14 @@ export default function EntriesList({
                                   Created At
                                 </SelectItem>
                                 <SelectItem value='id'>ID</SelectItem>
+                                {collection.fields.filter(field =>
+                                  ['number', 'text', 'email', 'date', 'boolean'].includes(field.type) &&
+                                  !field.multiple && !['id', 'createdAt'].includes(field.name)
+                                ).map(field => (
+                                  <SelectItem key={field.name} value={field.name}>
+                                    {field.label || field.name}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -1170,6 +1218,9 @@ export default function EntriesList({
                         </div>
                       )}
 
+                    {!isPreviewExpanded && filterControls}
+                    {previewError && <p role='alert' className='text-xs text-destructive'>{previewError}</p>}
+
                     {!isPreviewExpanded && (
                       <div className='flex items-center space-x-3 bg-muted/10 p-3.5 rounded-lg border border-border/40 text-xs'>
                         <input
@@ -1205,37 +1256,14 @@ export default function EntriesList({
                         <div className='flex space-x-2'>
                           <Input
                             readOnly
-                            value={(() => {
-                              let url =
-                                (collection as any).type === 'global'
-                                  ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                  : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
-
-                              if (collection.localized && previewLocale) {
-                                url += `&locale=${previewLocale}`
-                              }
-                              if (previewIncludeDrafts) {
-                                url += `&status=all`
-                              }
-                              return url
-                            })()}
+                            value={previewUrl}
                             className='font-mono text-xs bg-muted/50'
                           />
                           <Button
                             variant='secondary'
                             size='icon'
                             onClick={() => {
-                              let url =
-                                (collection as any).type === 'global'
-                                  ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                  : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}`
-
-                              if (collection.localized && previewLocale) {
-                                url += `&locale=${previewLocale}`
-                              }
-                              if (previewIncludeDrafts) {
-                                url += `&status=all`
-                              }
+                              const url = previewUrl
 
                               navigator.clipboard.writeText(url)
                               toast.success('URL copied to clipboard')
@@ -1393,17 +1421,7 @@ export default function EntriesList({
                             size='sm'
                             className='h-7 text-[10px]'
                             onClick={() => {
-                              let url =
-                                (collection as any).type === 'global'
-                                  ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                  : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
-
-                              if (collection.localized && previewLocale) {
-                                url += `&locale=${previewLocale}`
-                              }
-                              if (previewIncludeDrafts) {
-                                url += `&status=all`
-                              }
+                              const url = previewUrl
 
                               const tenantId =
                                 activeTenant?.id || 'YOUR_TENANT_ID'
@@ -1497,17 +1515,7 @@ export default function EntriesList({
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
-                                  let url =
-                                    (collection as any).type === 'global'
-                                      ? `${window.location.origin}/api/collections/${collection.slug}/entries`
-                                      : `${window.location.origin}/api/collections/${collection.slug}/entries?page=${previewPage}&limit=${previewLimit}&sortBy=${previewSortBy}&sortDir=${previewSortDir}`
-
-                                  if (collection.localized && previewLocale) {
-                                    url += `&locale=${previewLocale}`
-                                  }
-                                  if (previewIncludeDrafts) {
-                                    url += `&status=all`
-                                  }
+                                  const url = previewUrl
 
                                   const tenantId =
                                     activeTenant?.id || 'YOUR_TENANT_ID'
@@ -1550,6 +1558,8 @@ export default function EntriesList({
                     value='graphql'
                     className='flex-1 flex flex-col overflow-hidden space-y-4 m-0'
                   >
+                    {filterControls}
+                    {previewError && <p role='alert' className='text-xs text-destructive'>{previewError}</p>}
                     <div className='space-y-2'>
                       <label className='text-[10px] font-bold uppercase tracking-widest opacity-50'>
                         GraphQL Endpoint
@@ -1588,7 +1598,7 @@ export default function EntriesList({
                             size='sm'
                             className='h-7 text-[10px]'
                             onClick={() => {
-                              const query = `query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}, page: ${previewPage}, sortBy: "${previewSortBy}", sortDir: "${previewSortDir}"${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`
+                              const query = previewGraphqlQuery
                               navigator.clipboard.writeText(query)
                               toast.success('Query copied to clipboard')
                             }}
@@ -1604,7 +1614,7 @@ export default function EntriesList({
                           <ScrollArea className='flex-1 p-4 font-mono text-[11px] text-zinc-400 bg-transparent'>
                             <div className='relative z-10'>
                               <pre className='whitespace-pre'>
-                                {`query {\n  entries(collectionSlug: "${collection.slug}", limit: ${previewLimit}, page: ${previewPage}, sortBy: "${previewSortBy}", sortDir: "${previewSortDir}"${previewLocale && previewLocale !== '_all' ? `, locale: "${previewLocale}"` : ''}) {\n    id\n    content\n    status\n    locale\n    createdAt\n  }\n}`}
+                                {previewGraphqlQuery}
                               </pre>
                             </div>
                           </ScrollArea>
@@ -1621,16 +1631,7 @@ export default function EntriesList({
                             size='sm'
                             className='h-7 px-2 text-[10px]'
                             onClick={() => {
-                              const json = JSON.stringify(
-                                {
-                                  data: {
-                                    entries:
-                                      previewData?.entries || previewData || [],
-                                  },
-                                },
-                                null,
-                                2
-                              )
+                              const json = JSON.stringify(graphqlPreviewData, null, 2)
                               navigator.clipboard.writeText(json)
                               toast.success('JSON copied to clipboard')
                             }}
@@ -1646,18 +1647,7 @@ export default function EntriesList({
                           <ScrollArea className='flex-1 p-4 font-mono text-[11px] text-zinc-300 bg-transparent'>
                             <div className='relative z-10'>
                               <pre className='whitespace-pre'>
-                                {previewData
-                                  ? JSON.stringify(
-                                      {
-                                        data: {
-                                          entries:
-                                            previewData.entries || previewData,
-                                        },
-                                      },
-                                      null,
-                                      2
-                                    )
-                                  : '// Requesting data...'}
+                                {graphqlPreviewData ? JSON.stringify(graphqlPreviewData, null, 2) : '// Requesting data...'}
                               </pre>
                             </div>
                           </ScrollArea>

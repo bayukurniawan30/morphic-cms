@@ -146,6 +146,113 @@ const posts = await cms.entries.list('posts', { page: 1, limit: 10 })
 
 Keep API keys in server-side environment variables; do not expose a write-capable key in browser code.
 
+#### Entry Filters (REST)
+
+Filter top-level schema fields on `GET /api/collections/:idOrSlug/entries`:
+
+| Field type | Example | Matching behavior |
+| --- | --- | --- |
+| Text / Textarea | `filter[title]=Hello` or `filter[title][eq]=Hello` | Case-sensitive equality |
+| Text / Textarea | `filter[title][icontains]=hello` | Case-insensitive contains; `%`, `_`, and backslashes are literal |
+| Date | `filter[publish_date]=2026-10-25` or `filter[publish_date][eq]=2026-10-25` | Single date |
+| Date | `filter[publish_date][gte]=2026-10-01&filter[publish_date][lte]=2026-10-31` | Inclusive range; either boundary can be omitted |
+| Relation | `filter[category]=42` or `filter[category][eq]=42` | Connected entry ID |
+| Select / Radio | `filter[priority]=high` | Exact configured option value; multi-value Select fields are unsupported |
+| Boolean | `filter[featured]=true` | `true` or `false` |
+
+Filters combine with AND before pagination, so totals count only matching entries. Dates must be valid `YYYY-MM-DD` values; reversed ranges are rejected, and missing or empty dates do not match. Date filtering does not include Time/Datetime fields or timezone conversion.
+
+For relations, use the **field name inside the source collection**. If Posts has a relation field named `category` connected to Categories, `filter[category]=42` returns Posts referencing Categories entry 42. If that field is named `post_category`, use `filter[post_category]=42`. IDs must be positive integers. Matching uses the stored reference even when the target is unpublished or deleted; relation population remains unchanged. Filtering by a connected entry's title/slug or multiple IDs is unsupported.
+
+For example, run this from server-side code or your terminal:
+
+```bash
+curl -G 'https://your-cms-domain.com/api/collections/posts/entries' \
+  -H "Authorization: Bearer $MORPHIC_API_KEY" \
+  -H "X-Tenant-ID: $MORPHIC_TENANT_ID" \
+  --data-urlencode 'filter[title][icontains]=hello' \
+  --data-urlencode 'filter[publish_date][gte]=2026-10-01' \
+  --data-urlencode 'filter[publish_date][lte]=2026-10-31' \
+  --data-urlencode 'filter[category]=42'
+```
+
+#### Filter Controls in API Preview
+
+Open a collection's **Entries → API Preview**, then select **REST Preview** or **GraphQL Preview**. Choose **Add filter**, select a field and match type, enter a value, and choose **Apply filters**. Applying filters resets pagination to page 1; all selected filters must match.
+
+Text/Textarea fields offer equality and case-insensitive contains. Date fields offer a single date or inclusive range with either boundary optional. Boolean and Select/Radio fields use value pickers; Relation fields accept a connected entry ID. Only supported top-level fields appear. Invalid values and reversed ranges show a validation message before applying.
+
+Filters are shared between preview tabs. The REST URL, copied URL/cURL, GraphQL query, and live responses use the applied filters. Editing controls does not change the request until you apply them. Remove a row and apply again, or choose **Clear filters** to remove all filters immediately.
+
+#### Entry Sorting
+
+REST uses `sortBy` and `sortDir` (`asc` or `desc`):
+
+```http
+GET /api/collections/posts/entries?sortBy=publish_date&sortDir=desc
+GET /api/collections/products/entries?sortBy=price&sortDir=asc
+```
+
+Supported **top-level, single-value schema fields**:
+
+| Type | Ascending order |
+| --- | --- |
+| Number | Numeric, e.g. 2 before 10 |
+| Text | Alphabetical, case-insensitive |
+| Email | Alphabetical, case-insensitive |
+| Date | Oldest date first, using valid YYYY-MM-DD values |
+| Boolean | false before true |
+
+Other schema types—including Textarea, Slug, Select/Radio, Relation, Time/Datetime, arrays and groups—are not sortable. Use schema field names such as `price`, not labels or nested paths.
+
+System fields `id` and `createdAt` remain supported and take precedence over schema fields with those names. The default is `createdAt` descending. If `sortDir` is omitted, it defaults to `desc`. Missing, null, empty-string, or invalidly typed schema values sort last in both directions; invalid dates also sort last. Equal values use ID ascending as a tie-breaker. Filtering and sorting happen before pagination. Unknown/unsupported fields and invalid directions return HTTP 400 in REST or GraphQL `BAD_USER_INPUT`. No database migration is needed; large collections may benefit from indexes for frequently sorted fields.
+
+GraphQL uses the same arguments on `entriesPage` (and the legacy `entries` query):
+
+```graphql
+query SortedProducts {
+  entriesPage(collectionSlug: "products", sortBy: "price", sortDir: "asc") {
+    entries { id content }
+    pagination { currentPage totalPages totalCount limit }
+  }
+}
+```
+
+#### GraphQL Entry Filters
+
+Send a `POST` to `/api/graphql` with `Authorization: Bearer YOUR_API_KEY`, `X-Tenant-ID: YOUR_TENANT_ID`, and `Content-Type: application/json`. Put the query below in the JSON body's `query` property (and supply the optional `variables` property for queries using variables).
+
+```graphql
+query FilteredPosts {
+  entriesPage(
+    collectionSlug: "posts"
+    page: 1
+    limit: 10
+    sortBy: "publish_date"
+    sortDir: "desc"
+    filters: {
+      title: { icontains: "hello" }
+      publish_date: { gte: "2026-10-01", lte: "2026-10-31" }
+      category: { eq: 42 }
+    }
+  ) {
+    entries { id content }
+    pagination { currentPage totalPages totalCount limit }
+  }
+}
+```
+
+`filters` is a JSON scalar using schema field names. Replace `title`, `publish_date`, and `category` with fields defined in your Posts collection. All matching and validation rules from REST apply, including AND logic before pagination.
+
+- Text equality: `filters: { title: "Hello" }` or `{ title: { eq: "Hello" } }`.
+- Text contains: `filters: { title: { icontains: "hello" } }`.
+- Single date: `filters: { publish_date: "2026-10-25" }` or `{ publish_date: { eq: "2026-10-25" } }`.
+- Date range: `filters: { publish_date: { gte: "2026-10-01", lte: "2026-10-31" } }`. Either boundary can be omitted.
+- Relation ID: `filters: { category: 42 }` or `{ category: { eq: 42 } }`.
+- Select/Radio/Boolean: `filters: { priority: "high", featured: true }`.
+
+Invalid filters return HTTP 400 in REST or a GraphQL error with code `BAD_USER_INPUT`. The legacy GraphQL `entries` query also accepts filters, but use `entriesPage` for pagination metadata.
+
 #### One-Click Deploy
 
 The fastest way to get Morphic running is to click the **Deploy with Vercel** button above. It will set up your repository, environment variables, and initial deployment in seconds.

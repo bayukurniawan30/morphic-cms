@@ -13,11 +13,14 @@ import { createSchema, createYoga } from 'graphql-yoga'
 import crypto from 'node:crypto'
 import { db } from '../db/index.js'
 import { collections, entries, entryVersions, media } from '../db/schema.js'
+import type { FieldDefinition } from '../lib/dynamic-schema.js'
 import { buildZodSchema } from '../lib/dynamic-schema.js'
 import {
   EntryFilterValidationError,
+  entryFilterCondition,
   normalizeExactEntryFilters,
 } from '../lib/entry-filters.js'
+import { entryOrderBy, EntrySortValidationError } from '../lib/entry-sorting.js'
 import { populateEntryRelations } from '../lib/entry-relations.js'
 import { checkPermission } from '../lib/permissions.js'
 import { triggerWebhooks } from '../lib/webhooks.js'
@@ -82,6 +85,13 @@ const entriesPage = async (args: EntryArgs, context: YogaContext) => {
   if (!collection) throw fail('Collection not found', 'NOT_FOUND')
   requirePermission(context, collection.slug, 'read')
   const filters = filtersFor(collection.fields as any[], args.filters)
+  let orderBy
+  try {
+    orderBy = entryOrderBy(collection.fields as FieldDefinition[], args.sortBy, args.sortDir)
+  } catch (error) {
+    if (error instanceof EntrySortValidationError) throw fail(error.message, 'BAD_USER_INPUT')
+    throw error
+  }
   const conditions: any[] = [
     eq(entries.collectionId, collection.id),
     tenantCondition(entries.tenantId, context.tenantId),
@@ -90,7 +100,7 @@ const entriesPage = async (args: EntryArgs, context: YogaContext) => {
     conditions.push(eq(entries.status, args.status || 'published'))
   for (const filter of filters)
     conditions.push(
-      sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+      entryFilterCondition(entries.content, filter)
     )
   const locale = args.locale || 'en'
 
@@ -106,7 +116,7 @@ const entriesPage = async (args: EntryArgs, context: YogaContext) => {
             eq(entries.locale, targetLocale)
           )
         )
-        .orderBy(desc(entries.createdAt))
+        .orderBy(...orderBy)
         .limit(1)
     let result = await readGlobal(locale)
     if (!result.length && locale !== 'en') result = await readGlobal('en')
@@ -132,10 +142,6 @@ const entriesPage = async (args: EntryArgs, context: YogaContext) => {
   const limit = Math.min(Math.max(args.limit || 10, 1), 100)
   const page = Math.max(args.page || 1, 1)
   const offset = args.page ? (page - 1) * limit : Math.max(args.offset || 0, 0)
-  const order =
-    args.sortDir === 'asc'
-      ? asc(args.sortBy === 'id' ? entries.id : entries.createdAt)
-      : desc(args.sortBy === 'id' ? entries.id : entries.createdAt)
   const [count, result] = await Promise.all([
     db
       .select({ count: sql`count(*)` })
@@ -145,7 +151,7 @@ const entriesPage = async (args: EntryArgs, context: YogaContext) => {
       .select()
       .from(entries)
       .where(and(...conditions))
-      .orderBy(order)
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset),
   ])

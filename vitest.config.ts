@@ -3,6 +3,8 @@ import path from 'path'
 
 export default defineConfig({
   test: {
+    // The CLI package runs its tests separately with node --test.
+    include: ['src/**/*.test.{ts,tsx,js,jsx,mjs,cjs}'],
     globals: true,
     environment: 'node',
   },

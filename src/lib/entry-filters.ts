@@ -1,107 +1,24 @@
-import type { FieldDefinition } from './dynamic-schema.js'
+import { sql, type SQLWrapper } from 'drizzle-orm'
+import type { ExactEntryFilter } from './entry-filter-validation.js'
 
-export type ExactEntryFilter = {
-  field: string
-  value: string | boolean
-}
+export * from './entry-filter-validation.js'
 
-export class EntryFilterValidationError extends Error {}
-
-const FILTERABLE_TYPES = new Set(['select', 'radio', 'boolean'])
-const FIELD_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/
-
-/**
- * Parses REST filters in the form `filter[field_name]=value`.
- * Values are intentionally limited to one value per field because this API
- * currently supports exact matching only.
- */
-export function parseRestExactFilters(
-  searchParams: URLSearchParams
-): Record<string, string> {
-  const filters: Record<string, string> = {}
-
-  for (const [key, value] of searchParams.entries()) {
-    const match = key.match(/^filter\[([A-Za-z][A-Za-z0-9_]*)\]$/)
-    if (!match) continue
-
-    const field = match[1]
-    if (field in filters) {
-      throw new EntryFilterValidationError(
-        `Only one exact filter value is allowed for "${field}"`
-      )
-    }
-    filters[field] = value
+/** Shared SQL for REST and GraphQL; values and field names stay parameterized. */
+export function entryFilterCondition(
+  content: SQLWrapper,
+  filter: ExactEntryFilter
+) {
+  if (filter.operator === 'gte' || filter.operator === 'lte') {
+    // ISO date strings sort chronologically. Avoid casts that could fail on legacy empty values.
+    const comparison =
+      filter.operator === 'gte'
+        ? sql`${content}->>${filter.field} >= ${filter.value}`
+        : sql`${content}->>${filter.field} <= ${filter.value}`
+    return sql`(jsonb_typeof(${content}->${filter.field}) = 'string' and ${content}->>${filter.field} ~ ${'^\\d{4}-\\d{2}-\\d{2}$'} and ${comparison})`
   }
-
-  return filters
-}
-
-/**
- * Validates and normalizes exact filters against a collection's field schema.
- * Keeping this allow-listed prevents arbitrary JSON paths or unsupported field
- * types from becoming part of the public query API.
- */
-export function normalizeExactEntryFilters(
-  fields: FieldDefinition[],
-  rawFilters: Record<string, unknown> | null | undefined
-): ExactEntryFilter[] {
-  if (!rawFilters) return []
-  if (typeof rawFilters !== 'object' || Array.isArray(rawFilters)) {
-    throw new EntryFilterValidationError('filters must be an object')
+  if (filter.operator === 'icontains') {
+    const escaped = String(filter.value).replace(/[\\%_]/g, '\\$&')
+    return sql`(jsonb_typeof(${content}->${filter.field}) = 'string' and ${content}->>${filter.field} ilike ${`%${escaped}%`} escape ${'\\'})`
   }
-
-  const definitions = new Map(fields.map((field) => [field.name, field]))
-  const filters: ExactEntryFilter[] = []
-
-  for (const [fieldName, rawValue] of Object.entries(rawFilters)) {
-    if (!FIELD_NAME_PATTERN.test(fieldName)) {
-      throw new EntryFilterValidationError(
-        `Invalid filter field name "${fieldName}"`
-      )
-    }
-
-    const field = definitions.get(fieldName)
-    if (!field) {
-      throw new EntryFilterValidationError(
-        `Unknown filter field "${fieldName}"`
-      )
-    }
-    if (
-      !FILTERABLE_TYPES.has(field.type) ||
-      (field.type === 'select' && field.multiple)
-    ) {
-      throw new EntryFilterValidationError(
-        `Exact filtering is not supported for field "${fieldName}"`
-      )
-    }
-
-    if (field.type === 'boolean') {
-      if (rawValue === true || rawValue === 'true') {
-        filters.push({ field: fieldName, value: true })
-      } else if (rawValue === false || rawValue === 'false') {
-        filters.push({ field: fieldName, value: false })
-      } else {
-        throw new EntryFilterValidationError(
-          `Boolean filter "${fieldName}" must be true or false`
-        )
-      }
-      continue
-    }
-
-    if (typeof rawValue !== 'string') {
-      throw new EntryFilterValidationError(
-        `Filter "${fieldName}" must be a string`
-      )
-    }
-
-    const options = field.options?.map((option) => option.value) || []
-    if (!options.includes(rawValue)) {
-      throw new EntryFilterValidationError(
-        `Invalid value for filter "${fieldName}"`
-      )
-    }
-    filters.push({ field: fieldName, value: rawValue })
-  }
-
-  return filters
+  return sql`${content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
 }

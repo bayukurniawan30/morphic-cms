@@ -57,9 +57,11 @@ import { buildZodSchema } from '../lib/dynamic-schema.js'
 import { sendEmail } from '../lib/email.js'
 import {
   EntryFilterValidationError,
+  entryFilterCondition,
   normalizeExactEntryFilters,
   parseRestExactFilters,
 } from '../lib/entry-filters.js'
+import { entryOrderBy, EntrySortValidationError } from '../lib/entry-sorting.js'
 import { inertia } from '../lib/inertia.js'
 import { checkPermission } from '../lib/permissions.js'
 import { triggerWebhooks } from '../lib/webhooks.js'
@@ -4908,6 +4910,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       (col[0]?.fields as FieldDefinition[]) || []
     const rawFilters = parseRestExactFilters(new URL(c.req.url).searchParams)
     const exactFilters = normalizeExactEntryFilters(fieldsDef, rawFilters)
+    const orderBy = entryOrderBy(fieldsDef, c.req.query('sortBy'), c.req.query('sortDir'))
 
     if (isGlobal) {
       const requestedLocale = c.req.query('locale') || 'en'
@@ -4924,7 +4927,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       }
       for (const filter of exactFilters) {
         globalConditions.push(
-          sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+          entryFilterCondition(entries.content, filter)
         )
       }
 
@@ -4936,7 +4939,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         .from(entries)
         .leftJoin(users, eq(entries.updatedById, users.id))
         .where(and(...globalConditions))
-        .orderBy(desc(entries.createdAt))
+        .orderBy(...orderBy)
         .limit(1)
 
       // Fallback to default if requested locale not found
@@ -4952,7 +4955,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
         }
         for (const filter of exactFilters) {
           fallbackConditions.push(
-            sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+            entryFilterCondition(entries.content, filter)
           )
         }
 
@@ -4964,7 +4967,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
           .from(entries)
           .leftJoin(users, eq(entries.updatedById, users.id))
           .where(and(...fallbackConditions))
-          .orderBy(desc(entries.createdAt))
+          .orderBy(...orderBy)
           .limit(1)
       }
 
@@ -4997,7 +5000,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     for (const filter of exactFilters) {
       whereClause = and(
         whereClause,
-        sql`${entries.content} @> ${JSON.stringify({ [filter.field]: filter.value })}::jsonb`
+        entryFilterCondition(entries.content, filter)
       ) as any
     }
 
@@ -5039,19 +5042,6 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
     const totalCount = Number(countResult[0].count)
     const totalPages = Math.ceil(totalCount / limit)
 
-    const sortByParam = c.req.query('sortBy')
-    const sortDirParam = c.req.query('sortDir')
-    let orderClause = desc(entries.createdAt)
-
-    if (sortByParam === 'id') {
-      orderClause = sortDirParam === 'asc' ? asc(entries.id) : desc(entries.id)
-    } else if (sortByParam === 'createdAt') {
-      orderClause =
-        sortDirParam === 'asc'
-          ? asc(entries.createdAt)
-          : desc(entries.createdAt)
-    }
-
     const result = await db
       .select({
         entry: entries,
@@ -5060,7 +5050,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       .from(entries)
       .leftJoin(users, eq(entries.updatedById, users.id))
       .where(whereClause)
-      .orderBy(orderClause)
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset)
 
@@ -5084,7 +5074,7 @@ api.get('/collections/:idOrSlug/entries', async (c) => {
       },
     })
   } catch (err) {
-    if (err instanceof EntryFilterValidationError) {
+    if (err instanceof EntryFilterValidationError || err instanceof EntrySortValidationError) {
       return c.json({ error: err.message }, 400)
     }
     return c.json({ error: 'Internal server error' }, 500)
