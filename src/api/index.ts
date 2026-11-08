@@ -2285,11 +2285,14 @@ app.get('/entries/:collectionId/add', requireAuth, async (c) => {
 
   if (!collection) return c.redirect('/entries')
 
-  const localesWhere = tenantId ? [eq(locales.tenantId, tenantId)] : []
   const allLocales = await db
     .select()
     .from(locales)
-    .where(and(...localesWhere))
+    .where(
+      collection.tenantId === null
+        ? isNull(locales.tenantId)
+        : eq(locales.tenantId, collection.tenantId)
+    )
 
   const translationGroupId = c.req.query('translationGroupId')
   const sourceLocale = c.req.query('sourceLocale')
@@ -2387,7 +2390,14 @@ app.get('/entries/:collectionId/edit/:entryId', requireAuth, async (c) => {
   const entry = entryResult[0]
   if (!entry) return c.redirect(`/entries/${collectionId}`)
 
-  const allLocales = await db.select().from(locales)
+  const allLocales = await db
+    .select()
+    .from(locales)
+    .where(
+      collection.tenantId === null
+        ? isNull(locales.tenantId)
+        : eq(locales.tenantId, collection.tenantId)
+    )
   const existingTranslations: Record<string, number> = {}
 
   if (collection.localized && entry.entry.translationGroupId) {
